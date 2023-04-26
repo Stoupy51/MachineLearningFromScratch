@@ -37,27 +37,63 @@ LINKER_FLAGS = -lm
 #SRC_FILES = $(shell find $(SRC_FOLDER) -type f -name '*.c' -o -name '*.h')
 # Else if on Windows:
 # Get all relative paths of the source files recursively
-QUOTE = \"
-SRC_FILES = $(shell powershell -Command 'Get-ChildItem -Path .\src\ -Filter *.c -Recurse | ForEach-Object {Resolve-Path (Join-Path $$_.DirectoryName $$_.Name) -Relative} | ForEach-Object { $$_ }')
+SRC_FILES = $(shell powershell -Command 'Get-ChildItem -Path $(SRC_FOLDER) -Filter *.c -Recurse | ForEach-Object {Resolve-Path (Join-Path $$_.DirectoryName $$_.Name) -Relative} | ForEach-Object { $$_.Replace("\", "/") } ')
+QUOTED_SRC_FILES = $(foreach file, $(SRC_FILES),"$(file)")
 
 # Get all the object files recursively (replace the .c extension by .o from the source files to get the object files)
-#OBJ_FILES = $(SRC_FILES:.c=.o)
+# (Removing the src folder from the path by substringing the path)
+SRC_FILES_WITHOUT_FOLDER = $(subst $(SRC_FOLDER)/,,$(SRC_FILES))
+OBJ_FILES = $(foreach file, $(SRC_FILES_WITHOUT_FOLDER),"$(OBJ_FOLDER)/$(file:.c=.o)")
 
 # Get all the executable files recursively
 # If on linux :
 #PROGRAMS_FILES = $(shell find $(PROGRAMS_FOLDER) -type f -name '*.c' -o -name '*.h')
 # Else if on Windows:
-PROGRAMS_FILES = 
+PROGRAMS_FILES = $(shell powershell -Command 'Get-ChildItem -Path $(PROGRAMS_FOLDER) -Filter *.c -Recurse | ForEach-Object {Resolve-Path (Join-Path $$_.DirectoryName $$_.Name) -Relative} | ForEach-Object { $$_.Replace("\", "/") } ')
+QUOTED_PROGRAMS_FILES = $(foreach file, $(PROGRAMS_FILES), "$(file)")
+PROGRAMS_FILES_WITHOUT_FOLDER = $(subst $(PROGRAMS_FOLDER)/,,$(PROGRAMS_FILES))
+
+# Compile the whole project
+all: depend
+	@echo "Compiling the source files into object files..."
+	@mkdir -p $(OBJ_FOLDER)
+	@mkdir -p $(BIN_FOLDER)
+
+	@$(foreach file, $(SRC_FILES_WITHOUT_FOLDER), mkdir -p $(OBJ_FOLDER)/$(dir $(file));)
+
+	@$(COMPILER) $(COMPILER_FLAGS) -c $(SRC_FILES) -o $(OBJ_FILES)
+
+	@echo "Compiling the programs..."
+	@$(foreach file, $(PROGRAMS_FILES_WITHOUT_FOLDER), $(COMPILER) $(COMPILER_FLAGS) $(OBJ_FILES) $(PROGRAMS_FOLDER)/$(file) -o $(BIN_FOLDER)/$(file:.c=);)
+
+	@echo "Compilation done"
 
 # Make dependencies
 depend:
 	@echo "Preparing dependencies for the compilation..."
 
 	@echo "Dependencies for the source files:"
-	$(COMPILER) -MM $(SRC_FILES) > $(DEPENDANCIES_FILE)
+	@$(COMPILER) -MM $(QUOTED_SRC_FILES) > $(DEPENDANCIES_FILE)
 
 	@echo "Dependencies for the programs:"
-	$(COMPILER) -MM $(PROGRAMS_FILES) >> $(DEPENDANCIES_FILE)
+	@$(COMPILER) -MM $(QUOTED_PROGRAMS_FILES) >> $(DEPENDANCIES_FILE)
 
 	@echo "Dependencies are ready for the compilation"
+
+
+# Clean the project
+clean:
+	@echo "Cleaning the project..."
+	@rm -rf $(OBJ_FOLDER)
+	@rm -rf $(BIN_FOLDER)
+	@rm -f $(DEPENDANCIES_FILE)
+	@echo "Project cleaned"
+
+
+# Clean the project and recompile it
+restart: clean all
+
+# Include the dependencies file
+-include $(DEPENDANCIES_FILE)
+
 
