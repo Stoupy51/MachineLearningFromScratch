@@ -27,11 +27,13 @@ OBJ_FOLDER = obj
 BIN_FOLDER = bin
 PROGRAMS_FOLDER = programs
 DEPENDANCIES_FILE = dependencies.txt
-CUDA_PATH = C:/Program\ Files/NVIDIA\ GPU\ Computing Toolkit/CUDA/v12.1
+CUDA_FOLDER = C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1
+CUDA_LIB_FOLDER = "$(CUDA_FOLDER)/lib/x64"
+CUDA_INCLUDE_FOLDER = "$(CUDA_FOLDER)/include"
 
 COMPILER = gcc
-LINKER_FLAGS = -lm -lpthread -L$(CUDA_PATH)/ -lcudart -lcublas -lcusolver -lcusparse
-COMPILER_FLAGS = -Wall -Wextra -Werror -O3 -std=c99 -I$(CUDA_PATH)/include
+LINKER_FLAGS = -lm -lpthread -L$(CUDA_LIB_FOLDER) -lcudart -lcublas -lcudnn
+COMPILER_FLAGS = -Wall -Wextra -O3 -I$(CUDA_INCLUDE_FOLDER)
 
 # Get all the source files recursively in the src folder
 # If on linux :
@@ -57,7 +59,7 @@ PROGRAMS_FILES_WITHOUT_FOLDER = $(subst $(PROGRAMS_FOLDER)/,,$(PROGRAMS_FILES))
 # Compile the whole project
 all:
 	@echo "Preparing the project for compilation..."
-	@rm -rf $(BIN_FOLDER)
+	@rm -rf $(BIN_FOLDER)/*
 	@mkdir -p $(OBJ_FOLDER)
 	@mkdir -p $(BIN_FOLDER)
 	@$(foreach file, $(SRC_FILES_WITHOUT_FOLDER), mkdir -p $(OBJ_FOLDER)/$(dir $(file));)
