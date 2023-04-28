@@ -3,3 +3,7 @@ dependencies.txt
 obj/*
 bin/*
 
+# Ignore the build directory
+*.vs/
+*x64/
+
