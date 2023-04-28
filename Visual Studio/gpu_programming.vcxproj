@@ -11,11 +11,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="test.cu" />
-    <CudaCompile Include="test2.cu" />
+    <CudaCompile Include="main.cu" />
+    <CudaCompile Include="sum.cu" />
+    <CudaCompile Include="rand.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="test2.cuh" />
+    <ClInclude Include="sum.cuh" />
+    <ClInclude Include="rand.cuh" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{BBC1650E-9C93-4CC6-A06A-538510BC0E82}</ProjectGuid>

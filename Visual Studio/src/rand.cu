@@ -18,11 +18,21 @@ __global__ void gpu_routine(int* device_vector, int size) {
 	}
 }
 
-
 /**
  * @brief Function that calls the GPU routine to fill a vector with random numbers
 */
 int randMain() {
+
+	// Message
+	INFO_PRINT("randMain() : Starting random number generation on GPU...\n");
+
+	// Take current time in us
+	// TODO: Use CUDA events instead
+	struct timespec start;
+	gettimeofday(&start, NULL);
+	
+
+
 
 	// Host variables
 	int* host_vector = (int*)malloc(SIZE * sizeof(int));
