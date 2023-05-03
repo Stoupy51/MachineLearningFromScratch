@@ -27,13 +27,11 @@ OBJ_FOLDER = obj
 BIN_FOLDER = bin
 PROGRAMS_FOLDER = programs
 DEPENDANCIES_FILE = dependencies.txt
-CUDA_FOLDER = C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1
-CUDA_LIB_FOLDER = "$(CUDA_FOLDER)/lib/x64"
-CUDA_INCLUDE_FOLDER = "$(CUDA_FOLDER)/include"
+OPENCL_DLL = "C:/Windows/System32/OpenCL.dll"
 
 COMPILER = gcc
-LINKER_FLAGS = -lm -lpthread -L$(CUDA_LIB_FOLDER) -lcudart -lcublas -lcudnn
-COMPILER_FLAGS = -Wall -Wextra -O3 -I$(CUDA_INCLUDE_FOLDER)
+LINKER_FLAGS = -lm -lpthread -lOpenCL -L$(OPENCL_DLL)
+COMPILER_FLAGS = -Wall -Wextra -O3 $(LINKER_FLAGS)
 
 # Get all the source files recursively in the src folder
 # If on linux :
