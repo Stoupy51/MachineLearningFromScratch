@@ -1,7 +1,10 @@
 
+#include <stdlib.h>
+
 #include "../src/gpu/utils.h"
 
 #define VECTOR_SIZE 1000000
+#define STR_BUFFER_SIZE 127
 
 /**
  * This program is an introduction test to OpenCL programming.
@@ -13,9 +16,10 @@
  *
  * @author Stoupy51 (COLLIGNON Alexandre)
 */
-int main(int argc, char** argv) {
+int main() {
 
 	// Print program header
+	cl_int code = 0;
 	printf("\n---------------------------\n");
 	WARNING_PRINT("main(): Launching GPU test program.\n");
 
@@ -24,29 +28,45 @@ int main(int argc, char** argv) {
 	struct opencl_context_t oc = setupOpenCL(CL_DEVICE_TYPE_GPU);
 	WARNING_PRINT("main(): OpenCL initialized.\n");
 
-	// Print device name, version, etc.
-	char buffer[128];
-	clGetDeviceInfo(oc.device_id, CL_DEVICE_NAME, 100, buffer, NULL);
+	// Print device name, version, etc. from context
+	char buffer[STR_BUFFER_SIZE + 1] = { '\0' };
+	clGetDeviceInfo(oc.device_id, CL_DEVICE_NAME, STR_BUFFER_SIZE, buffer, NULL);
 	WARNING_PRINT("main(): Device name: %s\n", buffer);
-	clGetDeviceInfo(oc.device_id, CL_DEVICE_VERSION, 100, buffer, NULL);
+	clGetDeviceInfo(oc.device_id, CL_DEVICE_VERSION, STR_BUFFER_SIZE, buffer, NULL);
 	WARNING_PRINT("main(): Device version: %s\n", buffer);
-	clGetDeviceInfo(oc.device_id, CL_DRIVER_VERSION, 100, buffer, NULL);
+	clGetDeviceInfo(oc.device_id, CL_DRIVER_VERSION, STR_BUFFER_SIZE, buffer, NULL);
 	WARNING_PRINT("main(): Driver version: %s\n", buffer);
-	clGetDeviceInfo(oc.device_id, CL_DEVICE_OPENCL_C_VERSION, 100, buffer, NULL);
+	clGetDeviceInfo(oc.device_id, CL_DEVICE_OPENCL_C_VERSION, STR_BUFFER_SIZE, buffer, NULL);
 	WARNING_PRINT("main(): OpenCL C version: %s\n", buffer);
 
 	// Get the kernel source code
 	WARNING_PRINT("main(): Getting kernel source code...\n");
-	char* kernel_source = readEntireFile("src/gpu/test.cl");
+	char* kernel_source = readKernelProgram("src/gpu/test.cl");
 
-	// Create & Build the program
-	WARNING_PRINT("main(): Creating & Building program...\n");
-	cl_program program = clCreateProgramWithSource(oc.context, 1, (const char**)&kernel_source, NULL, NULL);
-	clBuildProgram(program, 1, &oc.device_id, NULL, NULL, NULL);
+	// Create the program
+	WARNING_PRINT("main(): Creating program...\n");
+	cl_program program = clCreateProgramWithSource(oc.context, 1, (const char**)&kernel_source, NULL, &code);
+	if (program == NULL) {
+		ERROR_PRINT("main(): Cannot create program, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		exit(EXIT_FAILURE);
+	}
+
+	// Build the program
+	WARNING_PRINT("main(): Building program...\n");
+	code = clBuildProgram(program, 1, &oc.device_id, NULL, NULL, NULL);
+	if (code != CL_SUCCESS) {
+		ERROR_PRINT("main(): Cannot build program, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		printProgramBuildLog(program, oc.device_id, ERROR_LEVEL, "main(): ");
+		exit(EXIT_FAILURE);
+	}
 
 	// Create the kernel
 	WARNING_PRINT("main(): Creating kernel...\n");
-	cl_kernel kernel = clCreateKernel(program, "computePower", NULL);
+	cl_kernel kernel = clCreateKernel(program, "computePower", &code);
+	if (kernel == NULL) {
+		ERROR_PRINT("main(): Cannot create kernel, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		exit(EXIT_FAILURE);
+	}
 
 	// Create two vectors of random integers
 	WARNING_PRINT("main(): Creating two vectors of random integers...\n");
@@ -60,13 +80,29 @@ int main(int argc, char** argv) {
 
 	// Create the memory buffers
 	WARNING_PRINT("main(): Creating memory buffers...\n");
-	cl_mem a_v_buffer = clCreateBuffer(oc.context, CL_MEM_READ_ONLY, vector_size_bytes, NULL, NULL);
-	cl_mem b_v_buffer = clCreateBuffer(oc.context, CL_MEM_READ_ONLY, vector_size_bytes, NULL, NULL);
+	cl_mem a_v_buffer = clCreateBuffer(oc.context, CL_MEM_READ_WRITE, vector_size_bytes, NULL, &code);
+	if (a_v_buffer == NULL) {
+		ERROR_PRINT("main(): Cannot create buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		exit(EXIT_FAILURE);
+	}
+	cl_mem b_v_buffer = clCreateBuffer(oc.context, CL_MEM_READ_ONLY, vector_size_bytes, NULL, &code);
+	if (b_v_buffer == NULL) {
+		ERROR_PRINT("main(): Cannot create buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		exit(EXIT_FAILURE);
+	}
 
 	// Copy the vectors to the memory buffers
 	WARNING_PRINT("main(): Copying vectors to memory buffers...\n");
-	clEnqueueWriteBuffer(oc.command_queue, a_v_buffer, CL_FALSE, 0, vector_size_bytes, a_v, 0, NULL, NULL);
-	clEnqueueWriteBuffer(oc.command_queue, b_v_buffer, CL_FALSE, 0, vector_size_bytes, b_v, 0, NULL, NULL);
+	code = clEnqueueWriteBuffer(oc.command_queue, a_v_buffer, CL_FALSE, 0, vector_size_bytes, a_v, 0, NULL, NULL);
+	if (code != CL_SUCCESS) {
+		ERROR_PRINT("main(): Cannot write buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		exit(EXIT_FAILURE);
+	}
+	code = clEnqueueWriteBuffer(oc.command_queue, b_v_buffer, CL_FALSE, 0, vector_size_bytes, b_v, 0, NULL, NULL);
+	if (code != CL_SUCCESS) {
+		ERROR_PRINT("main(): Cannot write buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		exit(EXIT_FAILURE);
+	}
 
 	// Set the arguments of the kernel
 	WARNING_PRINT("main(): Setting arguments of the kernel...\n");
@@ -76,15 +112,27 @@ int main(int argc, char** argv) {
 	// Execute the kernel
 	WARNING_PRINT("main(): Executing the kernel...\n");
 	size_t global_dimensions[] = { VECTOR_SIZE, 0, 0 };
-	clEnqueueNDRangeKernel(oc.command_queue, kernel, 1, NULL, global_dimensions, NULL, 0, NULL, NULL);
+	code = clEnqueueNDRangeKernel(oc.command_queue, kernel, 1, NULL, global_dimensions, NULL, 0, NULL, NULL);
+	if (code != CL_SUCCESS) {
+		ERROR_PRINT("main(): Cannot execute kernel, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		exit(EXIT_FAILURE);
+	}
 
 	// Read the result from the memory buffer
 	WARNING_PRINT("main(): Reading the result from the memory buffer...\n");
-	clEnqueueReadBuffer(oc.command_queue, a_v_buffer, CL_FALSE, 0, vector_size_bytes, a_v, 0, NULL, NULL);
+	code = clEnqueueReadBuffer(oc.command_queue, a_v_buffer, CL_FALSE, 0, vector_size_bytes, a_v, 0, NULL, NULL);
+	if (code != CL_SUCCESS) {
+		ERROR_PRINT("main(): Cannot read buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		exit(EXIT_FAILURE);
+	}
 
 	// Wait for everything to finish
 	WARNING_PRINT("main(): Waiting for everything to finish...\n");
-	clFinish(oc.command_queue);
+	code = clFinish(oc.command_queue);
+	if (code != CL_SUCCESS) {
+		ERROR_PRINT("main(): Cannot finish, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		exit(EXIT_FAILURE);
+	}
 
 	// Clean up
 	WARNING_PRINT("main(): Cleaning up...\n");
