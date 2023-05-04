@@ -9,7 +9,7 @@
  * This program is an introduction test to OpenCL programming.
  * It is a simple program that manipulates vectors of integers.
  * - The first vector is filled with random integers between 1 and 10.
- * - The second vector is filled with random integers between 1 and 100.
+ * - The second vector is filled with random integers between 1 and 100000.
  * 
  * The program use GPU to compute the first vector to the power of the second vector.
  *
