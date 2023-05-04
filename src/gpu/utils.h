@@ -22,6 +22,7 @@
 #define ERROR_LEVEL 4
 // Change the following line to change the debug level
 #define DEBUG_LEVEL (INFO_LEVEL | WARNING_LEVEL | ERROR_LEVEL)
+#define DEVELOPMENT_MODE 1
 
 // Utils defines to check debug level
 #define IS_INFO_LEVEL (DEBUG_LEVEL & INFO_LEVEL)
@@ -29,9 +30,13 @@
 #define IS_ERROR_LEVEL (DEBUG_LEVEL & ERROR_LEVEL)
 
 // Utils defines to print debug messages
-#define INFO_PRINT(...) if (IS_INFO_LEVEL) { printf(GREEN "[INFO] " RESET __VA_ARGS__); }
+#define INFO_PRINT(...) if (IS_INFO_LEVEL) { if (DEVELOPMENT_MODE) fprintf(stderr, GREEN "[INFO] " RESET __VA_ARGS__); else printf(GREEN "[INFO] " RESET __VA_ARGS__); }
 #define WARNING_PRINT(...) if (IS_WARNING_LEVEL) { fprintf(stderr, YELLOW "[WARNING] " RESET __VA_ARGS__); }
 #define ERROR_PRINT(...) if (IS_ERROR_LEVEL) { fprintf(stderr, RED "[ERROR] "RESET __VA_ARGS__); }
+#define PRINTER(...) if (DEVELOPMENT_MODE) fprintf(stderr, __VA_ARGS__); else printf(__VA_ARGS__);
+
+// Define for the maximum size of a string buffer
+#define STR_BUFFER_SIZE 127
 
 
 // Struct to store the OpenCL context
@@ -47,6 +52,7 @@ struct opencl_context_t {
 const char* getOpenCLErrorString(cl_int error);
 void printProgramBuildLog(cl_program program, cl_device_id device_id, int mode, char* prefix);
 struct opencl_context_t setupOpenCL(cl_device_type type_of_device);
+void printDeviceInfo(cl_device_id device_id);
 char* readEntireFile(char* path);
 char* readKernelProgram(char* path);
 

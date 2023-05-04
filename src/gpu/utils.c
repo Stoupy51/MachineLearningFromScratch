@@ -92,6 +92,7 @@ const char* getOpenCLErrorString(cl_int error) {
 	}
 }
 
+
 /**
  * @brief This function prints the program build log
  * to the output depending on the mode specified.
@@ -121,6 +122,7 @@ void printProgramBuildLog(cl_program program, cl_device_id device_id, int mode, 
 		case ERROR_LEVEL: ERROR_PRINT("%sBuild log:\n%s\n", prefix, log); break;
 	}
 }
+
 
 /**
  * @brief This function initialize OpenCL, get a GPU device,
@@ -169,11 +171,91 @@ struct opencl_context_t setupOpenCL(cl_device_type type_of_device) {
 
 
 /**
+ * @brief This function prints information about the device specified such as
+ * - Device name
+ * - Device version
+ * - Driver version
+ * - OpenCL C version
+ * - Max memory allocation size
+ * - Global memory size
+ * - Local memory size
+ * - Max constant buffer size
+ * 
+ * @param device_id		The device to print information about
+ * 
+ * @return void
+ */
+void printDeviceInfo(cl_device_id device_id) {
+
+	// Setup string buffer
+	char buffer[STR_BUFFER_SIZE + 1] = { '\0' };
+	INFO_PRINT("printDeviceInfo():\n");
+
+	// Get all the text information
+	clGetDeviceInfo(device_id, CL_DEVICE_NAME, STR_BUFFER_SIZE, buffer, NULL);
+	PRINTER("- Device name: %s\n", buffer);
+	clGetDeviceInfo(device_id, CL_DEVICE_VERSION, STR_BUFFER_SIZE, buffer, NULL);
+	PRINTER("- Device version: %s\n", buffer);
+	clGetDeviceInfo(device_id, CL_DRIVER_VERSION, STR_BUFFER_SIZE, buffer, NULL);
+	PRINTER("- Driver version: %s\n", buffer);
+	clGetDeviceInfo(device_id, CL_DEVICE_OPENCL_C_VERSION, STR_BUFFER_SIZE, buffer, NULL);
+	PRINTER("- OpenCL C version: %s\n", buffer);
+
+	// Get all the number information
+	cl_ulong buffer_ulong = 0;
+	clGetDeviceInfo(device_id, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(cl_ulong), &buffer_ulong, NULL);
+	PRINTER("- Max memory allocation size: %llu\n", buffer_ulong);
+	clGetDeviceInfo(device_id, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(cl_ulong), &buffer_ulong, NULL);
+	PRINTER("- Global memory size: %llu\n", buffer_ulong);
+	clGetDeviceInfo(device_id, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(cl_ulong), &buffer_ulong, NULL);
+	PRINTER("- Local memory size: %llu\n", buffer_ulong);
+	clGetDeviceInfo(device_id, CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE, sizeof(cl_ulong), &buffer_ulong, NULL);
+	PRINTER("- Max constant buffer size: %llu\n", buffer_ulong);
+
+	// Get all the number information (2)
+	cl_uint buffer_uint = 0;
+	clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(cl_uint), &buffer_uint, NULL);
+	PRINTER("- Max work group size: %u\n", buffer_uint);
+	clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(cl_uint), &buffer_uint, NULL);
+	PRINTER("- Max work item dimensions: %u\n", buffer_uint);
+
+	// Get all the number information (3)
+	size_t buffer_size_t[3] = { 0 };
+	clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(size_t) * 3, buffer_size_t, NULL);
+	PRINTER("- Max work item sizes: %zu, %zu, %zu\n", buffer_size_t[0], buffer_size_t[1], buffer_size_t[2]);
+
+	// Get all the number information (4)
+	cl_bool buffer_bool = 0;
+	clGetDeviceInfo(device_id, CL_DEVICE_AVAILABLE, sizeof(cl_bool), &buffer_bool, NULL);
+	PRINTER("- Available: %s\n", buffer_bool ? "true" : "false");
+	clGetDeviceInfo(device_id, CL_DEVICE_COMPILER_AVAILABLE, sizeof(cl_bool), &buffer_bool, NULL);
+	PRINTER("- Compiler available: %s\n", buffer_bool ? "true" : "false");
+	clGetDeviceInfo(device_id, CL_DEVICE_ENDIAN_LITTLE, sizeof(cl_bool), &buffer_bool, NULL);
+	PRINTER("- Endian little: %s\n", buffer_bool ? "true" : "false");
+	clGetDeviceInfo(device_id, CL_DEVICE_ERROR_CORRECTION_SUPPORT, sizeof(cl_bool), &buffer_bool, NULL);
+	PRINTER("- Error correction support: %s\n", buffer_bool ? "true" : "false");
+	clGetDeviceInfo(device_id, CL_DEVICE_HOST_UNIFIED_MEMORY, sizeof(cl_bool), &buffer_bool, NULL);
+	PRINTER("- Host unified memory: %s\n", buffer_bool ? "true" : "false");
+	clGetDeviceInfo(device_id, CL_DEVICE_IMAGE_SUPPORT, sizeof(cl_bool), &buffer_bool, NULL);
+	PRINTER("- Image support: %s\n", buffer_bool ? "true" : "false");
+	clGetDeviceInfo(device_id, CL_DEVICE_LINKER_AVAILABLE, sizeof(cl_bool), &buffer_bool, NULL);
+	PRINTER("- Linker available: %s\n", buffer_bool ? "true" : "false");
+	clGetDeviceInfo(device_id, CL_DEVICE_PREFERRED_INTEROP_USER_SYNC, sizeof(cl_bool), &buffer_bool, NULL);
+	PRINTER("- Preferred interop user sync: %s\n", buffer_bool ? "true" : "false");
+	clGetDeviceInfo(device_id, CL_DEVICE_PROFILING_TIMER_RESOLUTION, sizeof(cl_bool), &buffer_bool, NULL);
+	PRINTER("- Profiling timer resolution: %s\n", buffer_bool ? "true" : "false");
+
+	// Print a new line at the end
+	PRINTER("\n");
+}
+
+
+/**
  * @brief This function read a file and return its content as a string.
  * 
  * @param filename Name of the file to read
  * 
-*/
+ */
 char* readEntireFile(char* path) {
 	
 	// Open the file
@@ -188,15 +270,15 @@ char* readEntireFile(char* path) {
 	lseek(fd, 0, SEEK_SET);
 
 	// Allocate memory for the file content
-	char* content = malloc(sizeof(char) * (size + 1));
-	if (content == NULL) {
+	char* buffer = malloc(sizeof(char) * (size + 1));
+	if (buffer == NULL) {
 		ERROR_PRINT("readEntireFile(): Cannot allocate memory for file %s\n", path);
 		return NULL;
 	}
 
 	// Read the file
-	memset(content, '\0', size + 1);
-	if (read(fd, content, size) == -1) {
+	int read_size;
+	if ((read_size = read(fd, buffer, size)) == -1) {
 		ERROR_PRINT("readEntireFile(): Cannot read file %s\n", path);
 		return NULL;
 	}
@@ -204,9 +286,13 @@ char* readEntireFile(char* path) {
 	// Close the file
 	close(fd);
 
+	// Add a null character at the end of the buffer
+	buffer[read_size] = '\0';
+
 	// Return the file content
-	return content;
+	return buffer;
 }
+
 
 /**
  * @brief This function read a kernel program from a file and return it by
