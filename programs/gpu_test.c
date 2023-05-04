@@ -30,7 +30,6 @@ int main() {
 	// Print device name, version, etc. from context
 	printDeviceInfo(oc.device_id);
 
-
 	// Get the kernel source code
 	INFO_PRINT("main(): Getting kernel source code...\n");
 	char* kernel_source = readKernelProgram("src/gpu/test.cl");
@@ -54,7 +53,7 @@ int main() {
 
 	// Create the kernel
 	INFO_PRINT("main(): Creating kernel...\n");
-	cl_kernel kernel = clCreateKernel(program, "computePowerFastExponentiation", &code);
+	cl_kernel kernel = clCreateKernel(program, "computePowerNaiveExponentiation", &code);
 	if (kernel == NULL) {
 		ERROR_PRINT("main(): Cannot create kernel, reason: %d / %s\n", code, getOpenCLErrorString(code));
 		exit(EXIT_FAILURE);
@@ -68,7 +67,7 @@ int main() {
 	int* b_v = malloc(vector_size_bytes);
 	for (int i = 0; i < vec_size; i++) {
 		a_v[i] = rand() % 10 + 1;
-		b_v[i] = rand() % 10000 + 1;
+		b_v[i] = rand() % 100000 + 1;
 	}
 
 	// Create the memory buffers
