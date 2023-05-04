@@ -5,12 +5,6 @@
 
 #include "utils.h"
 
-struct opencl_context_t {
-	cl_device_id device_id;				// ID of the GPU device
-	cl_context context;					// Context of the GPU device
-	cl_command_queue command_queue;		// Command queue of the GPU device
-};
-
 /**
  * @brief This function initialize OpenCL, get a GPU device,
  * create a context and a command queue.
@@ -25,13 +19,16 @@ struct opencl_context_t setupOpenCL(int type_of_device) {
 	struct opencl_context_t oc;
 
 	// Get a GPU device
-	clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &oc.device_id, NULL);
+	clGetDeviceIDs(NULL, type_of_device, 1, &oc.device_id, NULL);
+	WARNING_PRINT("GPU device found : %p\n", oc.device_id);
 
 	// Create a context
 	oc.context = clCreateContext(NULL, 1, &oc.device_id, NULL, NULL, NULL);
+	WARNING_PRINT("Context created : %p\n", oc.context);
 
 	// Create a command queue
-	oc.command_queue = clCreateCommandQueue(oc.context, oc.device_id, 0, NULL);
+	oc.command_queue = clCreateCommandQueueWithProperties(oc.context, oc.device_id, NULL, NULL);
+	WARNING_PRINT("Command queue created : %p\n", oc.command_queue);
 
 	// Return the context
 	return oc;

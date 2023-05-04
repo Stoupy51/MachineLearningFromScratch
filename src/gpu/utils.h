@@ -2,6 +2,8 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
+#define CL_TARGET_OPENCL_VERSION 300
+
 #include <stdio.h>
 #include <CL/cl.h>
 
@@ -28,8 +30,8 @@
 
 // Utils defines to print debug messages
 #define INFO_PRINT(...) if (IS_INFO_LEVEL) { printf(GREEN "[INFO] " RESET __VA_ARGS__); }
-#define WARNING_PRINT(...) if (IS_WARNING_LEVEL) { printf(RED "[WARNING] " RESET __VA_ARGS__); }
-#define ERROR_PRINT(...) if (IS_ERROR_LEVEL) { printf(RED "[ERROR] "RESET __VA_ARGS__); }
+#define WARNING_PRINT(...) if (IS_WARNING_LEVEL) { fprintf(stderr, YELLOW "[WARNING] " RESET __VA_ARGS__); }
+#define ERROR_PRINT(...) if (IS_ERROR_LEVEL) { fprintf(stderr, RED "[ERROR] "RESET __VA_ARGS__); }
 
 
 // Struct to store the OpenCL context
@@ -39,9 +41,9 @@ struct opencl_context_t {
 	cl_command_queue command_queue;		// Command queue of the GPU device
 };
 
+// Function prototypes
 struct opencl_context_t setupOpenCL(int type_of_device);
 char* readEntireFile(char* path);
-
 
 
 

@@ -28,10 +28,11 @@ BIN_FOLDER = bin
 PROGRAMS_FOLDER = programs
 DEPENDANCIES_FILE = dependencies.txt
 OPENCL_DLL = "C:/Windows/System32/OpenCL.dll"
+OPENCL_LIB_PATH = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/lib/x64"
 
 COMPILER = gcc
-LINKER_FLAGS = -lm -lpthread -lOpenCL -L$(OPENCL_DLL)
-COMPILER_FLAGS = -Wall -Wextra -O3 $(LINKER_FLAGS)
+LINKER_FLAGS = -lm -lpthread -L$(OPENCL_LIB_PATH) -lOpenCL
+COMPILER_FLAGS = -Wall -Wextra -O3 $(LINKER_FLAGS) $(OPENCL_DLL)
 
 # Get all the source files recursively in the src folder
 # If on linux :

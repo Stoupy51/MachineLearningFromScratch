@@ -15,7 +15,7 @@ kernel void computePower(global int* first_vector, global int* second_vector, in
 
 	// Compute the power using Fast exponentiation
 	if (i < n) {
-		
+
 		// Get the power and the value
 		int result = 1;
 		int power = second_vector[i];
@@ -23,11 +23,11 @@ kernel void computePower(global int* first_vector, global int* second_vector, in
 
 		// While the power is not 0
 		while (power > 0) {
-			
+
 			// If the power is odd, multiply the result by the value
 			if (power % 2 == 1)
 				result *= value;
-			
+
 			// In every case, square the value and divide the power by 2
 			value *= value;
 			power /= 2;
