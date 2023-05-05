@@ -64,6 +64,7 @@ all:
 	@$(foreach file, $(SRC_FILES_WITHOUT_FOLDER), mkdir -p $(OBJ_FOLDER)/$(dir $(file));)
 
 	@echo "Compiling the source files..."
+	@echo $(COMPILER) $(COMPILER_FLAGS) -c $(SRC_FILES) -o $(OBJ_FILES)
 	@$(COMPILER) $(COMPILER_FLAGS) -c $(SRC_FILES) -o $(OBJ_FILES)
 
 	@echo "Compiling the programs..."
