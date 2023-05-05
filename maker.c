@@ -50,7 +50,9 @@ int createMakefileContent(char *content) {
 	///// For each .c file in the src folder, create a .o file in the obj folder
 	// Write the objects rule
 	written += sprintf(content + written, "\nobjects:\n");
+	written += sprintf(content + written, "\t@echo \"\"\n");
 	written += sprintf(content + written, "\t@echo \"Compiling the source files...\"\n");
+	written += sprintf(content + written, "\t@echo \"|\"\n");
 
 	// Write the compilation commands (On Windows)
 	#ifdef _WIN32
@@ -113,7 +115,11 @@ int createMakefileContent(char *content) {
 		///// Get the list of files in the programs folder recursively
 
 		// Write the programs rule
+		written += sprintf(content + written, "\t@echo \"\"\n");
+		written += sprintf(content + written, "\t@echo \"\"\n");
+		written += sprintf(content + written, "\t@echo \"\"\n");
 		written += sprintf(content + written, "\t@echo \"Compiling the programs...\"\n");
+		written += sprintf(content + written, "\t@echo \"|\"\n");
 
 		// Create the command and execute it
 		sprintf(command, "dir /s /b \"%s\\*.c\"", PROGRAMS_FOLDER);
@@ -153,7 +159,9 @@ int createMakefileContent(char *content) {
 		free(object_files);
 
 		// Write the last line of programs rule
+		written += sprintf(content + written, "\t@echo \"|\"\n");
 		written += sprintf(content + written, "\t@echo \"Compilation done\"\n");
+		written += sprintf(content + written, "\t@echo \"\"\n");
 
 	// TODO: Write the compilation commands (On Linux)
 	#else
@@ -163,8 +171,8 @@ int createMakefileContent(char *content) {
 	// Write the clean rule
 	written += sprintf(content + written, "\nclean:\n");
 	written += sprintf(content + written, "\t@echo \"Cleaning the project...\"\n");
-	written += sprintf(content + written, "\t@rm -f %s/*.o\n", OBJ_FOLDER);
-	written += sprintf(content + written, "\t@rm -f %s/*.o\n", BIN_FOLDER);
+	written += sprintf(content + written, "\t@rm -rf %s\n", OBJ_FOLDER);
+	written += sprintf(content + written, "\t@rm -rf %s\n", BIN_FOLDER);
 	written += sprintf(content + written, "\t@echo \"Clean done\"\n\n");
 	
 	// Return
@@ -219,8 +227,8 @@ int main() {
 	// Free the content
 	free(content);
 
-	// Launch the make command with the Makefile
-	system("make -f "MAKEFILE_NAME);
+	// Launch the make command with the Makefile created and the --no-print-directory option
+	system("make -f " MAKEFILE_NAME " --no-print-directory");
 
 	// Return
 	return 0;
