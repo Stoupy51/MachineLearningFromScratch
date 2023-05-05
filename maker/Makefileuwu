@@ -1,0 +1,10 @@
+
+CC = gcc
+ALL_FLAGS = -Wall -Wextra -Wpedantic -Werror -O3 -lm -lpthread -L"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/lib/x64" -lOpenCL "C:/Windows/System32/OpenCL.dll"
+
+all: objects programs
+
+objects:
+	@echo "Compiling the source files..."
+	$(CC) -c "src/gpu/utils.c" -o "obj/gpu/utils.o" $(ALL_FLAGS)
+	$(CC) -o "bin/gpu_test.c.exe" "programs/gpu_test.c" "obj/gpu/utils.o"  $(ALL_FLAGS)

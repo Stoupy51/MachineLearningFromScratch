@@ -1,0 +1,153 @@
+
+#include "st_benchmark.h"
+
+// Functions definitions
+void testMultipleMallocs1(size_t nOI);
+void testMultipleMallocs2(size_t nOI);
+void testMatriceMalloc1(size_t nOI);
+void testMatriceMalloc2(size_t nOI);
+
+/**
+ * @brief Benchmark main function
+ * 
+ * @param argc Number of arguments
+ * @param argv Arguments list
+ * 
+ * @return int
+*/
+int main(int argc, char *argv[]) {
+
+	// Check the number of arguments
+	if (argc != 2) {
+		fprintf(stderr,"\nUsage: %s <testing_time>\n", argv[0]);
+		return EXIT_FAILURE;
+	}
+	printf("\n");
+
+	// Initialisations of variables
+	int testing_time = atoi(argv[1]);
+	char buffer[1024];
+	long i;
+
+	// Benchmark between two functions
+	size_t nOI = 32;
+	printf("Size of the memory to allocate: %zu\n", nOI);
+	ST_BENCHMARK_BETWEEN (buffer,
+		{ testMatriceMalloc1(nOI); },		// Code f1
+		{ testMatriceMalloc2(nOI); },		// Code f2
+		"'Multiple matrice mallocs'",		// Name of code f1
+		"'one matrice malloc'",				// Name of code f2
+		testing_time						// Max Testing time
+	);
+	printf("%s", buffer);
+
+	// Benchmark of a function
+	ST_BENCHMARK_SOLO(buffer,
+		{ testMatriceMalloc2(nOI); },
+		"'testMatriceMalloc2'", 10000000
+	);
+	printf("%s", buffer);
+
+	// Return line and exit
+	printf("\n");
+	return 0;
+}
+
+/**
+ * @brief Function that uses multiple mallocs to allocate memory for different types
+ * 
+ * @c slower than testMultipleMallocs2 but more readable to allocate memory
+*/
+void testMultipleMallocs1(size_t nOI) {
+
+	// Allocate the memory
+	int* i = malloc(nOI * sizeof(int));
+	double* d = malloc(nOI * sizeof(double));
+	char* c = malloc(nOI * sizeof(char));
+	float* f = malloc(nOI * sizeof(float));
+	long* l = malloc(nOI * sizeof(long));
+	long double* ld = malloc(nOI * sizeof(long double));
+	short* s = malloc(nOI * sizeof(short));
+	unsigned int* ui = malloc(nOI * sizeof(unsigned int));
+	unsigned long* ul = malloc(nOI * sizeof(unsigned long));
+	unsigned short* us = malloc(nOI * sizeof(unsigned short));
+	unsigned char* uc = malloc(nOI * sizeof(unsigned char));
+
+	// Free the memory
+	free(i); free(d); free(c); free(f); free(l); free(ld); free(s); free(ui); free(ul); free(us); free(uc);
+}
+
+/**
+ * @brief Function that uses one malloc to allocate memory for
+ * different types and then cast the pointer to the right type
+ * 
+ * @c faster than testMultipleMallocs1 but less readable to allocate memory
+*/
+void testMultipleMallocs2(size_t nOI) {
+	// Calculate the total size of the memory to allocate
+	size_t totalSize = nOI * (sizeof(int) + sizeof(double) + sizeof(char) + sizeof(float)
+		+ sizeof(long) + sizeof(long double) + sizeof(short) + sizeof(unsigned int)
+		+ sizeof(unsigned long) + sizeof(unsigned short) + sizeof(unsigned char));
+
+	// Allocate the memory
+	void* globalMalloc = malloc(totalSize);
+	int* i = (int*)globalMalloc;
+	double* d = (double*)(i + nOI);
+	char* c = (char*)(d + nOI);
+	float* f = (float*)(c + nOI);
+	long* l = (long*)(f + nOI);
+	long double* ld = (long double*)(l + nOI);
+	short* s = (short*)(ld + nOI);
+	unsigned int* ui = (unsigned int*)(s + nOI);
+	unsigned long* ul = (unsigned long*)(ui + nOI);
+	unsigned short* us = (unsigned short*)(ul + nOI);
+	unsigned char* uc = (unsigned char*)(us + nOI);
+
+	// Free the memory
+	free(globalMalloc);
+}
+
+/**
+ * @brief Function that allocates memory for a matrice naively
+ * 
+ * @c slower than testMatriceMalloc2 but more readable to allocate memory
+*/
+void testMatriceMalloc1(size_t nOI) {
+	
+	// Initialisations of variables
+	int i, j;
+
+	// Allocate the memory
+	int** matrice = malloc(nOI * sizeof(int*));
+	for (i = 0; i < nOI; i++) {
+		matrice[i] = malloc(nOI * sizeof(int));
+	}
+
+	// Free the memory
+	for (i = 0; i < nOI; i++) {
+		free(matrice[i]);
+	}
+	free(matrice);
+}
+
+/**
+ * @brief Function that allocates memory for a matrice efficiently
+ * 
+ * @c faster than testMatriceMalloc1 but less readable to allocate memory
+*/
+void testMatriceMalloc2(size_t nOI) {
+	
+	// Initialisations of variables
+	int i, j;
+
+	// Allocate the memory
+	int* matrice = malloc(nOI * nOI * sizeof(int));
+	int** matrice2 = malloc(nOI * sizeof(int*));
+	for (i = 0; i < nOI; i++) {
+		matrice2[i] = matrice + i * nOI;
+	}
+
+	// Free the memory
+	free(matrice);
+}
+

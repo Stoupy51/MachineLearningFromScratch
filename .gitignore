@@ -1,7 +1,8 @@
 
 dependencies.txt
-obj/*
-bin/*
+*obj/*
+*bin/*
+*.o
 
 # Ignore the build directory
 *.vs/

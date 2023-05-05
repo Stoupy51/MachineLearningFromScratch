@@ -68,6 +68,7 @@ all:
 	@$(COMPILER) $(COMPILER_FLAGS) -c $(SRC_FILES) -o $(OBJ_FILES)
 
 	@echo "Compiling the programs..."
+	@echo $(foreach file, $(PROGRAMS_FILES_WITHOUT_FOLDER), $(COMPILER) $(COMPILER_FLAGS) $(OBJ_FILES) $(PROGRAMS_FOLDER)/$(file) -o $(BIN_FOLDER)/$(file:.c=);)
 	@$(foreach file, $(PROGRAMS_FILES_WITHOUT_FOLDER), $(COMPILER) $(COMPILER_FLAGS) $(OBJ_FILES) $(PROGRAMS_FOLDER)/$(file) -o $(BIN_FOLDER)/$(file:.c=);)
 
 	@echo "Compilation done"
