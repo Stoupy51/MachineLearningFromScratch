@@ -18,7 +18,7 @@
 #define OBJ_FOLDER "obj"
 #define BIN_FOLDER "bin"
 #define PROGRAMS_FOLDER "programs"
-#define MAKEFILE_NAME "Makefileuwu"
+#define MAKEFILE_NAME "generated_makefile"
 
 #define OPENCL_DLL "C:/Windows/System32/OpenCL.dll"
 #define OPENCL_LIB_PATH "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/lib/x64"
@@ -32,31 +32,6 @@
  * @brief Create the content of the Makefile
  * - For each .c file in the src folder, create a .o file in the obj folder
  * - For each .c file in the programs folder, create a program in the bin folder
- * 
- * Example of Makefile:
-
-CC = gcc
-ALL_FLAGS = -Wall -Wextra -Wpedantic -O3 -lm -lpthread -L"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/lib/x64" -lOpenCL "C:/Windows/System32/OpenCL.dll"
-
-all: objects programs
-
-objects:
-	@echo "Compiling the source files..."
-	$(CC) -c "src/gpu/utils.c" -o "obj/gpu/utils.o" $(ALL_FLAGS)
-
-programs:
-	@echo "Compiling the programs..."
-	$(CC) -o "bin/gpu_test.exe" "programs/gpu_test.c" "obj/gpu/utils.o" $(ALL_FLAGS)
-	@echo "Compilation done"
-
-clean:
-	@echo "Cleaning the project..."
-	@rm -rf $(OBJ_FOLDER)
-	@rm -rf $(BIN_FOLDER)
-	@rm -f $(DEPENDANCIES_FILE)
-	@echo "Project cleaned"
-
- *
  * 
  * @param content	Pointer to the content of the Makefile
  * 
@@ -115,6 +90,16 @@ int createMakefileContent(char *content) {
 			strncpy(object_file, relative_path, strrchr(relative_path, '.') - relative_path);
 			strcat(object_file, ".o");
 
+			// Create the folder if it doesn't exist
+			char *folder = malloc(size * sizeof(char));
+			memset(folder, '\0', size * sizeof(char));
+			strcat(folder, OBJ_FOLDER);
+			strcat(folder, "/");
+			folder += strlen(OBJ_FOLDER) + 1;
+			strncpy(folder, object_file, strrchr(object_file, '/') - object_file);
+			folder -= strlen(OBJ_FOLDER) + 1;
+			mkdir(folder, 0777);
+
 			// Write the compilation command
 			written += sprintf(content + written, "\t$(CC) -c \"%s/%s\" -o \"%s/%s\" $(ALL_FLAGS)\n", SRC_FOLDER, relative_path, OBJ_FOLDER, object_file);
 
@@ -126,6 +111,10 @@ int createMakefileContent(char *content) {
 		_pclose(fp);
 
 		///// Get the list of files in the programs folder recursively
+
+		// Write the programs rule
+		written += sprintf(content + written, "\t@echo \"Compiling the programs...\"\n");
+
 		// Create the command and execute it
 		sprintf(command, "dir /s /b \"%s\\*.c\"", PROGRAMS_FOLDER);
 		fp = _popen(command, "r");
@@ -146,9 +135,15 @@ int createMakefileContent(char *content) {
 			for (i = 0; i < size; i++)
 				if (relative_path[i] == '\\')
 					relative_path[i] = '/';
+			
+			// Get the exe file path (.exe file)
+			char *exe_file = malloc(size * sizeof(char) + sizeof(".exe"));
+			memset(exe_file, '\0', size * sizeof(char));
+			strncpy(exe_file, relative_path, strrchr(relative_path, '.') - relative_path);
+			strcat(exe_file, ".exe");
 
 			// Write the compilation command
-			written += sprintf(content + written, "\t$(CC) -o \"%s/%s.exe\" \"%s/%s\" %s $(ALL_FLAGS)\n", BIN_FOLDER, relative_path, PROGRAMS_FOLDER, relative_path, object_files);
+			written += sprintf(content + written, "\t$(CC) -o \"%s/%s\" \"%s/%s\" %s $(ALL_FLAGS)\n", BIN_FOLDER, exe_file, PROGRAMS_FOLDER, relative_path, object_files);
 		}
 
 		// Close the file
@@ -157,11 +152,20 @@ int createMakefileContent(char *content) {
 		// Free the memory
 		free(object_files);
 
+		// Write the last line of programs rule
+		written += sprintf(content + written, "\t@echo \"Compilation done\"\n");
+
 	// TODO: Write the compilation commands (On Linux)
 	#else
 
 	#endif
 
+	// Write the clean rule
+	written += sprintf(content + written, "\nclean:\n");
+	written += sprintf(content + written, "\t@echo \"Cleaning the project...\"\n");
+	written += sprintf(content + written, "\t@rm -f %s/*.o\n", OBJ_FOLDER);
+	written += sprintf(content + written, "\t@rm -f %s/*.o\n", BIN_FOLDER);
+	written += sprintf(content + written, "\t@echo \"Clean done\"\n\n");
 	
 	// Return
 	return 0;
@@ -215,8 +219,8 @@ int main() {
 	// Free the content
 	free(content);
 
-	// Launch the Makefile
-	//system("make");
+	// Launch the make command with the Makefile
+	system("make -f "MAKEFILE_NAME);
 
 	// Return
 	return 0;

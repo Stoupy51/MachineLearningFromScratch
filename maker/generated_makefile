@@ -7,4 +7,13 @@ all: objects programs
 objects:
 	@echo "Compiling the source files..."
 	$(CC) -c "src/gpu/utils.c" -o "obj/gpu/utils.o" $(ALL_FLAGS)
-	$(CC) -o "bin/gpu_test.c.exe" "programs/gpu_test.c" "obj/gpu/utils.o"  $(ALL_FLAGS)
+	@echo "Compiling the programs..."
+	$(CC) -o "bin/gpu_test.exe" "programs/gpu_test.c" "obj/gpu/utils.o"  $(ALL_FLAGS)
+	@echo "Compilation done"
+
+clean:
+	@echo "Cleaning the project..."
+	@rm -f obj/*.o
+	@rm -f bin/*.o
+	@echo "Clean done"
+
