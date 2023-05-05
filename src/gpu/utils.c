@@ -102,17 +102,27 @@ const char* getOpenCLErrorString(cl_int error) {
  * @param mode			The mode to print the build log in (INFO_LEVEL, WARNING_LEVEL, ERROR_LEVEL)
  * @param prefix		The prefix to print before the build log
  * 
- * @return void
+ * @return int	0 if success, -1 otherwise
  */
-void printProgramBuildLog(cl_program program, cl_device_id device_id, int mode, char* prefix) {
+int printProgramBuildLog(cl_program program, cl_device_id device_id, int mode, char* prefix) {
 
 	// Get the build log size
 	size_t log_size;
-	clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+	if (clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size) != CL_SUCCESS) {
+		ERROR_PRINT("printProgramBuildLog(): failed to get the build log size\n");
+		return -1;
+	}
 
 	// Get the build log
 	char *log = (char *) malloc(log_size);
-	clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+	if (log == NULL) {
+		ERROR_PRINT("printProgramBuildLog(): failed to allocate memory for the build log\n");
+		return -1;
+	}
+	if (clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL) != CL_SUCCESS) {
+		ERROR_PRINT("printProgramBuildLog(): failed to get the build log\n");
+		return -1;
+	}
 
 	// Print the build log
 	if (prefix == NULL) prefix = "";
@@ -121,6 +131,10 @@ void printProgramBuildLog(cl_program program, cl_device_id device_id, int mode, 
 		case WARNING_LEVEL: WARNING_PRINT("%sBuild log:\n%s\n", prefix, log); break;
 		case ERROR_LEVEL: ERROR_PRINT("%sBuild log:\n%s\n", prefix, log); break;
 	}
+
+	// Free the build log and return
+	free(log);
+	return 0;
 }
 
 
@@ -251,10 +265,49 @@ void printDeviceInfo(cl_device_id device_id) {
 
 
 /**
+ * @brief This function write a string to a file
+ * depending on the mode (append or overwrite).
+ * 
+ * @param filename		Name of the file to write
+ * @param content		Content to write
+ * @param size			Size of the content
+ * @param mode			Mode of writing (O_APPEND or O_TRUNC)
+ * 
+ * @return int	0 if success, -1 otherwise
+ */
+int writeEntireFile(char* path, char* content, int size, int mode) {
+
+	// Open the file
+	int fd = open(path, O_WRONLY | O_CREAT | mode, 0644);
+	if (fd == -1) {
+		ERROR_PRINT("writeEntireFile(): Cannot open file %s\n", path);
+		return -1;
+	}
+
+	// Write the file
+	int written_size = write(fd, content, size);
+	if (written_size == -1) {
+		ERROR_PRINT("writeEntireFile(): Cannot write file %s\n", path);
+		return -1;
+	}
+
+	// Close the file
+	if (close(fd) == -1) {
+		ERROR_PRINT("writeEntireFile(): Cannot close file %s\n", path);
+		return -1;
+	}
+
+	// Return
+	return 0;
+}
+
+
+/**
  * @brief This function read a file and return its content as a string.
  * 
  * @param filename Name of the file to read
  * 
+ * @return char*	Content of the file as a string if success, NULL otherwise
  */
 char* readEntireFile(char* path) {
 	

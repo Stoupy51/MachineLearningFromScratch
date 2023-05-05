@@ -50,9 +50,10 @@ struct opencl_context_t {
 
 // Function prototypes
 const char* getOpenCLErrorString(cl_int error);
-void printProgramBuildLog(cl_program program, cl_device_id device_id, int mode, char* prefix);
+int printProgramBuildLog(cl_program program, cl_device_id device_id, int mode, char* prefix);
 struct opencl_context_t setupOpenCL(cl_device_type type_of_device);
 void printDeviceInfo(cl_device_id device_id);
+int writeEntireFile(char* path, char* content, int size, int mode);
 char* readEntireFile(char* path);
 char* readKernelProgram(char* path);
 

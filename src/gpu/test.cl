@@ -59,12 +59,12 @@ kernel void computePowerFastExponentiation(global int* first_vector, global int*
 		while (power > 0) {
 
 			// If the power is odd, multiply the result by the value
-			if (power % 2 == 1)
+			if (power & 1)
 				result *= value;
 
 			// In every case, square the value and divide the power by 2
 			value *= value;
-			power /= 2;
+			power >>= 1;
 		}
 
 		// Store the result in the first vector
@@ -72,4 +72,24 @@ kernel void computePowerFastExponentiation(global int* first_vector, global int*
 	}
 }
 
+/**
+ * @brief Compute the first vector to the power of the second vector
+ * using the built-in function of OpenCL.
+ * The output is stored in the first vector.
+ * 
+ * @param first_vector		The first vector
+ * @param second_vector		The second vector
+ * 
+ * @return void
+ */
+kernel void computePowerBuiltInExponentiation(global int* first_vector, global int* second_vector, int n) {
+
+	// Get the index of the current element
+	int i = get_global_id(0);
+
+	// Compute the power using the built-in function
+	if (i < n) {
+		first_vector[i] = pown((double)first_vector[i], second_vector[i]);
+	}
+}
 
