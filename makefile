@@ -21,12 +21,6 @@ all:
 	@clear
 	@./maker.exe
 
-runTest:
-	@if [ ! -f "maker.exe" ]; then gcc maker.c -o maker.exe; fi
-	@clear
-	@./maker.exe
-	@./bin/gpu_test.exe
-
 clean:
 	@make -f generated_makefile clean
 	@rm -f maker.exe
