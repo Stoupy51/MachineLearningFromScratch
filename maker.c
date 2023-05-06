@@ -72,7 +72,6 @@ int createMakefileContent(char *content) {
 
 		// For each line
 		while (fgets(line, 1024, fp) != NULL) {
-			fprintf(stderr, "%s", line);
 
 			// Remove the \n at the end of the line
 			line[strlen(line) - 1] = '\0';
@@ -94,15 +93,17 @@ int createMakefileContent(char *content) {
 			strncpy(object_file, relative_path, strrchr(relative_path, '.') - relative_path);
 			strcat(object_file, ".o");
 
-			// Create the folder if it doesn't exist
-			char *folder = malloc(size * sizeof(char));
-			memset(folder, '\0', size * sizeof(char));
-			strcat(folder, OBJ_FOLDER);
-			strcat(folder, "/");
-			folder += strlen(OBJ_FOLDER) + 1;
-			strncpy(folder, object_file, strrchr(object_file, '/') - object_file);
-			folder -= strlen(OBJ_FOLDER) + 1;
-			mkdir(folder, 0777);
+			// Create the folder if it doesn't exist (and if the path has a folder)
+			if (strrchr(object_file, '/') != NULL) {
+				char *folder = malloc(size * sizeof(char));
+				memset(folder, '\0', size * sizeof(char));
+				strcat(folder, OBJ_FOLDER);
+				strcat(folder, "/");
+				folder += strlen(OBJ_FOLDER) + 1;
+				strncpy(folder, object_file, strrchr(object_file, '/') - object_file);
+				folder -= strlen(OBJ_FOLDER) + 1;
+				mkdir(folder, 0777);
+			}
 
 			// Write the compilation command
 			written += sprintf(content + written, "\t$(CC) -c \"%s/%s\" -o \"%s/%s\"\n", SRC_FOLDER, relative_path, OBJ_FOLDER, object_file);
