@@ -279,8 +279,16 @@ char* readKernelProgram(char* path) {
 	// Open the file
 	int fd = open(path, O_RDONLY);
 	if (fd == -1) {
-		ERROR_PRINT("readEntireFile(): Cannot open file %s\n", path);
-		return NULL;
+
+		// If the file is not found, try to open it from ../ directory
+		char* new_path = malloc(sizeof(char) * (strlen(path) + 3));
+		strcpy(new_path, "../");
+		strcat(new_path, path);
+		fd = open(new_path, O_RDONLY);
+		if (fd == -1) {
+			ERROR_PRINT("readKernelProgram(): Cannot open file %s\n", path);
+			return NULL;
+		}
 	}
 
 	// Get the size of the file

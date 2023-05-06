@@ -13,7 +13,7 @@
  * - The second vector is filled with random integers between 1 and 100000.
  * 
  * The program use GPU to compute the first vector to the power of the second vector.
- *
+ * 
  * @author Stoupy51 (COLLIGNON Alexandre)
  */
 int main() {
@@ -32,7 +32,7 @@ int main() {
 
 	// Get the kernel source code
 	INFO_PRINT("main(): Getting kernel source code...\n");
-	char* kernel_source = readKernelProgram("src/gpu/test.cl");
+	char* kernel_source = readKernelProgram("kernels/pow.cl");
 
 	// Create the program
 	INFO_PRINT("main(): Creating program...\n");
