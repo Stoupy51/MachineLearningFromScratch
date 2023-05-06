@@ -9,7 +9,6 @@
 
 // Struct to store the OpenCL context
 struct opencl_context_t {
-	cl_platform_id platform_id;			// ID of the platform
 	cl_device_id device_id;				// ID of the GPU device
 	cl_context context;					// Context of the GPU device
 	cl_command_queue command_queue;		// Command queue of the GPU device
@@ -22,6 +21,9 @@ int printProgramBuildLog(cl_program program, cl_device_id device_id, int mode, c
 struct opencl_context_t setupOpenCL(cl_device_type type_of_device);
 void printDeviceInfo(cl_device_id device_id);
 char* readKernelProgram(char* path);
+
+// Generic functions
+int createKernelFromSource(char* kernel_source, char* kernel_name, cl_program* program, cl_kernel* kernel, struct opencl_context_t* oc);
 
 
 

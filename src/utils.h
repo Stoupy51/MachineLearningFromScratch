@@ -32,6 +32,15 @@
 #define ERROR_PRINT(...) if (IS_ERROR_LEVEL) { fprintf(stderr, RED "[ERROR] "RESET __VA_ARGS__); }
 #define PRINTER(...) if (DEVELOPMENT_MODE) fprintf(stderr, __VA_ARGS__); else printf(__VA_ARGS__);
 
+// Utils for error handling
+#define ERROR_HANDLE_INT(error, ...) if (error < 0) { ERROR_PRINT(__VA_ARGS__); exit(EXIT_FAILURE); }
+#define ERROR_HANDLE_PTR(ptr, ...) if (ptr == NULL) { ERROR_PRINT(__VA_ARGS__); exit(EXIT_FAILURE); }
+#define ERROR_HANDLE_INT_RETURN_INT(error, ...) if (error < 0) { ERROR_PRINT(__VA_ARGS__); return error; }
+#define ERROR_HANDLE_INT_RETURN_NULL(error, ...) if (error < 0) { ERROR_PRINT(__VA_ARGS__); return NULL; }
+#define ERROR_HANDLE_PTR_RETURN_INT(ptr, ...) if (ptr == NULL) { ERROR_PRINT(__VA_ARGS__); return -1; }
+#define ERROR_HANDLE_PTR_RETURN_NULL(ptr, ...) if (ptr == NULL) { ERROR_PRINT(__VA_ARGS__); return NULL; }
+
+
 // Function prototypes
 void mainInit(char* header);
 int writeEntireFile(char* path, char* content, int size, int mode);

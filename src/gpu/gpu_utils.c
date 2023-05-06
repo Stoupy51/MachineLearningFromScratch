@@ -109,21 +109,14 @@ int printProgramBuildLog(cl_program program, cl_device_id device_id, int mode, c
 
 	// Get the build log size
 	size_t log_size;
-	if (clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size) != CL_SUCCESS) {
-		ERROR_PRINT("printProgramBuildLog(): failed to get the build log size\n");
-		return -1;
-	}
+	cl_int code = clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+	ERROR_HANDLE_INT_RETURN_INT(code, "printProgramBuildLog(): failed to get the build log size\n");
 
 	// Get the build log
 	char *log = (char *) malloc(log_size);
-	if (log == NULL) {
-		ERROR_PRINT("printProgramBuildLog(): failed to allocate memory for the build log\n");
-		return -1;
-	}
-	if (clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL) != CL_SUCCESS) {
-		ERROR_PRINT("printProgramBuildLog(): failed to get the build log\n");
-		return -1;
-	}
+	ERROR_HANDLE_PTR_RETURN_INT(log, "printProgramBuildLog(): failed to allocate memory for the build log\n");
+	code = clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+	ERROR_HANDLE_INT_RETURN_INT(code, "printProgramBuildLog(): failed to get the build log\n");
 
 	// Print the build log
 	if (prefix == NULL) prefix = "";
@@ -151,34 +144,20 @@ struct opencl_context_t setupOpenCL(cl_device_type type_of_device) {
 
 	// Initialize structure
 	struct opencl_context_t oc;
+	cl_int code;
 
 	// Get a platform
-	cl_int code = clGetPlatformIDs(1, &oc.platform_id, NULL);
-	if (code != CL_SUCCESS) {
-		ERROR_PRINT("setupOpenCL(): Cannot get a platform with code %d / %s\n", code, getOpenCLErrorString(code));
-		exit(EXIT_FAILURE);
-	}
+	cl_platform_id platform_id;
+	code = clGetPlatformIDs(1, &platform_id, NULL);
+	ERROR_HANDLE_INT(code, "setupOpenCL(): Cannot get a platform with code %d / %s\n", code, getOpenCLErrorString(code));
 
-	// Get a device
-	code = clGetDeviceIDs(oc.platform_id, type_of_device, 1, &oc.device_id, NULL);
-	if (code != CL_SUCCESS) {
-		ERROR_PRINT("setupOpenCL(): Cannot get a device with code %d / %s\n", code, getOpenCLErrorString(code));
-		exit(EXIT_FAILURE);
-	}
-
-	// Create a context
-	oc.context = clCreateContext(NULL, 1, &oc.device_id, NULL, NULL, NULL);
-	if (oc.context == NULL) {
-		ERROR_PRINT("setupOpenCL(): Cannot create a context\n");
-		exit(EXIT_FAILURE);
-	}
-
-	// Create a command queue
-	oc.command_queue = clCreateCommandQueueWithProperties(oc.context, oc.device_id, NULL, NULL);
-	if (oc.command_queue == NULL) {
-		ERROR_PRINT("setupOpenCL(): Cannot create a command queue\n");
-		exit(EXIT_FAILURE);
-	}
+	// Get a device, create a context and a command queue
+	code = clGetDeviceIDs(platform_id, type_of_device, 1, &oc.device_id, NULL);
+	ERROR_HANDLE_INT(code, "setupOpenCL(): Cannot get a device with code %d / %s\n", code, getOpenCLErrorString(code));
+	oc.context = clCreateContext(NULL, 1, &oc.device_id, NULL, NULL, &code);
+	ERROR_HANDLE_INT(code, "setupOpenCL(): Cannot create a context with code %d / %s\n", code, getOpenCLErrorString(code));
+	oc.command_queue = clCreateCommandQueueWithProperties(oc.context, oc.device_id, NULL, &code);
+	ERROR_HANDLE_INT(code, "setupOpenCL(): Cannot create a command queue with code %d / %s\n", code, getOpenCLErrorString(code));
 
 	// Return the context
 	return oc;
@@ -285,32 +264,21 @@ char* readKernelProgram(char* path) {
 		strcpy(new_path, "../");
 		strcat(new_path, path);
 		fd = open(new_path, O_RDONLY);
-		if (fd == -1) {
-			ERROR_PRINT("readKernelProgram(): Cannot open file %s\n", path);
-			return NULL;
-		}
+		ERROR_HANDLE_INT_RETURN_NULL(fd, "readKernelProgram(): Cannot open file %s\n", new_path);
 	}
 
 	// Get the size of the file
 	int size = lseek(fd, 0, SEEK_END);
 	lseek(fd, 0, SEEK_SET);
 
-	// Allocate memory for the file content
+	// Allocate memory for the file content and read the file
 	char* buffer = malloc(sizeof(char) * (size + 1));
-	if (buffer == NULL) {
-		ERROR_PRINT("readEntireFile(): Cannot allocate memory for file %s\n", path);
-		return NULL;
-	}
-
-	// Read the file
-	int read_size;
-	if ((read_size = read(fd, buffer, size)) == -1) {
-		ERROR_PRINT("readEntireFile(): Cannot read file %s\n", path);
-		return NULL;
-	}
+	ERROR_HANDLE_PTR_RETURN_NULL(buffer, "readKernelProgram(): Cannot allocate memory for file %s\n", path);
+	int read_size = read(fd, buffer, size);
+	ERROR_HANDLE_INT_RETURN_NULL(read_size, "readKernelProgram(): Cannot read file %s\n", path);
 
 	// Close the file
-	close(fd);
+	ERROR_HANDLE_INT_RETURN_NULL(close(fd), "readKernelProgram(): Cannot close file %s\n", path);
 
 	// Add a null character at the end of the buffer
 	buffer[read_size] = '\0';
@@ -320,20 +288,14 @@ char* readKernelProgram(char* path) {
 	char* end;
 	while ((start = strstr(buffer, "/*")) != NULL) {
 		end = strstr(start, "*/");
-		if (end == NULL) {
-			ERROR_PRINT("readKernelProgram(): Cannot find the end of a comment in file %s\n", path);
-			return NULL;
-		}
+		ERROR_HANDLE_PTR_RETURN_NULL(end, "readKernelProgram(): Cannot find the end of a comment in file %s\n", path);
 		memset(start, ' ', end - start + 2);
 	}
 
 	// Remove all the single line comments
 	while ((start = strstr(buffer, "//")) != NULL) {
 		end = strstr(start, "\n");
-		if (end == NULL) {
-			ERROR_PRINT("readKernelProgram(): Cannot find the end of a comment in file %s\n", path);
-			return NULL;
-		}
+		ERROR_HANDLE_PTR_RETURN_NULL(end, "readKernelProgram(): Cannot find the end of a comment in file %s\n", path);
 		memset(start, ' ', end - start + 1);
 	}
 
@@ -386,4 +348,56 @@ char* readKernelProgram(char* path) {
 }
 
 
+
+///////////////////////////////////////////////////////////////////////////////
+////////////////////////////// Generic Functions //////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief This function create a kernel from a kernel program and a kernel name.
+ * If the program is not given, the function will create it.
+ * 
+ * @param k_source			The path to the kernel program
+ * @param k_name			The name of the kernel function
+ * @param program			The cl_program object (if NULL, the function will create it)
+ * @param kernel			The cl_kernel object (the function will create it)
+ * @param oc				The opencl context (containing the device and the context)
+ * 
+ * @return int	0 if success, -1 otherwise
+ */
+int createKernelFromSource(char* k_source, char* k_name, cl_program* program, cl_kernel* kernel, struct opencl_context_t* oc) {
+	
+	// Code variable for error handling
+	cl_int code;
+
+	// If the program is not given, create it
+	if (*program == NULL) {
+
+		// Get the kernel source code
+		char* kernel_source = readKernelProgram(k_source);
+		ERROR_HANDLE_PTR_RETURN_INT(kernel_source, "createKernelFromSource(): Cannot read kernel program %s\n", k_source);
+
+		// Create the program
+		*program = clCreateProgramWithSource(oc->context, 1, (const char**)&kernel_source, NULL, &code);
+		ERROR_HANDLE_INT_RETURN_INT(code, "createKernelFromSource(): Cannot create program, reason: %d / %s\n", code, getOpenCLErrorString(code));
+
+		// Build the program
+		code = clBuildProgram(*program, 1, &oc->device_id, NULL, NULL, NULL);
+		if (code != CL_SUCCESS) {
+			ERROR_PRINT("createKernelFromSource(): Cannot build program, reason: %d / %s\n", code, getOpenCLErrorString(code));
+			printProgramBuildLog(*program, oc->device_id, ERROR_LEVEL, "createKernelFromSource(): ");
+			return code;
+		}
+
+		// Free the kernel source code
+		free(kernel_source);
+	}
+
+	// Create the kernel
+	*kernel = clCreateKernel(*program, k_name, &code);
+	ERROR_HANDLE_INT_RETURN_INT(code, "createKernelFromSource(): Cannot create kernel, reason: %d / %s\n", code, getOpenCLErrorString(code));
+
+	// Return success
+	return 0;
+}
 
