@@ -72,6 +72,7 @@ int createMakefileContent(char *content) {
 
 		// For each line
 		while (fgets(line, 1024, fp) != NULL) {
+			fprintf(stderr, "%s", line);
 
 			// Remove the \n at the end of the line
 			line[strlen(line) - 1] = '\0';

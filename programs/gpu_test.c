@@ -1,7 +1,8 @@
 
 #include <stdlib.h>
 
-#include "../src/gpu/utils.h"
+#include "../src/utils.h"
+#include "../src/gpu/gpu_utils.h"
 
 #define VECTOR_SIZE 100000000
 
@@ -18,9 +19,8 @@
 int main() {
 
 	// Print program header
+	mainInit("main(): Launching GPU test program.\n");
 	cl_int code = 0;
-	printf("\n---------------------------\n");
-	INFO_PRINT("main(): Launching GPU test program.\n");
 
 	// Initialize OpenCL
 	INFO_PRINT("main(): Initializing OpenCL...\n");

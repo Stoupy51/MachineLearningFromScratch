@@ -2,10 +2,7 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
-#define CL_TARGET_OPENCL_VERSION 300
-
 #include <stdio.h>
-#include <CL/cl.h>
 
 // Defines for colors
 #define RED "\033[0;31m"
@@ -35,28 +32,10 @@
 #define ERROR_PRINT(...) if (IS_ERROR_LEVEL) { fprintf(stderr, RED "[ERROR] "RESET __VA_ARGS__); }
 #define PRINTER(...) if (DEVELOPMENT_MODE) fprintf(stderr, __VA_ARGS__); else printf(__VA_ARGS__);
 
-// Define for the maximum size of a string buffer
-#define STR_BUFFER_SIZE 127
-
-
-// Struct to store the OpenCL context
-struct opencl_context_t {
-	cl_platform_id platform_id;			// ID of the platform
-	cl_device_id device_id;				// ID of the GPU device
-	cl_context context;					// Context of the GPU device
-	cl_command_queue command_queue;		// Command queue of the GPU device
-};
-
-
 // Function prototypes
-const char* getOpenCLErrorString(cl_int error);
-int printProgramBuildLog(cl_program program, cl_device_id device_id, int mode, char* prefix);
-struct opencl_context_t setupOpenCL(cl_device_type type_of_device);
-void printDeviceInfo(cl_device_id device_id);
+void mainInit(char* header);
 int writeEntireFile(char* path, char* content, int size, int mode);
 char* readEntireFile(char* path);
-char* readKernelProgram(char* path);
-
 
 
 #endif
