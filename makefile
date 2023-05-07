@@ -17,9 +17,10 @@
 ####################################################################################################
 
 all:
-	@if [ ! -f "maker.exe" ]; then gcc maker.c -o maker.exe; fi
-	@clear
 	@./maker.exe
+
+init:
+	gcc maker.c -o maker.exe
 
 clean:
 	@make -f generated_makefile clean

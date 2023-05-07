@@ -9,8 +9,29 @@
 #include <time.h>
 
 #ifdef _WIN32
-	#include <windows.h>
-	#include <sys/timeb.h>
+
+#include <windows.h>
+
+int gettimeofday(struct timeval * tp, struct timezone * tzp) {
+    static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL);
+	if (tzp != NULL) {
+		tzp = NULL; // No timezone for Windows
+	}
+
+    SYSTEMTIME  system_time;
+    FILETIME    file_time;
+    uint64_t    time;
+
+    GetSystemTime( &system_time );
+    SystemTimeToFileTime( &system_time, &file_time );
+    time =  ((uint64_t)file_time.dwLowDateTime )      ;
+    time += ((uint64_t)file_time.dwHighDateTime) << 32;
+
+    tp->tv_sec  = (long) ((time - EPOCH) / 10000000L);
+    tp->tv_usec = (long) (system_time.wMilliseconds * 1000);
+    return 0;
+}
+
 #else
 	#include <unistd.h>
 	#include <sys/time.h>
@@ -59,3 +80,4 @@
 	}
 
 #endif
+
