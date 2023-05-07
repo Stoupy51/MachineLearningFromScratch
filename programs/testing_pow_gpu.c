@@ -3,6 +3,7 @@
 
 #include "../src/utils.h"
 #include "../src/gpu/gpu_utils.h"
+#include "../src/vectors.h"
 
 #define VECTOR_SIZE 100000000
 
@@ -48,8 +49,6 @@ int main() {
 	oc = setupOpenCL(CL_DEVICE_TYPE_GPU);
 	ERROR_HANDLE_PTR(oc.context, "main(): Cannot initialize OpenCL.\n");
 	INFO_PRINT("main(): OpenCL initialized.\n");
-
-	// Print device name, version, etc. from context
 	printDeviceInfo(oc.device_id);
 
 	// Create the kernel from source
@@ -61,42 +60,41 @@ int main() {
 	INFO_PRINT("main(): Creating two vectors of random integers...\n");
 	int vec_size = VECTOR_SIZE;
 	size_t vector_size_bytes = vec_size * sizeof(int);
-	int* a_v = malloc(vector_size_bytes);
-	int* b_v = malloc(vector_size_bytes);
-	for (i = 0; i < vec_size; i++) {
-		a_v[i] = rand() % 10 + 1;
-		b_v[i] = rand() % 100000 + 1;
-	}
+	int* _v = malloc(vector_size_bytes * 2);
+	int* a_v = _v; int* b_v = _v + vec_size;
+	fill_random_vector(a_v, 1, 10, vec_size);
+	fill_random_vector(b_v, 1, 100000, vec_size);
 	INFO_PRINT("main(): Vectors created.\n");
 
 	// Create the memory buffers
-	cl_mem a_v_buffer = clCreateBuffer(oc.context, CL_MEM_READ_WRITE, vector_size_bytes, NULL, &code);
+	cl_mem v_buffers[2] = { NULL, NULL };
+	v_buffers[0] = clCreateBuffer(oc.context, CL_MEM_READ_WRITE, vector_size_bytes, NULL, &code);
 	ERROR_HANDLE_INT(code, "main(): Cannot create a_v_buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
-	cl_mem b_v_buffer = clCreateBuffer(oc.context, CL_MEM_READ_ONLY, vector_size_bytes, NULL, &code);
+	v_buffers[1] = clCreateBuffer(oc.context, CL_MEM_READ_ONLY, vector_size_bytes, NULL, &code);
 	ERROR_HANDLE_INT(code, "main(): Cannot create b_v_buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
 	INFO_PRINT("main(): Memory buffers created.\n");
 
 	// Copy the vectors to the memory buffers
-	INFO_PRINT("main(): Copying vectors to memory buffers...\n");
-	code = clEnqueueWriteBuffer(oc.command_queue, a_v_buffer, CL_FALSE, 0, vector_size_bytes, a_v, 0, NULL, NULL);
+	code = clEnqueueWriteBuffer(oc.command_queue, v_buffers[0], CL_FALSE, 0, vector_size_bytes, a_v, 0, NULL, NULL);
 	ERROR_HANDLE_INT(code, "main(): Cannot write a_v_buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
-	code = clEnqueueWriteBuffer(oc.command_queue, b_v_buffer, CL_FALSE, 0, vector_size_bytes, b_v, 0, NULL, NULL);
+	code = clEnqueueWriteBuffer(oc.command_queue, v_buffers[1], CL_FALSE, 0, vector_size_bytes, b_v, 0, NULL, NULL);
 	ERROR_HANDLE_INT(code, "main(): Cannot write b_v_buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
+	INFO_PRINT("main(): Vectors copied to memory buffers.\n");
 
 	// Set the arguments of the kernel
-	INFO_PRINT("main(): Setting arguments of the kernel...\n");
-	code = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&a_v_buffer);
+	code = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&v_buffers[0]);
 	ERROR_HANDLE_INT(code, "main(): Cannot set kernel argument 0, reason: %d / %s\n", code, getOpenCLErrorString(code));
-	code = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&b_v_buffer);
+	code = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&v_buffers[1]);
 	ERROR_HANDLE_INT(code, "main(): Cannot set kernel argument 1, reason: %d / %s\n", code, getOpenCLErrorString(code));
 	code = clSetKernelArg(kernel, 2, sizeof(int), (void*)&vec_size);
 	ERROR_HANDLE_INT(code, "main(): Cannot set kernel argument 2, reason: %d / %s\n", code, getOpenCLErrorString(code));
+	INFO_PRINT("main(): Kernel arguments set.\n");
 
 	// Execute the kernel
-	INFO_PRINT("main(): Executing the kernel...\n");
 	size_t global_dimensions[] = { VECTOR_SIZE, 0, 0 };
 	code = clEnqueueNDRangeKernel(oc.command_queue, kernel, 1, NULL, global_dimensions, NULL, 0, NULL, NULL);
 	ERROR_HANDLE_INT(code, "main(): Cannot execute kernel, reason: %d / %s\n", code, getOpenCLErrorString(code));
+	INFO_PRINT("main(): Kernel executed.\n");
 
 	// Wait for everything to finish
 	INFO_PRINT("main(): Waiting for everything to finish...\n");
@@ -105,15 +103,13 @@ int main() {
 
 	// Read the result from the memory buffer
 	INFO_PRINT("main(): Reading the result from the memory buffer...\n");
-	code = clEnqueueReadBuffer(oc.command_queue, a_v_buffer, CL_FALSE, 0, vector_size_bytes, a_v, 0, NULL, NULL);
+	code = clEnqueueReadBuffer(oc.command_queue, v_buffers[0], CL_FALSE, 0, vector_size_bytes, a_v, 0, NULL, NULL);
 	ERROR_HANDLE_INT(code, "main(): Cannot read the result from the memory buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
 
 	// Clean up
 	INFO_PRINT("main(): Cleaning up...\n");
-	clReleaseMemObject(a_v_buffer);
-	clReleaseMemObject(b_v_buffer);
-	free(a_v);
-	free(b_v);
+	clReleaseMemObjects(2, v_buffers);
+	free(_v);
 
 	// Final print and return
 	INFO_PRINT("main(): End of program.\n\n");

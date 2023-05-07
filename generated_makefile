@@ -9,6 +9,7 @@ objects:
 	@echo "Compiling the source files..."
 	@echo "|"
 	$(CC) -c "src/utils.c" -o "obj/utils.o"
+	$(CC) -c "src/vectors.c" -o "obj/vectors.o"
 	$(CC) -c "src/gpu/gpu_utils.c" -o "obj/gpu/gpu_utils.o"
 	$(CC) -c "src/storage/hash_table.c" -o "obj/storage/hash_table.o"
 	@echo ""
@@ -16,7 +17,7 @@ objects:
 	@echo ""
 	@echo "Compiling the programs..."
 	@echo "|"
-	$(CC) -o "bin/testing_pow_gpu.exe" "programs/testing_pow_gpu.c" "obj/utils.o" "obj/gpu/gpu_utils.o" "obj/storage/hash_table.o" $(ALL_FLAGS)
+	$(CC) -o "bin/testing_pow_gpu.exe" "programs/testing_pow_gpu.c" "obj/utils.o" "obj/vectors.o" "obj/gpu/gpu_utils.o" "obj/storage/hash_table.o" $(ALL_FLAGS)
 	@echo "|"
 	@echo "Compilation done"
 	@echo ""

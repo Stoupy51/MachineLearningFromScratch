@@ -26,6 +26,13 @@ char* readKernelProgram(char* path);
 int createKernelFromSource(char* kernel_source, char* kernel_name, cl_program* program, cl_kernel* kernel, struct opencl_context_t* oc);
 
 
+// Generic macros
+#define clReleaseMemObjects(n, buffers) { \
+	int ii; \
+	for (ii = 0; ii < n; ii++) { \
+		clReleaseMemObject(buffers[ii]); \
+	} \
+}
 
 #endif
 
