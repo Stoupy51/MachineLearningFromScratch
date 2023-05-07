@@ -106,6 +106,10 @@ int main() {
 	code = clEnqueueReadBuffer(oc.command_queue, v_buffers[0], CL_FALSE, 0, vector_size_bytes, a_v, 0, NULL, NULL);
 	ERROR_HANDLE_INT(code, "main(): Cannot read the result from the memory buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
 
+	// Print the result
+	INFO_PRINT("main(): Printing the 10 first elements of the result...\n");
+	print_vector(a_v, 10); printf("\n");
+
 	// Clean up
 	INFO_PRINT("main(): Cleaning up...\n");
 	clReleaseMemObjects(2, v_buffers);
