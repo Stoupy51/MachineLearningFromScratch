@@ -16,6 +16,45 @@ struct opencl_context_t oc;
 int i;
 
 /**
+ * @brief Compute the first vector to the power of the second vector
+ * using the fast method of exponentiation.
+ * The output is stored in the first vector.
+ * 
+ * @param first_vector		The first vector
+ * @param second_vector		The second vector
+ * 
+ * @return void
+ */
+void computePowerFastExponentiation(int* first_vector, int* second_vector, int n) {
+
+	// Compute the power using Fast exponentiation
+	int i;
+	for (i = 0; i < n; i++) {
+
+		// Get the power and the value
+		int result = 1;
+		int power = second_vector[i];
+		int value = first_vector[i];
+
+		// While the power is not 0
+		while (power > 0) {
+
+			// If the power is odd, multiply the result by the value
+			if (power & 1)
+				result *= value;
+
+			// In every case, square the value and divide the power by 2
+			value *= value;
+			power >>= 1;
+		}
+
+		// Store the result in the first vector
+		first_vector[i] = result;
+	}
+}
+
+
+/**
  * @brief Function run at the end of the program
  * [registered with atexit()] in the main() function.
  * 
@@ -41,6 +80,7 @@ void exitProgram() {
  * [BENCHMARK] computePowerNaiveExponentiation executed 5 times in 29.724000s
  * [BENCHMARK] computePowerFastExponentiation executed 1000 times in 16.714000s
  * [BENCHMARK] computePowerBuiltInExponentiation executed 100 times in 25.098000s
+ * [BENCHMARK] computePowerFastExponentiation (On 1 CPU Core) executed 1 time in 4.618000s
  * 
  * @author Stoupy51 (COLLIGNON Alexandre)
  */
@@ -100,7 +140,7 @@ int main() {
 				code = clEnqueueNDRangeKernel(oc.command_queue, kernel, 1, NULL, global_dimensions, NULL, 0, NULL, NULL);
 				code = clFinish(oc.command_queue);
 			},
-			"computePowerNaiveExponentiation", 5
+			"computePowerNaiveExponentiation", 1
 		);
 		printf("%s", buffer);
 		ERROR_HANDLE_INT(code, "main(): Cannot finish, reason: %d / %s\n", code, getOpenCLErrorString(code));
@@ -132,7 +172,7 @@ int main() {
 				code = clEnqueueNDRangeKernel(oc.command_queue, kernel, 1, NULL, global_dimensions, NULL, 0, NULL, NULL);
 				code = clFinish(oc.command_queue);
 			},
-			"computePowerFastExponentiation", 1000
+			"computePowerFastExponentiation", 100
 		);
 		printf("%s", buffer);
 		ERROR_HANDLE_INT(code, "main(): Cannot finish, reason: %d / %s\n", code, getOpenCLErrorString(code));
@@ -164,11 +204,25 @@ int main() {
 				code = clEnqueueNDRangeKernel(oc.command_queue, kernel, 1, NULL, global_dimensions, NULL, 0, NULL, NULL);
 				code = clFinish(oc.command_queue);
 			},
-			"computePowerBuiltInExponentiation", 100
+			"computePowerBuiltInExponentiation", 10
 		);
 		printf("%s", buffer);
 		ERROR_HANDLE_INT(code, "main(): Cannot finish, reason: %d / %s\n", code, getOpenCLErrorString(code));
 	}
+
+	////// computePowerFastExponentiation (On CPU) /////
+	{
+		// Measure the time
+		char buffer[2048];
+		ST_BENCHMARK_SOLO(buffer,
+			{
+				computePowerFastExponentiation(a_v, b_v, vec_size);
+			},
+			"computePowerFastExponentiation (On CPU)", 1
+		);
+		printf("%s", buffer);
+	}
+
 
 	// Clean up
 	INFO_PRINT("main(): Cleaning up...\n");
