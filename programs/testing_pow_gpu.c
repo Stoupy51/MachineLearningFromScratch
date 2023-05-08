@@ -6,7 +6,7 @@
 #include "../src/vectors.h"
 #include "../src/st_benchmark.h"
 
-#define VECTOR_SIZE 100000000
+#define VECTOR_SIZE 1000000
 
 // Global variables
 cl_int code = 0;
@@ -76,11 +76,17 @@ void exitProgram() {
  * - The second vector is filled with random integers between 1 and 100000.
  * 
  * The program use GPU to compute the first vector to the power of the second vector.
- * Results using GPU: NVIDIA GeForce GTX 1060 6 GB
+ * Results using GPU: NVIDIA GeForce GTX 1060 6 GB, and vector size to 100 000 000
  * [BENCHMARK] computePowerNaiveExponentiation executed 5 times in 29.724000s
  * [BENCHMARK] computePowerFastExponentiation executed 1000 times in 16.714000s
  * [BENCHMARK] computePowerBuiltInExponentiation executed 100 times in 25.098000s
  * [BENCHMARK] computePowerFastExponentiation (On 1 CPU Core) executed 1 time in 4.618000s
+ * 
+ * Another results with vector size to 1 000 000
+ * [BENCHMARK] computePowerNaiveExponentiation executed 247 times in 15s
+ * [BENCHMARK] computePowerFastExponentiation executed 81904 times in 15s
+ * [BENCHMARK] computePowerBuiltInExponentiation executed 5908 times in 15s
+ * [BENCHMARK] computePowerFastExponentiation (On CPU) executed 324 times in 15s
  * 
  * @author Stoupy51 (COLLIGNON Alexandre)
  */
@@ -135,12 +141,12 @@ int main() {
 
 		// Wait for everything to finish
 		char buffer[2048];
-		ST_BENCHMARK_SOLO(buffer,
+		ST_BENCHMARK_SOLO_TIME(buffer,
 			{
 				code = clEnqueueNDRangeKernel(oc.command_queue, kernel, 1, NULL, global_dimensions, NULL, 0, NULL, NULL);
 				code = clFinish(oc.command_queue);
 			},
-			"computePowerNaiveExponentiation", 1
+			"computePowerNaiveExponentiation", 15
 		);
 		printf("%s", buffer);
 		ERROR_HANDLE_INT(code, "main(): Cannot finish, reason: %d / %s\n", code, getOpenCLErrorString(code));
@@ -167,12 +173,12 @@ int main() {
 
 		// Wait for everything to finish
 		char buffer[2048];
-		ST_BENCHMARK_SOLO(buffer,
+		ST_BENCHMARK_SOLO_TIME(buffer,
 			{
 				code = clEnqueueNDRangeKernel(oc.command_queue, kernel, 1, NULL, global_dimensions, NULL, 0, NULL, NULL);
 				code = clFinish(oc.command_queue);
 			},
-			"computePowerFastExponentiation", 100
+			"computePowerFastExponentiation", 15
 		);
 		printf("%s", buffer);
 		ERROR_HANDLE_INT(code, "main(): Cannot finish, reason: %d / %s\n", code, getOpenCLErrorString(code));
@@ -199,12 +205,12 @@ int main() {
 
 		// Wait for everything to finish
 		char buffer[2048];
-		ST_BENCHMARK_SOLO(buffer,
+		ST_BENCHMARK_SOLO_TIME(buffer,
 			{
 				code = clEnqueueNDRangeKernel(oc.command_queue, kernel, 1, NULL, global_dimensions, NULL, 0, NULL, NULL);
 				code = clFinish(oc.command_queue);
 			},
-			"computePowerBuiltInExponentiation", 10
+			"computePowerBuiltInExponentiation", 15
 		);
 		printf("%s", buffer);
 		ERROR_HANDLE_INT(code, "main(): Cannot finish, reason: %d / %s\n", code, getOpenCLErrorString(code));
@@ -214,11 +220,11 @@ int main() {
 	{
 		// Measure the time
 		char buffer[2048];
-		ST_BENCHMARK_SOLO(buffer,
+		ST_BENCHMARK_SOLO_TIME(buffer,
 			{
 				computePowerFastExponentiation(a_v, b_v, vec_size);
 			},
-			"computePowerFastExponentiation (On CPU)", 1
+			"computePowerFastExponentiation (On CPU)", 15
 		);
 		printf("%s", buffer);
 	}
@@ -233,4 +239,5 @@ int main() {
 	INFO_PRINT("main(): End of program.\n\n");
 	return 0;
 }
+
 

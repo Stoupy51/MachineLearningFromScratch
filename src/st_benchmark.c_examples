@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 	printf("%s", buffer);
 
 	// Benchmark of a function
-	ST_BENCHMARK_SOLO(buffer,
+	ST_BENCHMARK_SOLO_COUNT(buffer,
 		{ testMatriceMalloc2(nOI); },
 		"'testMatriceMalloc2'", 10000000
 	);
