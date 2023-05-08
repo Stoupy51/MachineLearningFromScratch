@@ -63,35 +63,15 @@ int main() {
 		free(platforms);
 	}
 
-	///// GPU Devices /////
+	///// Print all /////
 	{
-		// Get GPU devices
+		// Get All devices
 		cl_uint device_count;
-		cl_device_id* devices = getAllDevicesOfType(CL_DEVICE_TYPE_GPU, &device_count);
-		ERROR_HANDLE_PTR(devices, "main(): Error while getting GPU devices.\n");
+		cl_device_id* devices = getAllDevicesOfType(CL_DEVICE_TYPE_ALL, &device_count);
+		ERROR_HANDLE_PTR(devices, "main(): Error while getting ALL devices.\n");
 
 		// Print devices
-		INFO_PRINT("main(): Found %d GPU devices.\n", device_count);
-		for (i = 0; i < device_count; i++) {
-			INFO_PRINT("main(): Device %d:\n", i);
-			printDeviceInfo(devices[i]);
-		}
-
-		// Free memory
-		for (i = 0; i < device_count; i++)
-			clReleaseDevice(devices[i]);
-		free(devices);
-	}
-
-	///// CPU Devices /////
-	{
-		// Get CPU devices
-		cl_uint device_count;
-		cl_device_id* devices = getAllDevicesOfType(CL_DEVICE_TYPE_CPU, &device_count);
-		ERROR_HANDLE_PTR(devices, "main(): Error while getting CPU devices.\n");
-
-		// Print devices
-		INFO_PRINT("main(): Found %d CPU devices.\n", device_count);
+		INFO_PRINT("main(): Found %d devices.\n", device_count);
 		for (i = 0; i < device_count; i++) {
 			INFO_PRINT("main(): Device %d:\n", i);
 			printDeviceInfo(devices[i]);
@@ -104,7 +84,7 @@ int main() {
 	}
 
 	// Final print and return
-	INFO_PRINT("main(): End of program.\n\n");
+	INFO_PRINT("main(): End of program.\n");
 	return 0;
 }
 
