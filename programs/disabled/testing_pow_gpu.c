@@ -67,6 +67,11 @@ void exitProgram() {
 	if (program != NULL) clReleaseProgram(program);
 	if (oc.command_queue != NULL) clReleaseCommandQueue(oc.command_queue);
 	if (oc.context != NULL) clReleaseContext(oc.context);
+
+	// Print end of program
+	INFO_PRINT("exitProgram(): End of program, press enter to exit.\n");
+	getchar();
+	exit(0);
 }
 
 /**
@@ -233,7 +238,7 @@ int main() {
 	free(_v);
 
 	// Final print and return
-	INFO_PRINT("main(): End of program.\n\n");
+	INFO_PRINT("main(): End of program.\n");
 	return 0;
 }
 
