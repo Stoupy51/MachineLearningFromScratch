@@ -124,7 +124,6 @@ int createMakefileContent(char *content) {
 		written += sprintf(content + written, "\t@echo \"\"\n");
 		written += sprintf(content + written, "\t@echo \"\"\n");
 		written += sprintf(content + written, "\t@echo \"Compiling the programs...\"\n");
-		written += sprintf(content + written, "\t@echo \"|\"\n");
 
 		// Create the command and execute it
 		sprintf(command, "dir /s /b \"%s\\*.c\"", PROGRAMS_FOLDER);
@@ -165,7 +164,6 @@ int createMakefileContent(char *content) {
 		free(object_files);
 
 		// Write the last line of programs rule
-		written += sprintf(content + written, "\t@echo \"|\"\n");
 		written += sprintf(content + written, "\t@echo \"Compilation done\"\n");
 		written += sprintf(content + written, "\t@echo \"\"\n");
 
