@@ -86,7 +86,7 @@ void exitProgram() {
  * [BENCHMARK] computePowerNaiveExponentiation executed 247 times in 15s
  * [BENCHMARK] computePowerFastExponentiation executed 81904 times in 15s
  * [BENCHMARK] computePowerBuiltInExponentiation executed 5908 times in 15s
- * [BENCHMARK] computePowerFastExponentiation (On CPU) executed 324 times in 15s
+ * [BENCHMARK] computePowerFastExponentiation (On 1 CPU Core) executed 324 times in 15s
  * 
  * @author Stoupy51 (COLLIGNON Alexandre)
  */
@@ -168,8 +168,6 @@ int main() {
 
 		// Execute the kernel
 		size_t global_dimensions[] = { VECTOR_SIZE, 0, 0 };
-		code = clEnqueueNDRangeKernel(oc.command_queue, kernel, 1, NULL, global_dimensions, NULL, 0, NULL, NULL);
-		ERROR_HANDLE_INT(code, "main(): Cannot execute kernel, reason: %d / %s\n", code, getOpenCLErrorString(code));
 
 		// Wait for everything to finish
 		char buffer[2048];
@@ -200,8 +198,6 @@ int main() {
 
 		// Execute the kernel
 		size_t global_dimensions[] = { VECTOR_SIZE, 0, 0 };
-		code = clEnqueueNDRangeKernel(oc.command_queue, kernel, 1, NULL, global_dimensions, NULL, 0, NULL, NULL);
-		ERROR_HANDLE_INT(code, "main(): Cannot execute kernel, reason: %d / %s\n", code, getOpenCLErrorString(code));
 
 		// Wait for everything to finish
 		char buffer[2048];
