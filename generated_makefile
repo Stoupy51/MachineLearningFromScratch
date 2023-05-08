@@ -17,8 +17,8 @@ objects:
 	@echo ""
 	@echo ""
 	@echo "Compiling the programs..."
-	@echo "- print_all_gpu.exe..."
-	@$(CC) -o "bin/print_all_gpu.exe" "programs/print_all_gpu.c" "obj/utils.o" "obj/vectors.o" "obj/gpu/gpu_utils.o" "obj/storage/hash_table.o" $(ALL_FLAGS)
+	@echo "- print_all_info.exe..."
+	@$(CC) -o "bin/print_all_info.exe" "programs/print_all_info.c" "obj/utils.o" "obj/vectors.o" "obj/gpu/gpu_utils.o" "obj/storage/hash_table.o" $(ALL_FLAGS)
 	@echo "Compilation done"
 	@echo ""
 

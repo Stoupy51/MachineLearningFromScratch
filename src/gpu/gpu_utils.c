@@ -6,6 +6,8 @@
 #include "../utils.h"
 #include "gpu_utils.h"
 
+#define STR_BUFFER_SIZE 1024
+
 /**
  * @brief This function returns the error string
  * corresponding to the given OpenCL error code.
@@ -189,6 +191,32 @@ cl_device_id* getAllDevicesOfType(cl_device_type type_of_device, cl_uint* num_de
 	return devices;
 }
 
+/**
+ * @brief This function prints information about the platform specified such as
+ * - Platform name
+ * - Platform version
+ * - Platform vendor
+ * - Platform profile
+ * - Platform extensions
+ */
+void printPlatformInfo(cl_platform_id platform_id) {
+
+	// Setup string buffer
+	char buffer[STR_BUFFER_SIZE + 1] = { '\0' };
+	INFO_PRINT("printPlatformInfo():\n");
+
+	// Get all the text information
+	clGetPlatformInfo(platform_id, CL_PLATFORM_NAME, STR_BUFFER_SIZE, buffer, NULL);
+	PRINTER("- Platform name: %s\n", buffer);
+	clGetPlatformInfo(platform_id, CL_PLATFORM_VERSION, STR_BUFFER_SIZE, buffer, NULL);
+	PRINTER("- Platform version: %s\n", buffer);
+	clGetPlatformInfo(platform_id, CL_PLATFORM_VENDOR, STR_BUFFER_SIZE, buffer, NULL);
+	PRINTER("- Platform vendor: %s\n", buffer);
+	clGetPlatformInfo(platform_id, CL_PLATFORM_PROFILE, STR_BUFFER_SIZE, buffer, NULL);
+	PRINTER("- Platform profile: %s\n", buffer);
+	clGetPlatformInfo(platform_id, CL_PLATFORM_EXTENSIONS, STR_BUFFER_SIZE, buffer, NULL);
+	PRINTER("- Platform extensions: %s\n", buffer);
+}
 
 /**
  * @brief This function prints information about the device specified such as
@@ -208,7 +236,6 @@ cl_device_id* getAllDevicesOfType(cl_device_type type_of_device, cl_uint* num_de
 void printDeviceInfo(cl_device_id device_id) {
 
 	// Setup string buffer
-	#define STR_BUFFER_SIZE 1024
 	char buffer[STR_BUFFER_SIZE + 1] = { '\0' };
 	INFO_PRINT("printDeviceInfo():\n");
 

@@ -35,8 +35,33 @@ void exitProgram() {
 int main() {
 
 	// Print program header and register exitProgram() with atexit()
-	mainInit("main(): Launching 'print_all_gpu' program.\n");
+	mainInit("main(): Launching 'print_all_info' program.\n");
 	atexit(exitProgram);
+
+	///// Print platforms /////
+	{
+		// Get platform
+		cl_platform_id* platforms;
+		cl_uint num_platforms;
+		code = clGetPlatformIDs(0, NULL, &num_platforms);
+		ERROR_HANDLE_INT(code, "main(): Error while getting number of platforms with code %d / %s\n", code, getOpenCLErrorString(code));
+
+		platforms = malloc(sizeof(cl_platform_id) * num_platforms);
+		ERROR_HANDLE_PTR(platforms, "main(): Error while allocating memory for platforms.\n");
+		code =clGetPlatformIDs(num_platforms, platforms, NULL);
+		ERROR_HANDLE_INT(code, "main(): Error while getting platforms with code %d / %s\n", code, getOpenCLErrorString(code));
+
+		// Print platforms
+		INFO_PRINT("main(): Found %d platforms.\n", num_platforms);
+		for (i = 0; i < num_platforms; i++) {
+			INFO_PRINT("main(): Platform %d:\n", i);
+			printPlatformInfo(platforms[i]);
+		}
+
+		// Free memory
+		printf("\n");
+		free(platforms);
+	}
 
 	///// GPU Devices /////
 	{
