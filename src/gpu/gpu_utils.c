@@ -174,20 +174,37 @@ struct opencl_context_t setupOpenCL(cl_device_type type_of_device) {
  */
 cl_device_id* getAllDevicesOfType(cl_device_type type_of_device, cl_uint* num_devices) {
 
-	// Get a platform
+	// Get all platforms
 	cl_int code;
-	cl_platform_id platform_id;
-	code = clGetPlatformIDs(1, &platform_id, NULL);
-	ERROR_HANDLE_INT_RETURN_NULL(code, "setupMultipleDevicesOpenCL(): Cannot get a platform with code %d / %s\n", code, getOpenCLErrorString(code));
+	cl_uint num_platforms;
+	code = clGetPlatformIDs(0, NULL, &num_platforms);
+	ERROR_HANDLE_INT_RETURN_NULL(code, "setupMultipleDevicesOpenCL(): Cannot get platform count with code %d / %s\n", code, getOpenCLErrorString(code));
+	cl_platform_id* platform_id = malloc(sizeof(cl_platform_id) * num_platforms);
+	code = clGetPlatformIDs(num_platforms, platform_id, NULL);
+	ERROR_HANDLE_INT_RETURN_NULL(code, "setupMultipleDevicesOpenCL(): Cannot get platforms with code %d / %s\n", code, getOpenCLErrorString(code));
 
 	// Get devices
-	code = clGetDeviceIDs(platform_id, type_of_device, 0, NULL, num_devices);
-	ERROR_HANDLE_INT_RETURN_NULL(code, "setupMultipleDevicesOpenCL(): Cannot get device count with code %d / %s\n", code, getOpenCLErrorString(code));
-	cl_device_id *devices = malloc(sizeof(cl_device_id) * (*num_devices));
-	code = clGetDeviceIDs(platform_id, type_of_device, *num_devices, devices, NULL);
-	ERROR_HANDLE_INT_RETURN_NULL(code, "setupMultipleDevicesOpenCL(): Cannot get devices with code %d / %s\n", code, getOpenCLErrorString(code));
+	cl_device_id* devices = NULL;
+	cl_uint num_devices_of_type = 0;
+	for (cl_uint i = 0; i < num_platforms; i++) {
 
-	// Return the devices
+		// Get devices count on platform i
+		cl_uint num_devices_of_type_on_platform = 0;
+		code = clGetDeviceIDs(platform_id[i], type_of_device, 0, NULL, &num_devices_of_type_on_platform);
+		ERROR_HANDLE_INT_RETURN_NULL(code, "setupMultipleDevicesOpenCL(): Cannot get device count with code %d / %s\n", code, getOpenCLErrorString(code));
+
+		// Update total device count and reallocate devices array
+		num_devices_of_type += num_devices_of_type_on_platform;
+		devices = realloc(devices, sizeof(cl_device_id) * num_devices_of_type);
+
+		// Get devices on platform i
+		code = clGetDeviceIDs(platform_id[i], type_of_device, num_devices_of_type_on_platform, devices + num_devices_of_type - num_devices_of_type_on_platform, NULL);
+		ERROR_HANDLE_INT_RETURN_NULL(code, "setupMultipleDevicesOpenCL(): Cannot get devices with code %d / %s\n", code, getOpenCLErrorString(code));
+	}
+
+	// Free platform_id and return
+	free(platform_id);
+	*num_devices = num_devices_of_type;
 	return devices;
 }
 
@@ -252,13 +269,13 @@ void printDeviceInfo(cl_device_id device_id) {
 	// Get all the number information
 	cl_ulong buffer_ulong = 0;
 	clGetDeviceInfo(device_id, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(cl_ulong), &buffer_ulong, NULL);
-	PRINTER("- Max memory allocation size: %llu\n", buffer_ulong);
+	PRINTER("- Max memory allocation size: %llu bytes\n", buffer_ulong);
 	clGetDeviceInfo(device_id, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(cl_ulong), &buffer_ulong, NULL);
-	PRINTER("- Global memory size: %llu\n", buffer_ulong);
+	PRINTER("- Global memory size: %llu bytes\n", buffer_ulong);
 	clGetDeviceInfo(device_id, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(cl_ulong), &buffer_ulong, NULL);
-	PRINTER("- Local memory size: %llu\n", buffer_ulong);
+	PRINTER("- Local memory size: %llu bytes\n", buffer_ulong);
 	clGetDeviceInfo(device_id, CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE, sizeof(cl_ulong), &buffer_ulong, NULL);
-	PRINTER("- Max constant buffer size: %llu\n", buffer_ulong);
+	PRINTER("- Max constant buffer size: %llu bytes\n", buffer_ulong);
 
 	// Get all the number information (2)
 	cl_uint buffer_uint = 0;
@@ -266,6 +283,10 @@ void printDeviceInfo(cl_device_id device_id) {
 	PRINTER("- Max work group size: %u\n", buffer_uint);
 	clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(cl_uint), &buffer_uint, NULL);
 	PRINTER("- Max work item dimensions: %u\n", buffer_uint);
+	clGetDeviceInfo(device_id, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), &buffer_uint, NULL);
+	PRINTER("- Max compute units: %u\n", buffer_uint);
+	clGetDeviceInfo(device_id, CL_DEVICE_MAX_CLOCK_FREQUENCY, sizeof(cl_uint), &buffer_uint, NULL);
+	PRINTER("- Max clock frequency: %u MHz\n", buffer_uint);
 
 	// Get all the number information (3)
 	size_t buffer_size_t[3] = { 0 };

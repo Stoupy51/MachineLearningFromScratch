@@ -78,6 +78,10 @@ int createMakefileContent(char *content) {
 			// Remove the \n at the end of the line
 			line[strlen(line) - 1] = '\0';
 			
+			// If the file is in a folder "disabled", skip it
+			if (strstr(line, "\\disabled\\") != NULL)
+				continue;
+
 			// Get the relative path of the file (relative to the src folder)
 			char *relative_path = strstr(line, SRC_FOLDER);
 			relative_path += strlen(SRC_FOLDER) + 1;
@@ -134,6 +138,10 @@ int createMakefileContent(char *content) {
 
 			// Remove the \n at the end of the line
 			line[strlen(line) - 1] = '\0';
+			
+			// If the file is in a folder "disabled", skip it
+			if (strstr(line, "\\disabled\\") != NULL)
+				continue;
 			
 			// Get the relative path of the file (relative to the programs folder)
 			char *relative_path = strstr(line, PROGRAMS_FOLDER);
