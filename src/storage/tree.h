@@ -7,6 +7,7 @@
 */
 struct tree_t {
 	// TODO: Implement tree data structure
+	int temp;
 };
 
 

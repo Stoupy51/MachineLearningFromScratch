@@ -25,8 +25,9 @@
 #define OPENCL_INCLUDE_PATH "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/include"
 
 #define CC "gcc"
-#define LINKER_FLAGS "-lm -lpthread -L\""OPENCL_LIB_PATH"\" -I\""OPENCL_INCLUDE_PATH"\" -lOpenCL"
-#define COMPILER_FLAGS "-Wall -Wextra -Wpedantic -Werror -O3 "LINKER_FLAGS" \""OPENCL_DLL"\""
+#define LINKER_FLAGS "-lm -lpthread -L\"" OPENCL_LIB_PATH "\" -I\"" OPENCL_INCLUDE_PATH "\" -lOpenCL"
+#define COMPILER_FLAGS "-Wall -Wextra -Wpedantic -Werror -O3"
+#define ALL_FLAGS COMPILER_FLAGS " " LINKER_FLAGS " " OPENCL_DLL
 
 
 /**
@@ -45,7 +46,8 @@ int createMakefileContent(char *content) {
 
 	// Write the header
 	written += sprintf(content + written, "\nCC = "CC"\n");
-	written += sprintf(content + written, "ALL_FLAGS = "COMPILER_FLAGS"\n");
+	written += sprintf(content + written, "ALL_FLAGS = "ALL_FLAGS"\n");
+	written += sprintf(content + written, "COMPILER_FLAGS = "COMPILER_FLAGS"\n");
 	written += sprintf(content + written, "\nall: objects programs\n");
 
 	///// For each .c file in the src folder, create a .o file in the obj folder
@@ -106,7 +108,7 @@ int createMakefileContent(char *content) {
 			}
 
 			// Write the compilation command
-			written += sprintf(content + written, "\t$(CC) -c \"%s/%s\" -o \"%s/%s\"\n", SRC_FOLDER, relative_path, OBJ_FOLDER, object_file);
+			written += sprintf(content + written, "\t$(CC) -c \"%s/%s\" -o \"%s/%s\" $(COMPILER_FLAGS) \n", SRC_FOLDER, relative_path, OBJ_FOLDER, object_file);
 
 			// Add the path to the list
 			object_files_written += sprintf(object_files + object_files_written, "\"%s/%s\" ", OBJ_FOLDER, object_file);
@@ -152,7 +154,8 @@ int createMakefileContent(char *content) {
 			strcat(exe_file, ".exe");
 
 			// Write the compilation command
-			written += sprintf(content + written, "\t$(CC) -o \"%s/%s\" \"%s/%s\" %s$(ALL_FLAGS)\n", BIN_FOLDER, exe_file, PROGRAMS_FOLDER, relative_path, object_files);
+			written += sprintf(content + written, "\t@echo \"- %s...\"\n", exe_file);
+			written += sprintf(content + written, "\t@$(CC) -o \"%s/%s\" \"%s/%s\" %s$(ALL_FLAGS)\n", BIN_FOLDER, exe_file, PROGRAMS_FOLDER, relative_path, object_files);
 		}
 
 		// Close the file
@@ -174,8 +177,8 @@ int createMakefileContent(char *content) {
 	// Write the clean rule
 	written += sprintf(content + written, "\nclean:\n");
 	written += sprintf(content + written, "\t@echo \"Cleaning the project...\"\n");
-	written += sprintf(content + written, "\t@rm -rf %s\n", OBJ_FOLDER);
-	written += sprintf(content + written, "\t@rm -rf %s\n", BIN_FOLDER);
+	written += sprintf(content + written, "\t@$(foreach file, $(shell powershell -Command 'Get-ChildItem -Path " OBJ_FOLDER " -Filter *.o -Recurse | ForEach-Object {Resolve-Path (Join-Path $$_.DirectoryName $$_.Name) -Relative} | ForEach-Object { $$_.Replace(\"\\\", \"/\") } '), rm -f $(file);)\n");
+	written += sprintf(content + written, "\t@$(foreach file, $(shell powershell -Command 'Get-ChildItem -Path " BIN_FOLDER " -Filter *.exe -Recurse | ForEach-Object {Resolve-Path (Join-Path $$_.DirectoryName $$_.Name) -Relative} | ForEach-Object { $$_.Replace(\"\\\", \"/\") } '), rm -f $(file);)\n");
 	written += sprintf(content + written, "\t@echo \"Clean done\"\n\n");
 	
 	// Return

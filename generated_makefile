@@ -1,6 +1,7 @@
 
 CC = gcc
-ALL_FLAGS = -Wall -Wextra -Wpedantic -Werror -O3 -lm -lpthread -L"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/lib/x64" -I"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/include" -lOpenCL "C:/Windows/System32/OpenCL.dll"
+ALL_FLAGS = -Wall -Wextra -Wpedantic -Werror -O3 -lm -lpthread -L"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/lib/x64" -I"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/include" -lOpenCL C:/Windows/System32/OpenCL.dll
+COMPILER_FLAGS = -Wall -Wextra -Wpedantic -Werror -O3
 
 all: objects programs
 
@@ -8,23 +9,24 @@ objects:
 	@echo ""
 	@echo "Compiling the source files..."
 	@echo "|"
-	$(CC) -c "src/utils.c" -o "obj/utils.o"
-	$(CC) -c "src/vectors.c" -o "obj/vectors.o"
-	$(CC) -c "src/gpu/gpu_utils.c" -o "obj/gpu/gpu_utils.o"
-	$(CC) -c "src/storage/hash_table.c" -o "obj/storage/hash_table.o"
+	$(CC) -c "src/utils.c" -o "obj/utils.o" $(COMPILER_FLAGS) 
+	$(CC) -c "src/vectors.c" -o "obj/vectors.o" $(COMPILER_FLAGS) 
+	$(CC) -c "src/gpu/gpu_utils.c" -o "obj/gpu/gpu_utils.o" $(COMPILER_FLAGS) 
+	$(CC) -c "src/storage/hash_table.c" -o "obj/storage/hash_table.o" $(COMPILER_FLAGS) 
 	@echo ""
 	@echo ""
 	@echo ""
 	@echo "Compiling the programs..."
 	@echo "|"
-	$(CC) -o "bin/testing_pow_gpu.exe" "programs/testing_pow_gpu.c" "obj/utils.o" "obj/vectors.o" "obj/gpu/gpu_utils.o" "obj/storage/hash_table.o" $(ALL_FLAGS)
+	@echo "- testing_pow_gpu.exe..."
+	@$(CC) -o "bin/testing_pow_gpu.exe" "programs/testing_pow_gpu.c" "obj/utils.o" "obj/vectors.o" "obj/gpu/gpu_utils.o" "obj/storage/hash_table.o" $(ALL_FLAGS)
 	@echo "|"
 	@echo "Compilation done"
 	@echo ""
 
 clean:
 	@echo "Cleaning the project..."
-	@rm -rf obj
-	@rm -rf bin
+	@$(foreach file, $(shell powershell -Command 'Get-ChildItem -Path obj -Filter *.o -Recurse | ForEach-Object {Resolve-Path (Join-Path $$_.DirectoryName $$_.Name) -Relative} | ForEach-Object { $$_.Replace("\", "/") } '), rm -f $(file);)
+	@$(foreach file, $(shell powershell -Command 'Get-ChildItem -Path bin -Filter *.exe -Recurse | ForEach-Object {Resolve-Path (Join-Path $$_.DirectoryName $$_.Name) -Relative} | ForEach-Object { $$_.Replace("\", "/") } '), rm -f $(file);)
 	@echo "Clean done"
 

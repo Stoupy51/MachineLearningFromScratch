@@ -21,9 +21,15 @@ all:
 
 init:
 	gcc maker.c -o maker.exe
+	@./maker.exe
 
 clean:
-	@make -f generated_makefile clean
+	@make -f generated_makefile clean --no-print-directory
 	@rm -f maker.exe
 	@rm -f generated_makefile
+
+restart:
+	@clear
+	@make clean --no-print-directory
+	@make init --no-print-directory
 

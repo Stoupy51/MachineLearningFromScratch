@@ -1,5 +1,5 @@
 
-// #include "hash_table.h"
+#include "hash_table.h"
 
 // /**
 //  * @brief Hash function for integers
