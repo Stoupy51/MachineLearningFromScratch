@@ -163,6 +163,32 @@ struct opencl_context_t setupOpenCL(cl_device_type type_of_device) {
 	return oc;
 }
 
+/**
+ * @brief This function gets every GPU device, and returns it.
+ * 
+ * @param type_of_device Type of device to use (CL_DEVICE_TYPE_GPU or CL_DEVICE_TYPE_CPU)
+ * 
+ * @return cl_device_id*	The array of devices
+ */
+cl_device_id* getAllDevicesOfType(cl_device_type type_of_device, cl_uint* num_devices) {
+
+	// Get a platform
+	cl_int code;
+	cl_platform_id platform_id;
+	code = clGetPlatformIDs(1, &platform_id, NULL);
+	ERROR_HANDLE_INT_RETURN_NULL(code, "setupMultipleDevicesOpenCL(): Cannot get a platform with code %d / %s\n", code, getOpenCLErrorString(code));
+
+	// Get devices
+	code = clGetDeviceIDs(platform_id, type_of_device, 0, NULL, num_devices);
+	ERROR_HANDLE_INT_RETURN_NULL(code, "setupMultipleDevicesOpenCL(): Cannot get device count with code %d / %s\n", code, getOpenCLErrorString(code));
+	cl_device_id *devices = malloc(sizeof(cl_device_id) * (*num_devices));
+	code = clGetDeviceIDs(platform_id, type_of_device, *num_devices, devices, NULL);
+	ERROR_HANDLE_INT_RETURN_NULL(code, "setupMultipleDevicesOpenCL(): Cannot get devices with code %d / %s\n", code, getOpenCLErrorString(code));
+
+	// Return the devices
+	return devices;
+}
+
 
 /**
  * @brief This function prints information about the device specified such as
