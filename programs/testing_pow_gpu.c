@@ -107,6 +107,7 @@ int main() {
 
 	// Initialize OpenCL and print device info
 	oc = setupOpenCL(CL_DEVICE_TYPE_GPU);
+	printDeviceInfo(oc.device_id);
 	ERROR_HANDLE_PTR(oc.context, "main(): Cannot initialize OpenCL.\n");
 
 	// Create the memory buffers
