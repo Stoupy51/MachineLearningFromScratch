@@ -24,7 +24,7 @@
 #define OPENCL_LIB_PATH "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/lib/x64"
 #define OPENCL_INCLUDE_PATH "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/include"
 
-#define CC "gcc"
+#define CC "x86_64-w64-mingw32-gcc"
 #define LINKER_FLAGS "-lm -lpthread -L\"" OPENCL_LIB_PATH "\" -I\"" OPENCL_INCLUDE_PATH "\" -lOpenCL"
 #define COMPILER_FLAGS "-Wall -Wextra -Wpedantic -Werror -O3"
 #define ALL_FLAGS COMPILER_FLAGS " " LINKER_FLAGS " " OPENCL_DLL

@@ -1,5 +1,5 @@
 
-CC = gcc
+CC = x86_64-w64-mingw32-gcc
 ALL_FLAGS = -Wall -Wextra -Wpedantic -Werror -O3 -lm -lpthread -L"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/lib/x64" -I"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/include" -lOpenCL C:/Windows/System32/OpenCL.dll
 COMPILER_FLAGS = -Wall -Wextra -Wpedantic -Werror -O3
 
