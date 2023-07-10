@@ -274,11 +274,12 @@ int custom_getline(char **lineptr, size_t *n, FILE *stream) {
  * @brief Get the last modification time of a file
  * and all the files included in it
  * 
- * @param filepath		Path of the file
+ * @param filepath			Path of the file
+ * @param past_filepath		Path of the file that included this file (To avoid infinite loops)
  * 
  * @return long long
  */
-long long getTimestampRecursive(const char* filepath) {
+long long getTimestampRecursive(const char* filepath, const char* past_filepath) {
 
 	// Open the file
 	FILE* file = fopen(filepath, "r");
@@ -325,8 +326,14 @@ long long getTimestampRecursive(const char* filepath) {
 				*(last_slash + 1) = '\0';
 			strcat(included_file_path, included_file);
 
+			// If the included file is the same as the past file, ignore it
+			if (past_filepath != NULL && strcmp(included_file_path, past_filepath) == 0) {
+				free(included_file_path);
+				continue;
+			}
+
 			// Get the last modification time of the included file & update the timestamp if needed
-			long long included_file_timestamp = getTimestampRecursive(included_file_path);
+			long long included_file_timestamp = getTimestampRecursive(included_file_path, filepath);
 			if (included_file_timestamp > timestamp)
 				timestamp = included_file_timestamp;
 		}
@@ -334,6 +341,17 @@ long long getTimestampRecursive(const char* filepath) {
 
 	// Close the file
 	fclose(file);
+
+	// If the filepath finish with .h, do the same thing with the .c file
+	int filepath_len = strlen(filepath);
+	if (filepath[filepath_len - 1] == 'h' && filepath[filepath_len - 2] == '.') {
+		char* c_filepath = strdup(filepath);
+		c_filepath[filepath_len - 1] = 'c';
+		long long c_timestamp = getTimestampRecursive(c_filepath, filepath);
+		if (c_timestamp > timestamp)
+			timestamp = c_timestamp;
+		free(c_filepath);
+	}
 
 	// Free the line and return
 	if (line != NULL)
@@ -414,7 +432,7 @@ int findCFiles(str_linked_list_t *files_timestamps) {
 		char* relative_path = strdup(strstr(line, SRC_FOLDER));
 
 		// Get the timestamp of the file
-		long long timestamp = getTimestampRecursive(line);
+		long long timestamp = getTimestampRecursive(line, NULL);
 
 		// Get the saved timestamp of the file
 		file_path_t path;
@@ -579,7 +597,7 @@ int compile_programs() {
 		file_path_t path;
 		path.size = strlen(filename);
 		path.str = filename;
-		path.timestamp = getTimestampRecursive(filename);
+		path.timestamp = getTimestampRecursive(filename, NULL);
 		str_linked_list_element_t* element = str_linked_list_search(files_timestamps, path);
 		if (element == NULL || element->path.timestamp != path.timestamp) {
 
