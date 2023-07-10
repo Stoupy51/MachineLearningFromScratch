@@ -1,7 +1,7 @@
 
 #include <stdlib.h>
 
-#include "../src/utils.h"
+#include "../src/universal_utils.h"
 #include "../src/gpu/gpu_utils.h"
 #include "../src/vectors.h"
 #include "../src/st_benchmark.h"
@@ -113,34 +113,34 @@ int main() {
 	// Initialize OpenCL and print device info
 	oc = setupOpenCL(CL_DEVICE_TYPE_GPU);
 	printDeviceInfo(oc.device_id);
-	ERROR_HANDLE_PTR(oc.context, "main(): Cannot initialize OpenCL.\n");
+	ERROR_HANDLE_PTR_RETURN_INT(oc.context, "main(): Cannot initialize OpenCL.\n");
 
 	// Create the memory buffers
 	cl_mem v_buffers[2] = { NULL, NULL };
 	v_buffers[0] = clCreateBuffer(oc.context, CL_MEM_READ_WRITE, vector_size_bytes, NULL, &code);
-	ERROR_HANDLE_INT(code, "main(): Cannot create a_v_buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot create a_v_buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
 	v_buffers[1] = clCreateBuffer(oc.context, CL_MEM_READ_ONLY, vector_size_bytes, NULL, &code);
-	ERROR_HANDLE_INT(code, "main(): Cannot create b_v_buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot create b_v_buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
 
 	// Copy the vectors to the memory buffers
 	code = clEnqueueWriteBuffer(oc.command_queue, v_buffers[0], CL_FALSE, 0, vector_size_bytes, a_v, 0, NULL, NULL);
-	ERROR_HANDLE_INT(code, "main(): Cannot write a_v_buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot write a_v_buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
 	code = clEnqueueWriteBuffer(oc.command_queue, v_buffers[1], CL_FALSE, 0, vector_size_bytes, b_v, 0, NULL, NULL);
-	ERROR_HANDLE_INT(code, "main(): Cannot write b_v_buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot write b_v_buffer, reason: %d / %s\n", code, getOpenCLErrorString(code));
 
 	///// computePowerNaiveExponentiation /////
 	{
 		// Create the kernel
 		createKernelFromSource("kernels/pow.cl", "computePowerNaiveExponentiation", &program, &kernel, &oc);
-		ERROR_HANDLE_PTR(kernel, "main(): Cannot create kernel from source.\n");
+		ERROR_HANDLE_PTR_RETURN_INT(kernel, "main(): Cannot create kernel from source.\n");
 
 		// Set the arguments of the kernel
 		code = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&v_buffers[0]);
-		ERROR_HANDLE_INT(code, "main(): Cannot set kernel argument 0, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot set kernel argument 0, reason: %d / %s\n", code, getOpenCLErrorString(code));
 		code = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&v_buffers[1]);
-		ERROR_HANDLE_INT(code, "main(): Cannot set kernel argument 1, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot set kernel argument 1, reason: %d / %s\n", code, getOpenCLErrorString(code));
 		code = clSetKernelArg(kernel, 2, sizeof(int), (void*)&vec_size);
-		ERROR_HANDLE_INT(code, "main(): Cannot set kernel argument 2, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot set kernel argument 2, reason: %d / %s\n", code, getOpenCLErrorString(code));
 
 		// Execute the kernel
 		size_t global_dimensions[] = { VECTOR_SIZE, 0, 0 };
@@ -155,22 +155,22 @@ int main() {
 			"computePowerNaiveExponentiation", 15
 		);
 		printf("%s", buffer);
-		ERROR_HANDLE_INT(code, "main(): Cannot finish, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot finish, reason: %d / %s\n", code, getOpenCLErrorString(code));
 	}
 
 	///// computePowerFastExponentiation /////
 	{
 		// Create the kernel
 		createKernelFromSource("kernels/pow.cl", "computePowerFastExponentiation", &program, &kernel, &oc);
-		ERROR_HANDLE_PTR(kernel, "main(): Cannot create kernel from source.\n");
+		ERROR_HANDLE_PTR_RETURN_INT(kernel, "main(): Cannot create kernel from source.\n");
 
 		// Set the arguments of the kernel
 		code = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&v_buffers[0]);
-		ERROR_HANDLE_INT(code, "main(): Cannot set kernel argument 0, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot set kernel argument 0, reason: %d / %s\n", code, getOpenCLErrorString(code));
 		code = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&v_buffers[1]);
-		ERROR_HANDLE_INT(code, "main(): Cannot set kernel argument 1, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot set kernel argument 1, reason: %d / %s\n", code, getOpenCLErrorString(code));
 		code = clSetKernelArg(kernel, 2, sizeof(int), (void*)&vec_size);
-		ERROR_HANDLE_INT(code, "main(): Cannot set kernel argument 2, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot set kernel argument 2, reason: %d / %s\n", code, getOpenCLErrorString(code));
 
 		// Execute the kernel
 		size_t global_dimensions[] = { VECTOR_SIZE, 0, 0 };
@@ -185,22 +185,22 @@ int main() {
 			"computePowerFastExponentiation", 15
 		);
 		printf("%s", buffer);
-		ERROR_HANDLE_INT(code, "main(): Cannot finish, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot finish, reason: %d / %s\n", code, getOpenCLErrorString(code));
 	}
 
 	///// computePowerBuiltInExponentiation /////
 	{
 		// Create the kernel
 		createKernelFromSource("kernels/pow.cl", "computePowerBuiltInExponentiation", &program, &kernel, &oc);
-		ERROR_HANDLE_PTR(kernel, "main(): Cannot create kernel from source.\n");
+		ERROR_HANDLE_PTR_RETURN_INT(kernel, "main(): Cannot create kernel from source.\n");
 
 		// Set the arguments of the kernel
 		code = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&v_buffers[0]);
-		ERROR_HANDLE_INT(code, "main(): Cannot set kernel argument 0, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot set kernel argument 0, reason: %d / %s\n", code, getOpenCLErrorString(code));
 		code = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&v_buffers[1]);
-		ERROR_HANDLE_INT(code, "main(): Cannot set kernel argument 1, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot set kernel argument 1, reason: %d / %s\n", code, getOpenCLErrorString(code));
 		code = clSetKernelArg(kernel, 2, sizeof(int), (void*)&vec_size);
-		ERROR_HANDLE_INT(code, "main(): Cannot set kernel argument 2, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot set kernel argument 2, reason: %d / %s\n", code, getOpenCLErrorString(code));
 
 		// Execute the kernel
 		size_t global_dimensions[] = { VECTOR_SIZE, 0, 0 };
@@ -215,7 +215,7 @@ int main() {
 			"computePowerBuiltInExponentiation", 15
 		);
 		printf("%s", buffer);
-		ERROR_HANDLE_INT(code, "main(): Cannot finish, reason: %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Cannot finish, reason: %d / %s\n", code, getOpenCLErrorString(code));
 	}
 
 	////// computePowerFastExponentiation (On CPU) /////
@@ -241,5 +241,4 @@ int main() {
 	INFO_PRINT("main(): End of program.\n");
 	return 0;
 }
-
 

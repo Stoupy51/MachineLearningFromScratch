@@ -1,7 +1,7 @@
 
 #include <stdlib.h>
 
-#include "../src/utils.h"
+#include "../src/universal_utils.h"
 #include "../src/gpu/gpu_utils.h"
 #include "../src/vectors.h"
 #include "../src/st_benchmark.h"
@@ -44,12 +44,12 @@ int main() {
 		cl_platform_id* platforms;
 		cl_uint num_platforms;
 		code = clGetPlatformIDs(0, NULL, &num_platforms);
-		ERROR_HANDLE_INT(code, "main(): Error while getting number of platforms with code %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while getting number of platforms with code %d / %s\n", code, getOpenCLErrorString(code));
 
 		platforms = malloc(sizeof(cl_platform_id) * num_platforms);
-		ERROR_HANDLE_PTR(platforms, "main(): Error while allocating memory for platforms.\n");
-		code =clGetPlatformIDs(num_platforms, platforms, NULL);
-		ERROR_HANDLE_INT(code, "main(): Error while getting platforms with code %d / %s\n", code, getOpenCLErrorString(code));
+		ERROR_HANDLE_PTR_RETURN_INT(platforms, "main(): Error while allocating memory for platforms.\n");
+		code = clGetPlatformIDs(num_platforms, platforms, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while getting platforms with code %d / %s\n", code, getOpenCLErrorString(code));
 
 		// Print platforms
 		INFO_PRINT("main(): Found %d platforms.\n", num_platforms);
@@ -68,7 +68,7 @@ int main() {
 		// Get All devices
 		cl_uint device_count;
 		cl_device_id* devices = getAllDevicesOfType(CL_DEVICE_TYPE_ALL, &device_count);
-		ERROR_HANDLE_PTR(devices, "main(): Error while getting ALL devices.\n");
+		ERROR_HANDLE_PTR_RETURN_INT(devices, "main(): Error while getting ALL devices.\n");
 
 		// Print devices
 		INFO_PRINT("main(): Found %d devices.\n", device_count);

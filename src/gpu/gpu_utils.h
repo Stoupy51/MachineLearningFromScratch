@@ -6,7 +6,6 @@
 
 #include <CL/cl.h>
 
-
 // Struct to store the OpenCL context
 struct opencl_context_t {
 	cl_device_id device_id;				// ID of the GPU device

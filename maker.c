@@ -3,244 +3,685 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#ifndef _WIN32
+	#include <unistd.h>
+#endif
+
+#if 1 == 1
+
+typedef struct file_path_t {
+	int size;				// Size of the string
+	char* str;				// String
+	long long timestamp;	// Last modification time of the file and all the files included
+} file_path_t;
+
+typedef struct strlinked_list_element_t {
+	file_path_t path;
+	struct strlinked_list_element_t* next;
+} str_linked_list_element_t;
+
+typedef struct str_linked_list_t {
+	int size;
+	str_linked_list_element_t* head;
+} str_linked_list_t;
+
+int str_linked_list_init(str_linked_list_t* list) {
+	list->size = 0;
+	list->head = NULL;
+	return 0;
+}
+
+str_linked_list_element_t* str_linked_list_insert(str_linked_list_t* list, file_path_t path) {
+	str_linked_list_element_t* new_element = malloc(sizeof(str_linked_list_element_t));
+	if (new_element == NULL) {
+		perror("Error while allocating memory for a new element of the linked list\n");
+		return NULL;
+	}
+	new_element->path = path;
+	new_element->next = list->head;
+	list->head = new_element;
+	list->size++;
+	return new_element;
+}
+
+str_linked_list_element_t* str_linked_list_search(str_linked_list_t list, file_path_t path) {
+	str_linked_list_element_t* current_element = list.head;
+	while (current_element != NULL) {
+		if (strcmp(current_element->path.str, path.str) == 0)
+			return current_element;
+		current_element = current_element->next;
+	}
+	return NULL;
+}
+
+void str_linked_list_free(str_linked_list_t* list) {
+	if (list->size == 0)
+		return;
+	str_linked_list_element_t* current_element = list->head;
+	while (current_element != NULL) {
+		str_linked_list_element_t* next_element = current_element->next;
+		free(current_element);
+		current_element = next_element;
+	}
+	list->size = 0;
+	list->head = NULL;
+}
+
+#endif
 
 #ifdef _WIN32
 	#include <direct.h>
-	#include <fileapi.h>
 	#define mkdir(path, mode) _mkdir(path)
+	#define WINDOWS_FLAGS " -lws2_32"
 #else
-	#include <sys/stat.h>
-	#include <sys/types.h>
-	#include <dirent.h>
+	#define WINDOWS_FLAGS ""
 #endif
 
 #define SRC_FOLDER "src"
 #define OBJ_FOLDER "obj"
 #define BIN_FOLDER "bin"
 #define PROGRAMS_FOLDER "programs"
-#define MAKEFILE_NAME "generated_makefile"
+#define FILES_TIMESTAMPS ".files_timestamps"
 
-#define OPENCL_DLL "C:/Windows/System32/OpenCL.dll"
-#define OPENCL_LIB_PATH "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/lib/x64"
-#define OPENCL_INCLUDE_PATH "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/include"
-
-#define CC "x86_64-w64-mingw32-gcc"
-#define LINKER_FLAGS "-lm -lpthread -L\"" OPENCL_LIB_PATH "\" -I\"" OPENCL_INCLUDE_PATH "\" -lOpenCL"
+#define CC "gcc"
+#define LINKER_FLAGS "-lm -lpthread" WINDOWS_FLAGS
 #define COMPILER_FLAGS "-Wall -Wextra -Wpedantic -Werror -O3"
-#define ALL_FLAGS COMPILER_FLAGS " " LINKER_FLAGS " " OPENCL_DLL
+#define ALL_FLAGS COMPILER_FLAGS " " LINKER_FLAGS
+
+// Global variables
+char* additional_flags = NULL;
+char* linking_flags = NULL;
+char* obj_files = NULL;
+int obj_files_size = 0;
+str_linked_list_t files_timestamps;
+
+/**
+ * @brief Clean the project by deleting all the .o and .exe files in their respective folders
+ * 
+ * @return int		0 if success, -1 otherwise
+ */
+int clean_project() {
+	printf("Cleaning the project...\n");
+
+	// Delete all the .o files in the obj folder
+	int code = system("rm -rf "OBJ_FOLDER"/**/*.o");
+	if (code != 0) {
+		perror("Error while deleting the .o files\n");
+		return -1;
+	}
+
+	// Delete all the .exe files in the bin folder
+	code = system("rm -f "BIN_FOLDER"/*.exe");
+	if (code != 0) {
+		perror("Error while deleting the .exe files\n");
+		return -1;
+	}
+
+	// Delete the .files_timestamps file
+	code = system("rm -f "FILES_TIMESTAMPS);
+
+	// Delete this file
+	code = system("rm -f maker.exe");
+
+	// Return
+	printf("Project cleaned!\n\n");
+	return 0;
+}
+
+/**
+ * @brief Load the last modification time of each file in the .files_timestamps file
+ * 
+ * @return int		0 if success, -1 otherwise
+ */
+int load_files_timestamps(str_linked_list_t* files_timestamps) {
+
+	// Initialize the list
+	int code = str_linked_list_init(files_timestamps);
+	if (code != 0) {
+		perror("Error while initializing the list of files timestamps\n");
+		return -1;
+	}
+
+	// Open the file and create it if it doesn't exist
+	FILE *file = fopen(FILES_TIMESTAMPS, "rb");
+	if (file == NULL) {
+		file = fopen(FILES_TIMESTAMPS, "w");
+		fclose(file);
+		return 0;
+	}
+
+	// While there are bytes to read,
+	while (1) {
+
+		// Read the size of the string
+		int size;
+		code = fread(&size, sizeof(int), 1, file);
+		if (code != 1)
+			break;
+
+		// Read the string
+		char* str = malloc(size + 1);
+		if (str == NULL) {
+			perror("Error while allocating memory for a string in the .files_timestamps file\n");
+			return -1;
+		}
+		code = fread(str, size, 1, file);
+		if (code != 1) {
+			free(str);
+			break;
+		}
+		str[size] = '\0';
+
+		// Read the timestamp
+		long long timestamp;
+		code = fread(&timestamp, sizeof(long long), 1, file);
+		if (code != 1) {
+			free(str);
+			break;
+		}
+
+		// Insert the string in the list
+		file_path_t path;
+		path.size = size;
+		path.str = str;
+		path.timestamp = timestamp;
+		str_linked_list_insert(files_timestamps, path);
+	}
+
+	// Close the file and return
+	fclose(file);
+	return 0;
+}
+
+/**
+ * @brief Save the last modification time of each file in the .files_timestamps file
+ * 
+ * @return int		0 if success, -1 otherwise
+ */
+int save_files_timestamps(str_linked_list_t files_timestamps) {
+
+	// Open the file in write mode
+	int fd = open(FILES_TIMESTAMPS, O_CREAT | O_WRONLY | O_TRUNC, 0777);
+	if (fd == -1) {
+		perror("Error while opening the .files_timestamps file\n");
+		return -1;
+	}
+
+	// For each element in the list,
+	str_linked_list_element_t* current_element = files_timestamps.head;
+	while (current_element != NULL) {
+
+		// Write the size of the string
+		int size = current_element->path.size;
+		write(fd, &size, sizeof(int));
+
+		// Write the string
+		write(fd, current_element->path.str, size);
+
+		// Write the timestamp
+		long long timestamp = current_element->path.timestamp;
+		write(fd, &timestamp, sizeof(long long));
+
+		// Next element
+		current_element = current_element->next;
+	}
+
+	// Close the file
+	close(fd);
+
+	// Return
+	return 0;
+}
+
+/**
+ * @brief Get a line from a file
+ * 
+ * @param lineptr		Pointer to the line
+ * @param n				Pointer to the size of the line
+ * @param stream		Pointer to the file
+ * 
+ * @return int			Number of characters read, -1 if error or end of file
+ */
+int custom_getline(char **lineptr, size_t *n, FILE *stream) {
+	size_t capacity = *n;
+	size_t pos = 0;
+	int c;
+	if (*lineptr == NULL)
+		if ((*lineptr = malloc(capacity)) == NULL)
+			return -1;
+	while ((c = fgetc(stream)) != EOF) {
+		(*lineptr)[pos++] = c;
+		if (pos >= capacity) {
+			capacity *= 2;
+			char *newptr = realloc(*lineptr, capacity);
+			if (newptr == NULL)
+				return -1;
+			*lineptr = newptr;
+		}
+		if (c == '\n')
+			break;
+	}
+	if (pos == 0)
+		return -1;
+	(*lineptr)[pos] = '\0';
+	*n = capacity;
+	return pos;
+}
+
+/**
+ * @brief Get the last modification time of a file
+ * and all the files included in it
+ * 
+ * @param filepath		Path of the file
+ * 
+ * @return long long
+ */
+long long getTimestampRecursive(const char* filepath) {
+
+	// Open the file
+	FILE* file = fopen(filepath, "r");
+	if (file == NULL)	// Ignore files that don't exist
+		return -1;
+
+	// Get the last modification time of the file
+	struct stat file_stat;
+	stat(filepath, &file_stat);
+	long long timestamp = file_stat.st_mtime;
+
+	// For each line in the file,
+	char* line = NULL;
+	size_t len = 64;
+	int read;
+	while ((read = custom_getline(&line, &len, file)) != -1) {
+
+		// If the line is an include,
+		if (strncmp(line, "#include", 8) == 0) {
+
+			// Get the path of the included file
+			char* included_file = line + 9;
+			while (*included_file == ' ' || *included_file == '\t')
+				included_file++;
+			if (*included_file == '"' || *included_file == '<') {
+				included_file++;
+				char* end = included_file;
+				while (*end != '"' && *end != '>')
+					end++;
+				*end = '\0';
+			}
+			else
+				continue;
+			
+			// Get the path of the included file depending on the path of the current file
+			char* included_file_path = malloc(strlen(filepath) + strlen(included_file) + 1);
+			if (included_file_path == NULL) {
+				perror("Error while allocating memory for a file path\n");
+				return -1;
+			}
+			strcpy(included_file_path, filepath);
+			char* last_slash = strrchr(included_file_path, '/');
+			if (last_slash != NULL)
+				*(last_slash + 1) = '\0';
+			strcat(included_file_path, included_file);
+
+			// Get the last modification time of the included file & update the timestamp if needed
+			long long included_file_timestamp = getTimestampRecursive(included_file_path);
+			if (included_file_timestamp > timestamp)
+				timestamp = included_file_timestamp;
+		}
+	}
+
+	// Close the file
+	fclose(file);
+
+	// Free the line and return
+	if (line != NULL)
+		free(line);
+	return timestamp;
+}
+
+/**
+ * @brief Create all the folders in a path
+ * 
+ * @param filepath		Path of the file
+ */
+void create_folders_from_path(const char* filepath) {
+
+	// Get path of the folder
+	char* folder = strdup(filepath);
+	int size = strlen(folder);
+	for (int i = size - 1; i >= 0; i--) {
+		if (folder[i] == '/') {
+			folder[i] = '\0';
+			break;
+		}
+	}
+
+	// Create the folder if it doesn't exist
+	if (folder[0] != '\0')
+		mkdir(folder, 0777);
+	free(folder);
+	return;
+}
 
 
 /**
- * @brief Create the content of the Makefile
- * - For each .c file in the src folder, create a .o file in the obj folder
- * - For each .c file in the programs folder, create a program in the bin folder
+ * @brief Find all the .c files in the src folder recursively,
+ * compare their timestamp with the one in the .files_timestamps file
+ * and compile them if needed
  * 
- * @param content	Pointer to the content of the Makefile
+ * @param files_timestamps		Pointer to the list of files timestamps
  * 
  * @return int		0 if success, -1 otherwise
-*/
-int createMakefileContent(char *content) {
+ */
+int findCFiles(str_linked_list_t *files_timestamps) {
 
-	// Written progress in the content
-	size_t written = 0;
-
-	// Write the header
-	written += sprintf(content + written, "\nCC = "CC"\n");
-	written += sprintf(content + written, "ALL_FLAGS = "ALL_FLAGS"\n");
-	written += sprintf(content + written, "COMPILER_FLAGS = "COMPILER_FLAGS"\n");
-	written += sprintf(content + written, "\nall: objects programs\n");
-
-	///// For each .c file in the src folder, create a .o file in the obj folder
-	// Write the objects rule
-	written += sprintf(content + written, "\nobjects:\n");
-	written += sprintf(content + written, "\t@echo \"\"\n");
-	written += sprintf(content + written, "\t@echo \"Compiling the source files...\"\n");
-	written += sprintf(content + written, "\t@echo \"|\"\n");
-
-	// Write the compilation commands (On Windows)
+	// Create the command
 	#ifdef _WIN32
-
-		///// Get the list of files in the src folder recursively
-		// Create the command and execute it
-		char line[1024];
-		char command[1024];
-		sprintf(command, "dir /s /b \"%s\\*.c\"", SRC_FOLDER);
-		FILE *fp = _popen(command, "r");
-
-		// Prepare a long string to store path to every object files
-		char *object_files = malloc(1024 * 1024 * sizeof(char));
-		memset(object_files, '\0', 1024 * 1024 * sizeof(char));
-		size_t object_files_written = 0;
-
-		// For each line
-		while (fgets(line, 1024, fp) != NULL) {
-
-			// Remove the \n at the end of the line
-			line[strlen(line) - 1] = '\0';
-			
-			// If the file is in a folder "disabled", skip it
-			if (strstr(line, "\\disabled\\") != NULL)
-				continue;
-
-			// Get the relative path of the file (relative to the src folder)
-			char *relative_path = strstr(line, SRC_FOLDER);
-			relative_path += strlen(SRC_FOLDER) + 1;
-			int size = strlen(relative_path) + 1;
-
-			// Replace the \ by /
-			int i;
-			for (i = 0; i < size; i++)
-				if (relative_path[i] == '\\')
-					relative_path[i] = '/';
-
-			// Get the object file path (.o file)
-			char *object_file = malloc(size * sizeof(char));
-			memset(object_file, '\0', size * sizeof(char));
-			strncpy(object_file, relative_path, strrchr(relative_path, '.') - relative_path);
-			strcat(object_file, ".o");
-
-			// Create the folder if it doesn't exist (and if the path has a folder)
-			if (strrchr(object_file, '/') != NULL) {
-				char *folder = malloc(size * sizeof(char));
-				memset(folder, '\0', size * sizeof(char));
-				strcat(folder, OBJ_FOLDER);
-				strcat(folder, "/");
-				folder += strlen(OBJ_FOLDER) + 1;
-				strncpy(folder, object_file, strrchr(object_file, '/') - object_file);
-				folder -= strlen(OBJ_FOLDER) + 1;
-				mkdir(folder, 0777);
-			}
-
-			// Write the compilation command
-			written += sprintf(content + written, "\t$(CC) -c \"%s/%s\" -o \"%s/%s\" $(COMPILER_FLAGS) \n", SRC_FOLDER, relative_path, OBJ_FOLDER, object_file);
-
-			// Add the path to the list
-			object_files_written += sprintf(object_files + object_files_written, "\"%s/%s\" ", OBJ_FOLDER, object_file);
-		}
-
-		// Close the file
-		_pclose(fp);
-
-		///// Get the list of files in the programs folder recursively
-
-		// Write the programs rule
-		written += sprintf(content + written, "\t@echo \"\"\n");
-		written += sprintf(content + written, "\t@echo \"\"\n");
-		written += sprintf(content + written, "\t@echo \"\"\n");
-		written += sprintf(content + written, "\t@echo \"Compiling the programs...\"\n");
-
-		// Create the command and execute it
-		sprintf(command, "dir /s /b \"%s\\*.c\"", PROGRAMS_FOLDER);
-		fp = _popen(command, "r");
-
-		// For each line
-		while (fgets(line, 1024, fp) != NULL) {
-
-			// Remove the \n at the end of the line
-			line[strlen(line) - 1] = '\0';
-			
-			// If the file is in a folder "disabled", skip it
-			if (strstr(line, "\\disabled\\") != NULL)
-				continue;
-			
-			// Get the relative path of the file (relative to the programs folder)
-			char *relative_path = strstr(line, PROGRAMS_FOLDER);
-			relative_path += strlen(PROGRAMS_FOLDER) + 1;
-			int size = strlen(relative_path) + 1;
-
-			// Replace the \ by /
-			int i;
-			for (i = 0; i < size; i++)
-				if (relative_path[i] == '\\')
-					relative_path[i] = '/';
-			
-			// Get the exe file path (.exe file)
-			char *exe_file = malloc(size * sizeof(char) + sizeof(".exe"));
-			memset(exe_file, '\0', size * sizeof(char));
-			strncpy(exe_file, relative_path, strrchr(relative_path, '.') - relative_path);
-			strcat(exe_file, ".exe");
-
-			// Write the compilation command
-			written += sprintf(content + written, "\t@echo \"- %s...\"\n", exe_file);
-			written += sprintf(content + written, "\t@$(CC) -o \"%s/%s\" \"%s/%s\" %s$(ALL_FLAGS)\n", BIN_FOLDER, exe_file, PROGRAMS_FOLDER, relative_path, object_files);
-		}
-
-		// Close the file
-		_pclose(fp);
-
-		// Free the memory
-		free(object_files);
-
-		// Write the last line of programs rule
-		written += sprintf(content + written, "\t@echo \"Compilation done\"\n");
-		written += sprintf(content + written, "\t@echo \"\"\n");
-
-	// TODO: Write the compilation commands (On Linux)
+		char command[256] = "dir /s /b "SRC_FOLDER"\\*.c";
 	#else
-
+		char command[256] = "find "SRC_FOLDER" -name \"*.c\"";
 	#endif
 
-	// Write the clean rule
-	written += sprintf(content + written, "\nclean:\n");
-	written += sprintf(content + written, "\t@echo \"Cleaning the project...\"\n");
-	written += sprintf(content + written, "\t@$(foreach file, $(shell powershell -Command 'Get-ChildItem -Path " OBJ_FOLDER " -Filter *.o -Recurse | ForEach-Object {Resolve-Path (Join-Path $$_.DirectoryName $$_.Name) -Relative} | ForEach-Object { $$_.Replace(\"\\\", \"/\") } '), rm -f $(file);)\n");
-	written += sprintf(content + written, "\t@$(foreach file, $(shell powershell -Command 'Get-ChildItem -Path " BIN_FOLDER " -Filter *.exe -Recurse | ForEach-Object {Resolve-Path (Join-Path $$_.DirectoryName $$_.Name) -Relative} | ForEach-Object { $$_.Replace(\"\\\", \"/\") } '), rm -f $(file);)\n");
-	written += sprintf(content + written, "\t@echo \"Clean done\"\n\n");
+	// Open the PIPE
+	FILE* pipe = popen(command, "r");
+	if (pipe == NULL) {
+		perror("Error while opening the PIPE\n");
+		return -1;
+	}
+
+	// Initialize the counter
+	int compileCount = 0;
+
+	// For each line in the PIPE,
+	char* line = NULL;
+	size_t len = 64;
+	int read;
+	while ((read = custom_getline(&line, &len, pipe)) != -1) {
+
+		// Remove the \n at the end of the line
+		line[read - 1] = '\0';
+
+		// On windows, replace the \ by /
+		#ifdef _WIN32
+			for (int i = 0; i < read; i++)
+				if (line[i] == '\\')
+					line[i] = '/';
+		#endif
+
+		// Get the relative path (ignoring everything before the src folder)
+		char* relative_path = strdup(strstr(line, SRC_FOLDER));
+
+		// Get the timestamp of the file
+		long long timestamp = getTimestampRecursive(line);
+
+		// Get the saved timestamp of the file
+		file_path_t path;
+		path.size = strlen(relative_path);
+		path.str = relative_path;
+		path.timestamp = timestamp;
+		str_linked_list_element_t* element = str_linked_list_search(*files_timestamps, path);
+
+		// Get the path of the .o file
+		char* obj_path = strdup(relative_path);
+		obj_path[strlen(obj_path) - 1] = 'o';	// Replace the .c by .o
+		int i;
+		for (i = 0; i < sizeof(SRC_FOLDER) - 1; i++)
+			obj_path[i] = OBJ_FOLDER[i];
+		
+		// Add the .o file to the list of object files
+		if (obj_files == NULL) {
+			obj_files_size = 1024 * 1024 * sizeof(char);
+			obj_files = malloc(obj_files_size);
+		}
+		else {
+			int needed_size = strlen(obj_path) + 4;
+			if (obj_files_size < needed_size) {
+				obj_files_size = needed_size * 2;
+				char* newptr = realloc(obj_files, obj_files_size);
+				if (newptr == NULL) {
+					perror("Error while reallocating memory for the list of object files\n");
+					return -1;
+				}
+				obj_files = newptr;
+			}
+		}
+		strcat(obj_files, "\"");
+		strcat(obj_files, obj_path);
+		strcat(obj_files, "\" ");
+
+		// If the file is not in the list or if the timestamp is different,
+		if (element == NULL || element->path.timestamp != timestamp) {
+
+			// Manage the counter
+			if (compileCount++ == 0)
+				printf("Compiling the source files...\n");
+
+			// If the folder of the .o file doesn't exist, create it
+			create_folders_from_path(obj_path);
+
+			// Compile the file
+			char command[1024];
+			sprintf(
+				command,
+				CC" -c \"%s\" -o \"%s\" %s",
+
+				relative_path,
+				obj_path,
+				additional_flags == NULL ? "" : additional_flags
+			);
+			printf("- %s\n", command);
+			if (system(command) != 0) {
+				save_files_timestamps(*files_timestamps);
+				exit(-1);
+			}
+
+			// If the file is not in the list, add it
+			if (element == NULL)
+				str_linked_list_insert(files_timestamps, path);
+			// Else, update the timestamp
+			else
+				element->path.timestamp = timestamp;
+		}
+	}
+
+	// If there is no file to compile, print a message
+	if (compileCount == 0)
+		printf("No source file to compile...\n\n");
+	else
+		printf("\nCompilation of %d source files done!\n\n", compileCount);
+
+	// Free the line
+	if (line != NULL)
+		free(line);
 	
+	// Close the PIPE
+	pclose(pipe);
+
+	// Return
+	return 0;
+}
+
+/**
+ * @brief Compile all the .c files in the src folder recursively
+ * For each file found, check if there is a change in the .c file or in the .h files included
+ * If there is a change, compile the file and remember the last modification time in the .files_timestamps file
+ * Else, do nothing
+ * 
+ * @return int		0 if success, -1 otherwise
+ */
+int compile_sources() {
+
+	// Get the last modification time of each file in the .files_timestamps file
+	if (load_files_timestamps(&files_timestamps) != 0) {
+		perror("Error while loading the files timestamps\n");
+		return -1;
+	}
+
+	// For each .c file in the src folder,
+	findCFiles(&files_timestamps);
+
+	// Save the last modification time of each file in the .files_timestamps file
+	if (save_files_timestamps(files_timestamps) != 0) {
+		perror("Error while saving the files timestamps\n");
+		return -1;
+	}
+
+	// Return
+	return 0;
+}
+
+/**
+ * @brief Compile all the .c files in the programs folder (not recursively)
+ * 
+ * @return int		0 if success, -1 otherwise
+ */
+int compile_programs() {
+	
+	// Create the command
+	#ifdef _WIN32
+		char command[256] = "dir /b "PROGRAMS_FOLDER"\\*.c";
+	#else
+		// Ignore "programs/" in the path
+		char command[256] = "ls "PROGRAMS_FOLDER"/*.c | sed 's/"PROGRAMS_FOLDER"\\///'";
+	#endif
+
+	// Open the PIPE
+	FILE* pipe = popen(command, "r");
+	if (pipe == NULL) {
+		perror("Error while opening the PIPE\n");
+		return -1;
+	}
+
+	// Initialize the counter
+	int compileCount = 0;
+
+	// For each line in the PIPE,
+	char* line = NULL;
+	size_t len = 64;
+	int read;
+	while ((read = custom_getline(&line, &len, pipe)) != -1) {
+
+		// Remove the \n at the end of the line & Copy the path of the file
+		line[read - 1] = '\0';
+
+		// Get the path of the file
+		char* filename = malloc(read + sizeof(PROGRAMS_FOLDER) + 1);
+		if (filename == NULL) {
+			perror("Error while allocating memory for a file path\n");
+			return -1;
+		}
+		strcpy(filename, PROGRAMS_FOLDER"/");
+		strcat(filename, line);
+
+		// Check timestamp
+		file_path_t path;
+		path.size = strlen(filename);
+		path.str = filename;
+		path.timestamp = getTimestampRecursive(filename);
+		str_linked_list_element_t* element = str_linked_list_search(files_timestamps, path);
+		if (element == NULL || element->path.timestamp != path.timestamp) {
+
+			// Add "exe" at the end of the line
+			line[read - 2] = '\0';	// Remove the 'c' in ".c"
+			strcat(line, "exe");
+
+			// Manage the counter
+			if (compileCount++ == 0)
+				printf("Compiling programs...\n");
+
+			// Compile the file
+			char command[1024];
+			sprintf(
+				command,
+				CC" \"%s\" -o \""BIN_FOLDER"/%s\" %s %s %s",
+
+				filename,
+				line,
+				obj_files == NULL ? "" : obj_files,
+				additional_flags == NULL ? "" : additional_flags,
+				linking_flags == NULL ? "" : linking_flags
+			);
+			char command_reduced[96];
+			memcpy(command_reduced, command, 95);
+			command_reduced[95] = '\0';
+			printf("- %s...\n", command_reduced);
+			if (system(command) != 0)
+				continue;
+			
+			// If the file is not in the list, add it
+			if (element == NULL)
+				str_linked_list_insert(&files_timestamps, path);
+			else
+				element->path.timestamp = path.timestamp;
+		}
+	}
+
+	// If there is no file to compile, print a message
+	if (compileCount == 0)
+		printf("No program to compile...\n\n");
+	else
+		printf("\nCompilation of %d programs done!\n\n", compileCount);
+
+	// Free the line
+	if (line != NULL)
+		free(line);
+	
+	// Close the PIPE
+	pclose(pipe);
+
 	// Return
 	return 0;
 }
 
 
 /**
- * @brief Program that creates the content
- * of the Makefile for the project
+ * @brief Program that compiles the entire project
+ * 
+ * @param argc Number of arguments
+ * @param argv Arguments, accept only: "clean"
  * 
  * @author Stoupy51 (COLLIGNON Alexandre)
-*/
-int main() {
+ */
+int main(int argc, char **argv) {
 
-	// Create folders
+	// Print the header
+	system("clear");
+
+	// Check if the user wants to clean the project
+	if (argc == 2 && strcmp(argv[1], "clean") == 0)
+		return clean_project();
+	else if (argc == 3) {
+		additional_flags = argv[1];
+		linking_flags = argv[2];
+	}
+
+	// Create folders if they don't exist
 	mkdir(SRC_FOLDER, 0777);
 	mkdir(OBJ_FOLDER, 0777);
 	mkdir(BIN_FOLDER, 0777);
 	mkdir(PROGRAMS_FOLDER, 0777);
 
-	// Create the content variable
-	char *content = (char*)malloc(1024 * 1024 * sizeof(char));
-
-	// Create the content of the Makefile
-	if (createMakefileContent(content) == -1) {
-		perror("Error while creating the content of the Makefile");
-		return 1;
+	// Compile all the .c files in the src folder recursively
+	if (compile_sources() != 0) {
+		perror("Error while compiling the sources\n");
+		return -1;
 	}
 
-	// Create the Makefile
-	int fd = open(MAKEFILE_NAME, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-	if (fd == -1) {
-		perror("Error while creating the Makefile");
-		return 1;
+	// For each .c file in the programs folder,
+	if (compile_programs() != 0) {
+		perror("Error while compiling the programs\n");
+		return -1;
 	}
 
-	// Write the content of the Makefile
-	content[1024*1024-1] = '\0';
-	int written_bytes = write(fd, content, strlen(content) * sizeof(char));
-	if (written_bytes == -1) {
-		perror("Error while writing the Makefile");
-		return 1;
-	}
+	// Save & Free the list of files timestamps
+	save_files_timestamps(files_timestamps);
+	str_linked_list_free(&files_timestamps);
 
-	// Close the Makefile
-	if (close(fd) == -1) {
-		perror("Error while closing the Makefile");
-		return 1;
-	}
-
-	// Free the content
-	free(content);
-
-	// Launch the make command with the Makefile created and the --no-print-directory option
-	system("make -f " MAKEFILE_NAME " --no-print-directory");
+	// Free the list of object files
+	if (obj_files != NULL)
+		free(obj_files);
 
 	// Return
 	return 0;

@@ -3,7 +3,7 @@
 #include <fcntl.h>
 #include <string.h>
 
-#include "../utils.h"
+#include "../universal_utils.h"
 #include "gpu_utils.h"
 
 #define STR_BUFFER_SIZE 1024
@@ -151,15 +151,15 @@ struct opencl_context_t setupOpenCL(cl_device_type type_of_device) {
 	// Get a platform
 	cl_platform_id platform_id;
 	code = clGetPlatformIDs(1, &platform_id, NULL);
-	ERROR_HANDLE_INT(code, "setupOpenCL(): Cannot get a platform with code %d / %s\n", code, getOpenCLErrorString(code));
+	WARNING_HANDLE_INT(code, "setupOpenCL(): Cannot get a platform with code %d / %s\n", code, getOpenCLErrorString(code));
 
 	// Get a device, create a context and a command queue
 	code = clGetDeviceIDs(platform_id, type_of_device, 1, &oc.device_id, NULL);
-	ERROR_HANDLE_INT(code, "setupOpenCL(): Cannot get a device with code %d / %s\n", code, getOpenCLErrorString(code));
+	WARNING_HANDLE_INT(code, "setupOpenCL(): Cannot get a device with code %d / %s\n", code, getOpenCLErrorString(code));
 	oc.context = clCreateContext(NULL, 1, &oc.device_id, NULL, NULL, &code);
-	ERROR_HANDLE_INT(code, "setupOpenCL(): Cannot create a context with code %d / %s\n", code, getOpenCLErrorString(code));
+	WARNING_HANDLE_INT(code, "setupOpenCL(): Cannot create a context with code %d / %s\n", code, getOpenCLErrorString(code));
 	oc.command_queue = clCreateCommandQueueWithProperties(oc.context, oc.device_id, NULL, &code);
-	ERROR_HANDLE_INT(code, "setupOpenCL(): Cannot create a command queue with code %d / %s\n", code, getOpenCLErrorString(code));
+	WARNING_HANDLE_INT(code, "setupOpenCL(): Cannot create a command queue with code %d / %s\n", code, getOpenCLErrorString(code));
 
 	// Return the context
 	return oc;
