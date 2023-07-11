@@ -89,7 +89,7 @@ double powerDoubleFastExp(double value, double power) {
 	}
 
 	// Return the result
-	return result * remainingResult;
+	return result * remainingValue;
 }
 
 /**
@@ -143,7 +143,7 @@ float powerFloatFastExp(float value, float power) {
 	}
 
 	// Return the result
-	return result * remainingResult;
+	return result * remainingValue;
 }
 
 /**
@@ -197,6 +197,6 @@ long double powerLongDoubleFastExp(long double value, long double power) {
 	}
 
 	// Return the result
-	return result * remainingResult;
+	return result * remainingValue;
 }
 

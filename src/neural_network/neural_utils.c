@@ -35,6 +35,9 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 		exit(EXIT_FAILURE);
 	}
 
+	// Memset the layers to 0
+	memset(network.layers, 0, this_malloc_size);
+
 	// Create the layers
 	for (int i = 0; i < nb_layers; i++) {
 		
@@ -89,6 +92,15 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 				network.layers[i].weights[j][k] = generateRandomDouble(-1.0, 1.0);
 			network.layers[i].biases[j] = generateRandomDouble(-1.0, 1.0);
 		}
+
+		///// Allocate memory for the deltas (nb_neurons * sizeof(double))
+		this_malloc_size = network.layers[i].nb_neurons * sizeof(double);
+		network.memory_size += this_malloc_size;
+		network.layers[i].deltas = (double*)malloc(this_malloc_size);
+		if (network.layers[i].deltas == NULL) {
+			ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the deltas.\n");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	// Assign the input and output layers pointers
@@ -113,16 +125,24 @@ void printNeuralNetworkD(NeuralNetworkD network) {
 	for (int i = 0; i < network.nb_layers; i++)
 		{ PRINTER("  - Number of neurons in layer %d:\t%d\n", i, network.layers[i].nb_neurons); }
 	PRINTER("- Learning rate:\t%f\n", network.learning_rate);
-	PRINTER("- Input layer:\t0x%p\n", (void*)network.input_layer);
-	PRINTER("- Output layer:\t0x%p\n", (void*)network.output_layer);
+	PRINTER("- Input layer:\t0x%p (nb_neurons: %d, nb_inputs_per_neuron: %d)\n", (void*)network.input_layer, network.input_layer->nb_neurons, network.input_layer->nb_inputs_per_neuron);
+	PRINTER("- Output layer:\t0x%p (nb_neurons: %d, nb_inputs_per_neuron: %d)\n", (void*)network.output_layer, network.output_layer->nb_neurons, network.output_layer->nb_inputs_per_neuron);
 	if (network.memory_size < 1000)
-		{ PRINTER("- Memory size:\t%zu Bytes\n", network.memory_size); }
+		{ PRINTER("- Memory size:\t\t%zu Bytes\n", network.memory_size); }
 	else if (network.memory_size < 1000000)
-		{ PRINTER("- Memory size:\t%.2Lf KB\n", (long double)network.memory_size / 1000); }
+		{ PRINTER("- Memory size:\t\t%.2Lf KB\n", (long double)network.memory_size / 1000); }
 	else if (network.memory_size < 1000000000)
-		{ PRINTER("- Memory size:\t%.2Lf MB\n", (long double)network.memory_size / 1000000); }
+		{ PRINTER("- Memory size:\t\t%.2Lf MB\n", (long double)network.memory_size / 1000000); }
 	else
-		{ PRINTER("- Memory size:\t%.2Lf GB\n", (long double)network.memory_size / 1000000000); }
+		{ PRINTER("- Memory size:\t\t%.2Lf GB\n", (long double)network.memory_size / 1000000000); }
+	int total_neurons = 0;
+	int total_weights = 0;
+	for (int i = 0; i < network.nb_layers; i++) {
+		total_neurons += network.layers[i].nb_neurons;
+		total_weights += network.layers[i].nb_neurons * network.layers[i].nb_inputs_per_neuron;
+	}
+	PRINTER("- Total neurons:\t%d\n", total_neurons);
+	PRINTER("- Total weights:\t%d\n", total_weights);
 	PRINTER("\n");
 }
 

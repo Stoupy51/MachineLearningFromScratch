@@ -19,6 +19,7 @@ float generateRandomFloat(float min, float max);
  * @param weights				Weights of the neurons ( [nb_neurons][nb_inputs_per_neuron] )
  * @param activations_values	Outputs of the neurons when activated ( [nb_neurons] )
  * @param biases				Biases of the neurons ( [nb_neurons] )
+ * @param deltas				Deltas of the neurons ( [nb_neurons] ) : used for backpropagation
  */
 typedef struct NeuronLayerD {
 	int nb_neurons;				// Arbitrary
@@ -28,6 +29,7 @@ typedef struct NeuronLayerD {
 	double **weights;
 	double *activations_values;
 	double *biases;
+	double *deltas;
 } NeuronLayerD;
 
 
@@ -36,6 +38,8 @@ typedef struct NeuronLayerD {
  * 
  * @param nb_layers				Number of layers in the neural network
  * @param layers				Array of NeuronLayerD representing the layers of the neural network
+ * @param input_layer			Pointer to the input layer (For easier access and readability)
+ * @param output_layer			Pointer to the output layer (For easier access and readability)
  * @param learning_rate			Learning rate of the neural network: how fast the network learns by adjusting the weights
  * 								(0.0 = no learning, 1.0 = full learning)
  * @param activation_function	Activation function of the neural network: how the network will activate the neurons
