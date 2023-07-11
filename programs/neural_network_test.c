@@ -2,6 +2,7 @@
 #include <sys/types.h>
 
 #include "../src/universal_utils.h"
+#include "../src/math/sigmoid.h"
 #include "../src/neural_network/neural_utils.h"
 
 /**
@@ -16,31 +17,6 @@ void exitProgram() {
 	INFO_PRINT("exitProgram(): End of program, press enter to exit.\n");
 	getchar();
 	exit(0);
-}
-
-/**
- * @brief Function that returns the exponential of x
- * 
- * @param x		Value to apply the exponential function to
- * 
- * @return double	Exponential of x
-*/
-double exp(double x) {
-	double result = 1.0;
-	for (int i = 0; i < x; i++)
-		result *= 2.71828182845904523536028747135266249775724709369995;
-	return result;
-}
-
-/**
- * @brief Function that returns the sigmoid of x
- * 
- * @param x		Value to apply the sigmoid function to
- * 
- * @return double	Sigmoid of x
-*/
-double sigmoid(double x) {
-	return 1.0 / (1.0 + exp(-x));
 }
 
 /**

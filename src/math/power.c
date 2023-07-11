@@ -1,5 +1,6 @@
 
 #include "power.h"
+#include "square_root.h"
 
 /**
  * @brief Use the fast method of exponentiation
@@ -56,8 +57,9 @@ double powerDoubleFastExp(double value, double power) {
 	if (power < 0)
 		return 1.0 / powerDoubleFastExp(value, -power);
 	
-	// Store the power as an integer
+	// Store the power as an integer and the initial value
 	int powerInt = (int)power;
+	int initialValue = value;
 
 	// While the power is not 0
 	double result = 1.0;
@@ -72,12 +74,22 @@ double powerDoubleFastExp(double value, double power) {
 		powerInt /= 2;
 	}
 
-	// At this point, the remaining power is between 0 and 1
+	// Calculate the remaining power between 0 and 1 using logarithmic approach
 	double remainingPower = power - (int)power;
+	double remainingValue = 1.0;
 
-	// If the remaining power is 0, return the result
-	if (remainingPower == 0.0)
-		return result;
+	// Use logarithmic approach to calculate the remaining value
+	while (remainingPower > 0.0) {
+		initialValue = squareRootDouble(initialValue);
+		if (remainingPower >= 0.5) {
+			remainingValue *= initialValue;
+			remainingPower -= 0.5;
+		}
+		remainingPower *= 2.0;
+	}
+
+	// Return the result
+	return result * remainingResult;
 }
 
 /**
@@ -89,7 +101,102 @@ double powerDoubleFastExp(double value, double power) {
  *
  * @return float	Result of the power
  */
-float powerFloatFastExp(float value, float power);
+float powerFloatFastExp(float value, float power) {
 
-long double powerLongDoubleFastExp(long double value, long double power);
+	// If the power is 0, return 1
+	if (power == 0.0f)
+		return 1.0f;
+
+	// If the power is negative, return 1 / value ^ -power
+	if (power < 0)
+		return 1.0f / powerFloatFastExp(value, -power);
+
+	// Store the power as an integer and the initial value
+	int powerInt = (int)power;
+	int initialValue = value;
+
+	// While the power is not 0
+	float result = 1.0f;
+	while (powerInt > 0) {
+
+		// If the power is odd, multiply the result by the value
+		if (powerInt & 1)
+			result *= value;
+
+		// In every case, square the value and divide the power by 2
+		value *= value;
+		powerInt /= 2;
+	}
+
+	// Calculate the remaining power between 0 and 1 using logarithmic approach
+	float remainingPower = power - (int)power;
+	float remainingValue = 1.0f;
+
+	// Use logarithmic approach to calculate the remaining value
+	while (remainingPower > 0.0f) {
+		initialValue = squareRootFloat(initialValue);
+		if (remainingPower >= 0.5f) {
+			remainingValue *= initialValue;
+			remainingPower -= 0.5f;
+		}
+		remainingPower *= 2.0f;
+	}
+
+	// Return the result
+	return result * remainingResult;
+}
+
+/**
+ * @brief Use the fast method of exponentiation
+ * to calculate the power of a long double
+ *
+ * @param value		Value to calculate the power of
+ * @param power		Power to calculate
+ *
+ * @return long double	Result of the power
+ */
+long double powerLongDoubleFastExp(long double value, long double power) {
+
+	// If the power is 0, return 1
+	if (power == 0.0l)
+		return 1.0l;
+
+	// If the power is negative, return 1 / value ^ -power
+	if (power < 0)
+		return 1.0l / powerLongDoubleFastExp(value, -power);
+
+	// Store the power as an integer and the initial value
+	int powerInt = (int)power;
+	int initialValue = value;
+
+	// While the power is not 0
+	long double result = 1.0l;
+	while (powerInt > 0) {
+
+		// If the power is odd, multiply the result by the value
+		if (powerInt & 1)
+			result *= value;
+
+		// In every case, square the value and divide the power by 2
+		value *= value;
+		powerInt /= 2;
+	}
+
+	// Calculate the remaining power between 0 and 1 using logarithmic approach
+	long double remainingPower = power - (int)power;
+	long double remainingValue = 1.0l;
+
+	// Use logarithmic approach to calculate the remaining value
+	while (remainingPower > 0.0l) {
+		initialValue = squareRootLongDouble(initialValue);
+		if (remainingPower >= 0.5l) {
+			remainingValue *= initialValue;
+			remainingPower -= 0.5l;
+		}
+		remainingPower *= 2.0l;
+	}
+
+	// Return the result
+	return result * remainingResult;
+}
 
