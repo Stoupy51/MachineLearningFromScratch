@@ -1,6 +1,8 @@
 
 #include "neural_utils.h"
 
+#include <fcntl.h>
+
 // Generate a random double/float between min and max
 double generateRandomDouble(double min, double max) { return (double)rand() / RAND_MAX * (max - min) + min; }
 float generateRandomFloat(float min, float max) { return (float)rand() / RAND_MAX * (max - min) + min; }
@@ -125,9 +127,9 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
  */
 void printNeuralNetworkD(NeuralNetworkD network) {
 	INFO_PRINT("printNeuralNetworkD():\n");
-	PRINTER(CYAN"- Number of layers:\t"MAGENTA"%d\n", network.nb_layers);
+	PRINTER(CYAN"- Number of layers:\t"MAGENTA"%d"CYAN"\n", network.nb_layers);
 	for (int i = 0; i < network.nb_layers; i++)
-		{ PRINTER("  - Number of neurons in layer "MAGENTA"%d"CYAN":\t"MAGENTA"%d\n", i, network.layers[i].nb_neurons); }
+		{ PRINTER("  - Number of neurons in layer "MAGENTA"%d"CYAN":\t"MAGENTA"%d"CYAN"\n", i, network.layers[i].nb_neurons); }
 	PRINTER(CYAN"- Learning rate:\t"MAGENTA"%f\n", network.learning_rate);
 	PRINTER(CYAN"- Input layer:\t"MAGENTA"0x%p"CYAN" (nb_neurons: "MAGENTA"%d"CYAN", nb_inputs_per_neuron: "MAGENTA"%d"CYAN")\n", (void*)network.input_layer, network.input_layer->nb_neurons, network.input_layer->nb_inputs_per_neuron);
 	PRINTER(CYAN"- Output layer:\t"MAGENTA"0x%p"CYAN" (nb_neurons: "MAGENTA"%d"CYAN", nb_inputs_per_neuron: "MAGENTA"%d"CYAN")\n", (void*)network.output_layer, network.output_layer->nb_neurons, network.output_layer->nb_inputs_per_neuron);
@@ -297,78 +299,78 @@ int saveNeuralNetworkD(NeuralNetworkD network, char *filename, int generate_huma
  * 
  * @return NeuralNetworkD		Neural network loaded
  */
-NeuralNetworkD loadNeuralNetworkD(char *filename, double (*activation_function)(double)) {
+NeuralNetworkD* loadNeuralNetworkD(char *filename, double (*activation_function)(double)) {
 
 	// Open the file
 	int fd = open(filename, O_RDONLY);
-	ERROR_HANDLE_INT_RETURN_INT(fd, "loadNeuralNetworkD(): Could not open the file '%s'.\n", filename);
+	ERROR_HANDLE_INT_RETURN_NULL(fd, "loadNeuralNetworkD(): Could not open the file '%s'\n", filename);
 
 	// Create the neural network structure
-	NeuralNetworkD network;
-	memset(&network, 0, sizeof(NeuralNetworkD));
+	NeuralNetworkD *network = (NeuralNetworkD*)malloc(sizeof(NeuralNetworkD));
+	memset(network, 0, sizeof(NeuralNetworkD));
 
 	// Read the number of layers, the learning rate, and the memory size
-	ERROR_HANDLE_INT_RETURN_INT(read(fd, &(network.nb_layers), sizeof(int)), "loadNeuralNetworkD(): Could not read the number of layers in the file '%s'.\n", filename);
-	ERROR_HANDLE_INT_RETURN_INT(read(fd, &(network.learning_rate), sizeof(double)), "loadNeuralNetworkD(): Could not read the learning rate in the file '%s'.\n", filename);
-	ERROR_HANDLE_INT_RETURN_INT(read(fd, &(network.memory_size), sizeof(size_t)), "loadNeuralNetworkD(): Could not read the memory size in the file '%s'.\n", filename);
+	ERROR_HANDLE_INT_RETURN_NULL(read(fd, &(network->nb_layers), sizeof(int)), "loadNeuralNetworkD(): Could not read the number of layers in the file '%s'.\n", filename);
+	ERROR_HANDLE_INT_RETURN_NULL(read(fd, &(network->learning_rate), sizeof(double)), "loadNeuralNetworkD(): Could not read the learning rate in the file '%s'.\n", filename);
+	ERROR_HANDLE_INT_RETURN_NULL(read(fd, &(network->memory_size), sizeof(size_t)), "loadNeuralNetworkD(): Could not read the memory size in the file '%s'.\n", filename);
 
 	// Allocate memory for the layers
-	size_t this_malloc_size = network.nb_layers * sizeof(NeuronLayerD);
-	network.layers = (NeuronLayerD*)malloc(this_malloc_size);
-	ERROR_HANDLE_PTR_RETURN_INT(network.layers, "loadNeuralNetworkD(): Could not allocate memory for the layers.\n");
+	size_t this_malloc_size = network->nb_layers * sizeof(NeuronLayerD);
+	network->layers = (NeuronLayerD*)malloc(this_malloc_size);
+	ERROR_HANDLE_PTR_RETURN_NULL(network->layers, "loadNeuralNetworkD(): Could not allocate memory for the layers.\n");
 
 	// Memset the layers to 0
-	memset(network.layers, 0, this_malloc_size);
+	memset(network->layers, 0, this_malloc_size);
 
 	// For each layer of the neural network, read the number of neurons
-	for (int i = 0; i < network.nb_layers; i++) {
-		ERROR_HANDLE_INT_RETURN_INT(read(fd, &(network.layers[i].nb_neurons), sizeof(int)), "loadNeuralNetworkD(): Could not read the number of neurons in the file '%s'.\n", filename);
+	for (int i = 0; i < network->nb_layers; i++) {
+		ERROR_HANDLE_INT_RETURN_NULL(read(fd, &(network->layers[i].nb_neurons), sizeof(int)), "loadNeuralNetworkD(): Could not read the number of neurons in the file '%s'.\n", filename);
 	}
 
 	// For each layer of the neural network,
-	for (int i = 0; i < network.nb_layers; i++) {
+	for (int i = 0; i < network->nb_layers; i++) {
 
 		// Calculate the number of inputs per neuron (depends on the previous layer)
-		network.layers[i].nb_inputs_per_neuron = (i == 0) ? 0 : network.layers[i - 1].nb_neurons;
+		network->layers[i].nb_inputs_per_neuron = (i == 0) ? 0 : network->layers[i - 1].nb_neurons;
 
 		// Read the weights_flat
-		this_malloc_size = network.layers[i].nb_neurons * network.layers[i].nb_inputs_per_neuron * sizeof(double);
-		network.layers[i].weights_flat = (double*)malloc(this_malloc_size);
-		ERROR_HANDLE_PTR_RETURN_INT(network.layers[i].weights_flat, "loadNeuralNetworkD(): Could not allocate memory for the weights_flat.\n");
-		ERROR_HANDLE_INT_RETURN_INT(read(fd, network.layers[i].weights_flat, this_malloc_size), "loadNeuralNetworkD(): Could not read the weights_flat in the file '%s'.\n", filename);
+		this_malloc_size = network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double);
+		network->layers[i].weights_flat = (double*)malloc(this_malloc_size);
+		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].weights_flat, "loadNeuralNetworkD(): Could not allocate memory for the weights_flat.\n");
+		ERROR_HANDLE_INT_RETURN_NULL(read(fd, network->layers[i].weights_flat, this_malloc_size), "loadNeuralNetworkD(): Could not read the weights_flat in the file '%s'.\n", filename);
 
 		// Allocate memory for the weights (2D array)
-		this_malloc_size = network.layers[i].nb_neurons * sizeof(double*);
-		network.layers[i].weights = (double**)malloc(this_malloc_size);
-		ERROR_HANDLE_PTR_RETURN_INT(network.layers[i].weights, "loadNeuralNetworkD(): Could not allocate memory for the weights.\n");
+		this_malloc_size = network->layers[i].nb_neurons * sizeof(double*);
+		network->layers[i].weights = (double**)malloc(this_malloc_size);
+		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].weights, "loadNeuralNetworkD(): Could not allocate memory for the weights.\n");
 
 		// Assign the weights_flat addresses to the weights
-		for (int j = 0; j < network.layers[i].nb_neurons; j++)
-			network.layers[i].weights[j] = &(network.layers[i].weights_flat[j * network.layers[i].nb_inputs_per_neuron]);
+		for (int j = 0; j < network->layers[i].nb_neurons; j++)
+			network->layers[i].weights[j] = &(network->layers[i].weights_flat[j * network->layers[i].nb_inputs_per_neuron]);
 		
 		// Read the activations_values, and the biases
-		this_malloc_size = network.layers[i].nb_neurons * sizeof(double);
-		network.layers[i].activations_values = (double*)malloc(this_malloc_size);
-		ERROR_HANDLE_PTR_RETURN_INT(network.layers[i].activations_values, "loadNeuralNetworkD(): Could not allocate memory for the activations_values.\n");
-		ERROR_HANDLE_INT_RETURN_INT(read(fd, network.layers[i].activations_values, this_malloc_size), "loadNeuralNetworkD(): Could not read the activations_values in the file '%s'.\n", filename);
-		network.layers[i].biases = (double*)malloc(this_malloc_size);
-		ERROR_HANDLE_PTR_RETURN_INT(network.layers[i].biases, "loadNeuralNetworkD(): Could not allocate memory for the biases.\n");
-		ERROR_HANDLE_INT_RETURN_INT(read(fd, network.layers[i].biases, this_malloc_size), "loadNeuralNetworkD(): Could not read the biases in the file '%s'.\n", filename);
+		this_malloc_size = network->layers[i].nb_neurons * sizeof(double);
+		network->layers[i].activations_values = (double*)malloc(this_malloc_size);
+		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].activations_values, "loadNeuralNetworkD(): Could not allocate memory for the activations_values.\n");
+		ERROR_HANDLE_INT_RETURN_NULL(read(fd, network->layers[i].activations_values, this_malloc_size), "loadNeuralNetworkD(): Could not read the activations_values in the file '%s'.\n", filename);
+		network->layers[i].biases = (double*)malloc(this_malloc_size);
+		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].biases, "loadNeuralNetworkD(): Could not allocate memory for the biases.\n");
+		ERROR_HANDLE_INT_RETURN_NULL(read(fd, network->layers[i].biases, this_malloc_size), "loadNeuralNetworkD(): Could not read the biases in the file '%s'.\n", filename);
 
 		// Allocate memory for the deltas
-		network.layers[i].deltas = (double*)malloc(this_malloc_size);
-		ERROR_HANDLE_PTR_RETURN_INT(network.layers[i].deltas, "loadNeuralNetworkD(): Could not allocate memory for the deltas.\n");
+		network->layers[i].deltas = (double*)malloc(this_malloc_size);
+		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].deltas, "loadNeuralNetworkD(): Could not allocate memory for the deltas.\n");
 	}
 
 	// Assign the input and output layers pointers
-	network.input_layer = &(network.layers[0]);
-	network.output_layer = &(network.layers[network.nb_layers - 1]);
+	network->input_layer = &(network->layers[0]);
+	network->output_layer = &(network->layers[network->nb_layers - 1]);
 
 	// Assign the activation function
-	network.activation_function = activation_function;
+	network->activation_function = activation_function;
 
 	// Close the file
-	ERROR_HANDLE_INT_RETURN_INT(close(fd), "loadNeuralNetworkD(): Could not close the file '%s'.\n", filename);
+	ERROR_HANDLE_INT_RETURN_NULL(close(fd), "loadNeuralNetworkD(): Could not close the file '%s'.\n", filename);
 
 	// Return the neural network
 	return network;

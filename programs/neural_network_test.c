@@ -34,16 +34,19 @@ int main() {
 	atexit(exitProgram);
 
 	// Try to load a neural network
-	NeuralNetworkD network = loadNeuralNetworkD(NEURAL_NETWORK_PATH, sigmoid);
-	if (network == -1) {
+	NeuralNetworkD *loaded_network = loadNeuralNetworkD(NEURAL_NETWORK_PATH, sigmoid);
+	NeuralNetworkD network;
+	if (loaded_network == NULL) {
 		INFO_PRINT("main(): No neural network found, creating a new one.\n");
 
 		// Create a neural network using double as type
 		int nb_neurons_per_layer[] = {1024, 4096, 4096, 4096, 2048};
 		int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
-		NeuralNetworkD network = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 0.1, sigmoid);
+		network = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 0.1, sigmoid);
 	} else {
 		INFO_PRINT("main(): Neural network found, using it.\n");
+		network = *loaded_network;
+		free(loaded_network);
 	}
 
 	// Print the neural network information
@@ -64,7 +67,6 @@ int main() {
 
 	// Run the neural network with the input array and get the output array
 	NeuralNetworkDfeedForward(&network, input);
-	double *output = network.output_layer->activations_values;
 
 	// Free the input and excepted output arrays
 	free(input);

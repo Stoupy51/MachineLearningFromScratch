@@ -36,6 +36,20 @@ unsigned char* image_load(const char* file_name, int* width, int* height, int* c
 }
 
 /**
+ * @brief Function used by stbi_write_png_to_func() & stbi_write_jpg_to_func()
+ * to write data to a file.
+ * 
+ * @param context		Pointer to the file
+ * @param data			Pointer to the data to write
+ * @param size			Size of the data to write
+ * 
+ * @return void
+ */
+void img_write_func(void* context, void* data, int size) {
+	fwrite(data, 1, size, (FILE*)context);
+}
+
+/**
  * @brief Save an image to a PNG file.
  * 
  * @param file_name		Name of the file
@@ -53,8 +67,8 @@ int image_save_png(const char* file_name, unsigned char* image, int width, int h
 	ERROR_HANDLE_PTR_RETURN_INT(file, "image_save_png(): Error opening the file '%s'.\n", file_name);
 
 	// Save the image
-	int code = stbi_write_png_to_func(stbi_write_func, file, width, height, channels, image, 0);
-	ERROR_HANDLE_PTR_RETURN_INT(code, "image_save_png(): Error saving the image.\n");
+	int code = stbi_write_png_to_func(img_write_func, file, width, height, channels, image, 0);
+	ERROR_HANDLE_INT_RETURN_INT(code, "image_save_png(): Error saving the image.\n");
 
 	// Close the file
 	fclose(file);
@@ -82,8 +96,8 @@ int image_save_jpg(const char* file_name, unsigned char* image, int width, int h
 	ERROR_HANDLE_PTR_RETURN_INT(file, "image_save_jpg(): Error opening the file '%s'.\n", file_name);
 
 	// Save the image
-	int code = stbi_write_jpg_to_func(stbi_write_func, file, width, height, channels, image, quality);
-	ERROR_HANDLE_PTR_RETURN_INT(code, "image_save_jpg(): Error saving the image.\n");
+	int code = stbi_write_jpg_to_func(img_write_func, file, width, height, channels, image, quality);
+	ERROR_HANDLE_INT_RETURN_INT(code, "image_save_jpg(): Error saving the image.\n");
 
 	// Close the file
 	fclose(file);
