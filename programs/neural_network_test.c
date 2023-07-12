@@ -37,7 +37,7 @@ int main() {
 	NeuralNetworkD *loaded_network = loadNeuralNetworkD(NEURAL_NETWORK_PATH, sigmoid);
 	NeuralNetworkD network;
 	if (loaded_network == NULL) {
-		INFO_PRINT("main(): No neural network found, creating a new one.\n");
+		WARNING_PRINT("main(): No neural network found, creating a new one.\n");
 
 		// Create a neural network using double as type
 		int nb_neurons_per_layer[] = {1024, 4096, 4096, 4096, 2048};

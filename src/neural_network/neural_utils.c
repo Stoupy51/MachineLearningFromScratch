@@ -40,16 +40,28 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 	// Memset the layers to 0
 	memset(network.layers, 0, this_malloc_size);
 
-	// Create the input layer
-	network.layers[0].nb_neurons = nb_neurons_per_layer[0];
-	network.layers[0].nb_inputs_per_neuron = 0;	// No inputs for the input layer, seems logical ;-;
-
 	// Create the next layers
-	for (int i = 1; i < nb_layers; i++) {
+	for (int i = 0; i < nb_layers; i++) {
 		
 		// Create the layer
 		network.layers[i].nb_neurons = nb_neurons_per_layer[i];
-		network.layers[i].nb_inputs_per_neuron = nb_neurons_per_layer[i - 1];	// Depends on the previous layer
+		network.layers[i].nb_inputs_per_neuron = (i == 0) ? 0 : nb_neurons_per_layer[i - 1];	// Depends on the previous layer
+
+		///// Allocate memory for the activations_values (nb_neurons * sizeof(double))
+		this_malloc_size = network.layers[i].nb_neurons * sizeof(double);
+		network.memory_size += this_malloc_size;
+		network.layers[i].activations_values = (double*)malloc(this_malloc_size);
+		if (network.layers[i].activations_values == NULL) {
+			ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the activations_values.\n");
+			exit(EXIT_FAILURE);
+		}
+
+		// Initialize the activations_values to random values
+		for (int j = 0; j < network.layers[i].nb_neurons; j++)
+			network.layers[i].activations_values[j] = generateRandomDouble(-1.0, 1.0);
+		
+		// Stop here if it's the first layer (no weights, biases, etc.)
+		if (i == 0) continue;
 		
 		///// Allocate memory for the weights (nb_neurons * nb_inputs_per_neuron * sizeof(double))
 		// Allocate memory for the weights_flat
@@ -73,15 +85,6 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 		// Assign the weights_flat addresses to the weights
 		for (int j = 0; j < network.layers[i].nb_neurons; j++)
 			network.layers[i].weights[j] = &(network.layers[i].weights_flat[j * network.layers[i].nb_inputs_per_neuron]);
-
-		///// Allocate memory for the activations_values (nb_neurons * sizeof(double))
-		this_malloc_size = network.layers[i].nb_neurons * sizeof(double);
-		network.memory_size += this_malloc_size;
-		network.layers[i].activations_values = (double*)malloc(this_malloc_size);
-		if (network.layers[i].activations_values == NULL) {
-			ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the activations_values.\n");
-			exit(EXIT_FAILURE);
-		}
 
 		///// Allocate memory for the biases (nb_neurons * sizeof(double))
 		this_malloc_size = network.layers[i].nb_neurons * sizeof(double);
@@ -127,28 +130,28 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
  */
 void printNeuralNetworkD(NeuralNetworkD network) {
 	INFO_PRINT("printNeuralNetworkD():\n");
-	PRINTER(CYAN"- Number of layers:\t"MAGENTA"%d"CYAN"\n", network.nb_layers);
+	PRINTER(CYAN"- Number of layers:\t"YELLOW"%d"CYAN"\n", network.nb_layers);
 	for (int i = 0; i < network.nb_layers; i++)
-		{ PRINTER("  - Number of neurons in layer "MAGENTA"%d"CYAN":\t"MAGENTA"%d"CYAN"\n", i, network.layers[i].nb_neurons); }
-	PRINTER(CYAN"- Learning rate:\t"MAGENTA"%f\n", network.learning_rate);
-	PRINTER(CYAN"- Input layer:\t"MAGENTA"0x%p"CYAN" (nb_neurons: "MAGENTA"%d"CYAN", nb_inputs_per_neuron: "MAGENTA"%d"CYAN")\n", (void*)network.input_layer, network.input_layer->nb_neurons, network.input_layer->nb_inputs_per_neuron);
-	PRINTER(CYAN"- Output layer:\t"MAGENTA"0x%p"CYAN" (nb_neurons: "MAGENTA"%d"CYAN", nb_inputs_per_neuron: "MAGENTA"%d"CYAN")\n", (void*)network.output_layer, network.output_layer->nb_neurons, network.output_layer->nb_inputs_per_neuron);
+		{ PRINTER("  - Number of neurons in layer "YELLOW"%d"CYAN":\t"YELLOW"%d"CYAN"\n", i, network.layers[i].nb_neurons); }
+	PRINTER(CYAN"- Learning rate:\t"YELLOW"%f\n", network.learning_rate);
+	PRINTER(CYAN"- Input layer:\t\t"YELLOW"0x%p"CYAN" (nb_neurons: "YELLOW"%d"CYAN", nb_inputs_per_neuron: "YELLOW"%d"CYAN")\n", (void*)network.input_layer, network.input_layer->nb_neurons, network.input_layer->nb_inputs_per_neuron);
+	PRINTER(CYAN"- Output layer:\t\t"YELLOW"0x%p"CYAN" (nb_neurons: "YELLOW"%d"CYAN", nb_inputs_per_neuron: "YELLOW"%d"CYAN")\n", (void*)network.output_layer, network.output_layer->nb_neurons, network.output_layer->nb_inputs_per_neuron);
 	if (network.memory_size < 1000)
-		{ PRINTER(CYAN"- Memory size:\t\t"MAGENTA"%zu"CYAN" Bytes\n", network.memory_size); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%zu"CYAN" Bytes\n", network.memory_size); }
 	else if (network.memory_size < 1000000)
-		{ PRINTER(CYAN"- Memory size:\t\t"MAGENTA"%.2Lf"CYAN" KB\n", (long double)network.memory_size / 1000); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" KB\n", (long double)network.memory_size / 1000); }
 	else if (network.memory_size < 1000000000)
-		{ PRINTER(CYAN"- Memory size:\t\t"MAGENTA"%.2Lf"CYAN" MB\n", (long double)network.memory_size / 1000000); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" MB\n", (long double)network.memory_size / 1000000); }
 	else
-		{ PRINTER(CYAN"- Memory size:\t\t"MAGENTA"%.2Lf"CYAN" GB\n", (long double)network.memory_size / 1000000000); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" GB\n", (long double)network.memory_size / 1000000000); }
 	int total_neurons = 0;
 	int total_weights = 0;
 	for (int i = 0; i < network.nb_layers; i++) {
 		total_neurons += network.layers[i].nb_neurons;
 		total_weights += network.layers[i].nb_neurons * network.layers[i].nb_inputs_per_neuron;
 	}
-	PRINTER(CYAN"- Total neurons:\t"MAGENTA"%d\n", total_neurons);
-	PRINTER(CYAN"- Total weights:\t"MAGENTA"%d\n", total_weights);
+	PRINTER(CYAN"- Total neurons:\t"YELLOW"%d\n", total_neurons);
+	PRINTER(CYAN"- Total weights:\t"YELLOW"%d\n", total_weights);
 	PRINTER(RESET"\n");
 }
 
