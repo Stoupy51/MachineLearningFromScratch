@@ -32,7 +32,7 @@ int main() {
 	atexit(exitProgram);
 
 	// Create a neural network using double as type
-	int nb_neurons_per_layer[] = {124, 496, 496, 496, 248};
+	int nb_neurons_per_layer[] = {1024, 4096, 4096, 4096, 2048};
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 	NeuralNetworkD network = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 0.1, sigmoid);
 

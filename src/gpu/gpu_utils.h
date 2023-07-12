@@ -22,8 +22,6 @@ cl_device_id* getAllDevicesOfType(cl_device_type type_of_device, cl_uint* device
 void printPlatformInfo(cl_platform_id platform_id);
 void printDeviceInfo(cl_device_id device_id);
 char* readKernelProgram(char* path);
-
-// Generic functions
 int createKernelFromSource(char* kernel_source, char* kernel_name, cl_program* program, cl_kernel* kernel, struct opencl_context_t* oc);
 
 
