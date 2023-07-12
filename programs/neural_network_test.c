@@ -6,6 +6,8 @@
 #include "../src/neural_network/neural_utils.h"
 #include "../src/neural_network/training.h"
 
+#define NEURAL_NETWORK_PATH "bin/neural_network_test.bin"
+
 /**
  * @brief Function run at the end of the program
  * [registered with atexit()] in the main() function.
@@ -31,10 +33,18 @@ int main() {
 	mainInit("main(): Launching 'neural_network_test' program.\n");
 	atexit(exitProgram);
 
-	// Create a neural network using double as type
-	int nb_neurons_per_layer[] = {1024, 4096, 4096, 4096, 2048};
-	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
-	NeuralNetworkD network = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 0.1, sigmoid);
+	// Try to load a neural network
+	NeuralNetworkD network = loadNeuralNetworkD(NEURAL_NETWORK_PATH, sigmoid);
+	if (network == -1) {
+		INFO_PRINT("main(): No neural network found, creating a new one.\n");
+
+		// Create a neural network using double as type
+		int nb_neurons_per_layer[] = {1024, 4096, 4096, 4096, 2048};
+		int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
+		NeuralNetworkD network = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 0.1, sigmoid);
+	} else {
+		INFO_PRINT("main(): Neural network found, using it.\n");
+	}
 
 	// Print the neural network information
 	printNeuralNetworkD(network);
@@ -55,6 +65,9 @@ int main() {
 	// Free the input and excepted output arrays
 	free(input);
 	free(excepted_output);
+
+	// Save the neural network
+	saveNeuralNetworkD(network, NEURAL_NETWORK_PATH);
 
 	// Free the neural network
 	freeNeuralNetworkD(&network);

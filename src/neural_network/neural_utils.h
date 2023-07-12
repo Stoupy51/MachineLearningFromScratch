@@ -65,7 +65,7 @@ typedef struct NeuronLayerD {
 	double **weights;
 	double *activations_values;
 	double *biases;
-	double *deltas;
+	double *deltas;				// Used for backpropagation
 } NeuronLayerD;
 
 
@@ -94,6 +94,8 @@ typedef struct NeuralNetworkD {
 NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], double learning_rate, double (*activation_function)(double));
 void printNeuralNetworkD(NeuralNetworkD network);
 void freeNeuralNetworkD(NeuralNetworkD *network);
+int saveNeuralNetworkD(NeuralNetworkD network, char *filename);
+NeuralNetworkD loadNeuralNetworkD(char *filename, double (*activation_function)(double));
 
 
 // Generate a random double/float between min and max
