@@ -33,7 +33,7 @@
  * @return void
  */
 void NeuralNetworkDbackpropagation(NeuralNetworkD *network, double *excepted_output) {
-	
+
 	// For each neuron of the output layer,
 	for (int neuron = 0; neuron < network->output_layer->nb_neurons; neuron++) {
 

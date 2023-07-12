@@ -51,7 +51,6 @@ int main() {
 
 	// Print the neural network information
 	printNeuralNetworkD(network);
-	return 1;
 
 	// Create an input array and an excepted output array
 	double *input = (double*)malloc(network.input_layer->nb_neurons * sizeof(double));

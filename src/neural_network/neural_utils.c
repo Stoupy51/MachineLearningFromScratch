@@ -39,7 +39,6 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(double);	// deltas
 	}
 	network.memory_size = required_memory_size;
-	INFO_PRINT("createNeuralNetworkD(): Required memory size: %lld Bytes\n", required_memory_size);
 	
 	// Allocate memory for the layers
 	long long this_malloc_size = nb_layers * sizeof(NeuronLayerD);
