@@ -47,11 +47,9 @@ void NeuralNetworkDbackpropagation(NeuralNetworkD *network, double *excepted_out
 		// Calculate the delta of the neuron (error * derivative)
 		network->output_layer->deltas[neuron] = error * derivative;
 	}
-	DEBUG_PRINT("NeuralNetworkDbackpropagation(): Output layer deltas calculated.\n");
 
 	// For each layer of the neural network (except the output layer and the input layer) (order last to first),
 	for (int i = network->nb_layers - 2; i > 0; i--) {
-		DEBUG_PRINT("NeuralNetworkDbackpropagation(): Layer %d deltas calculation in progress...\n", i);
 
 		// For each neuron of the current layer,
 		for (int j = 0; j < network->layers[i].nb_neurons; j++) {
@@ -78,7 +76,6 @@ void NeuralNetworkDbackpropagation(NeuralNetworkD *network, double *excepted_out
 			// Calculate the delta of the neuron (error * derivative)
 			network->layers[i].deltas[j] = error * derivative;
 		}
-		DEBUG_PRINT("NeuralNetworkDbackpropagation(): Layer %d deltas calculated.\n", i);
 	}
 }
 
