@@ -1,7 +1,4 @@
 
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "vectors.h"
 #include "../universal_utils.h"
 
