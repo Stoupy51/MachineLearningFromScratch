@@ -125,29 +125,29 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
  */
 void printNeuralNetworkD(NeuralNetworkD network) {
 	INFO_PRINT("printNeuralNetworkD():\n");
-	PRINTER("- Number of layers:\t%d\n", network.nb_layers);
+	PRINTER(CYAN"- Number of layers:\t"MAGENTA"%d\n", network.nb_layers);
 	for (int i = 0; i < network.nb_layers; i++)
-		{ PRINTER("  - Number of neurons in layer %d:\t%d\n", i, network.layers[i].nb_neurons); }
-	PRINTER("- Learning rate:\t%f\n", network.learning_rate);
-	PRINTER("- Input layer:\t0x%p (nb_neurons: %d, nb_inputs_per_neuron: %d)\n", (void*)network.input_layer, network.input_layer->nb_neurons, network.input_layer->nb_inputs_per_neuron);
-	PRINTER("- Output layer:\t0x%p (nb_neurons: %d, nb_inputs_per_neuron: %d)\n", (void*)network.output_layer, network.output_layer->nb_neurons, network.output_layer->nb_inputs_per_neuron);
+		{ PRINTER("  - Number of neurons in layer "MAGENTA"%d"CYAN":\t"MAGENTA"%d\n", i, network.layers[i].nb_neurons); }
+	PRINTER(CYAN"- Learning rate:\t"MAGENTA"%f\n", network.learning_rate);
+	PRINTER(CYAN"- Input layer:\t"MAGENTA"0x%p"CYAN" (nb_neurons: "MAGENTA"%d"CYAN", nb_inputs_per_neuron: "MAGENTA"%d"CYAN")\n", (void*)network.input_layer, network.input_layer->nb_neurons, network.input_layer->nb_inputs_per_neuron);
+	PRINTER(CYAN"- Output layer:\t"MAGENTA"0x%p"CYAN" (nb_neurons: "MAGENTA"%d"CYAN", nb_inputs_per_neuron: "MAGENTA"%d"CYAN")\n", (void*)network.output_layer, network.output_layer->nb_neurons, network.output_layer->nb_inputs_per_neuron);
 	if (network.memory_size < 1000)
-		{ PRINTER("- Memory size:\t\t%zu Bytes\n", network.memory_size); }
+		{ PRINTER(CYAN"- Memory size:\t\t"MAGENTA"%zu"CYAN" Bytes\n", network.memory_size); }
 	else if (network.memory_size < 1000000)
-		{ PRINTER("- Memory size:\t\t%.2Lf KB\n", (long double)network.memory_size / 1000); }
+		{ PRINTER(CYAN"- Memory size:\t\t"MAGENTA"%.2Lf"CYAN" KB\n", (long double)network.memory_size / 1000); }
 	else if (network.memory_size < 1000000000)
-		{ PRINTER("- Memory size:\t\t%.2Lf MB\n", (long double)network.memory_size / 1000000); }
+		{ PRINTER(CYAN"- Memory size:\t\t"MAGENTA"%.2Lf"CYAN" MB\n", (long double)network.memory_size / 1000000); }
 	else
-		{ PRINTER("- Memory size:\t\t%.2Lf GB\n", (long double)network.memory_size / 1000000000); }
+		{ PRINTER(CYAN"- Memory size:\t\t"MAGENTA"%.2Lf"CYAN" GB\n", (long double)network.memory_size / 1000000000); }
 	int total_neurons = 0;
 	int total_weights = 0;
 	for (int i = 0; i < network.nb_layers; i++) {
 		total_neurons += network.layers[i].nb_neurons;
 		total_weights += network.layers[i].nb_neurons * network.layers[i].nb_inputs_per_neuron;
 	}
-	PRINTER("- Total neurons:\t%d\n", total_neurons);
-	PRINTER("- Total weights:\t%d\n", total_weights);
-	PRINTER("\n");
+	PRINTER(CYAN"- Total neurons:\t"MAGENTA"%d\n", total_neurons);
+	PRINTER(CYAN"- Total weights:\t"MAGENTA"%d\n", total_weights);
+	PRINTER(RESET"\n");
 }
 
 /**
