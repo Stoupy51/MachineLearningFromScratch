@@ -62,15 +62,16 @@ int main() {
 	// Train the neural network
 	NeuralNetworkDtrain(&network, input, excepted_output);
 
+	// Run the neural network with the input array and get the output array
+	NeuralNetworkDfeedForward(&network, input);
+	double *output = network.output_layer->activations_values;
+
 	// Free the input and excepted output arrays
 	free(input);
 	free(excepted_output);
 
-	// Save the neural network
-	saveNeuralNetworkD(network, NEURAL_NETWORK_PATH);
-
-	// Free the neural network
-	freeNeuralNetworkD(&network);
+	// Save the neural network to a file and another human readable file
+	saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 1);
 
 	// Final print and return
 	INFO_PRINT("main(): End of program.\n");

@@ -94,7 +94,7 @@ typedef struct NeuralNetworkD {
 NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], double learning_rate, double (*activation_function)(double));
 void printNeuralNetworkD(NeuralNetworkD network);
 void freeNeuralNetworkD(NeuralNetworkD *network);
-int saveNeuralNetworkD(NeuralNetworkD network, char *filename);
+int saveNeuralNetworkD(NeuralNetworkD network, char *filename, int generate_human_readable_file);
 NeuralNetworkD loadNeuralNetworkD(char *filename, double (*activation_function)(double));
 void NeuralNetworkDfeedForward(NeuralNetworkD *network, double *input);
 

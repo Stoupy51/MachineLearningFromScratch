@@ -179,12 +179,13 @@ void freeNeuralNetworkD(NeuralNetworkD *network) {
  * @brief Function that saves a neural network using double as type in a file
  * only by using binary data so the file is not human readable.
  * 
- * @param network	Neural network to save
- * @param filename	Filename to save the neural network to
+ * @param network							Neural network to save
+ * @param filename							Filename to save the neural network to
+ * @param generate_human_readable_file		1 if you also want to generate a human readable file, 0 otherwise
  * 
  * @return int		0 if the neural network was saved successfully, 1 otherwise
  */
-int saveNeuralNetworkD(NeuralNetworkD network, char *filename) {
+int saveNeuralNetworkD(NeuralNetworkD network, char *filename, int generate_human_readable_file) {
 	
 	// Open the file
 	int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -213,6 +214,74 @@ int saveNeuralNetworkD(NeuralNetworkD network, char *filename) {
 
 	// Close the file
 	ERROR_HANDLE_INT_RETURN_INT(close(fd), "saveNeuralNetworkD(): Could not close the file '%s'.\n", filename);
+
+	// If the user wants to generate a human readable file,
+	if (generate_human_readable_file == 1) {
+
+		// Get new path
+		char *new_path = (char*)malloc(strlen(filename) + sizeof("_human_readable.txt"));
+		ERROR_HANDLE_PTR_RETURN_INT(new_path, "saveNeuralNetworkD(): Could not allocate memory for the new path.\n");
+		strcpy(new_path, filename);
+		strcat(new_path, "_human_readable.txt");
+
+		// Open the file
+		FILE *file = fopen("neural_network_readable.txt", "w");
+		ERROR_HANDLE_PTR_RETURN_INT(file, "saveNeuralNetworkD(): Could not open/create the file '%s'.\n", new_path);
+
+		// Write the number of layers, the learning rate, and the memory size
+		fprintf(file, "\n");
+		fprintf(file, "Number of layers:\t%d\n", network.nb_layers);
+		fprintf(file, "Learning rate:\t\t%f\n", network.learning_rate);
+		fprintf(file, "Memory size:\t\t%zu Bytes\n\n", network.memory_size);
+
+		// For each layer of the neural network, write the number of neurons
+		for (int i = 0; i < network.nb_layers; i++) {
+			fprintf(file, "Number of neurons in layer %d:\t%d\n", i, network.layers[i].nb_neurons);
+		}
+
+		// For each layer of the neural network, write the number of inputs per neuron
+		fprintf(file, "\n");
+		for (int i = 0; i < network.nb_layers; i++) {
+			fprintf(file, "Number of inputs per neuron in layer %d:\t%d\n", i, network.layers[i].nb_inputs_per_neuron);
+		}
+
+		// For each layer of the neural network,
+		fprintf(file, "\n");
+		for (int i = 0; i < network.nb_layers; i++) {
+
+			// Write the weights_flat
+			fprintf(file, "Weights_flat in layer %d:\n", i);
+			for (int j = 0; j < network.layers[i].nb_neurons; j++) {
+				for (int k = 0; k < network.layers[i].nb_inputs_per_neuron; k++) {
+					fprintf(file, "%.1f\t", network.layers[i].weights[j][k]);
+				}
+				fprintf(file, "\n");
+			}
+
+			// Write the activations_values, and the biases
+			fprintf(file, "\n");
+			fprintf(file, "Activations_values in layer %d:\n", i);
+			for (int j = 0; j < network.layers[i].nb_neurons; j++) {
+				fprintf(file, "%.1f\t", network.layers[i].activations_values[j]);
+			}
+			fprintf(file, "\n\n");
+			fprintf(file, "Biases in layer %d:\n", i);
+			for (int j = 0; j < network.layers[i].nb_neurons; j++) {
+				fprintf(file, "%.1f\t", network.layers[i].biases[j]);
+			}
+			fprintf(file, "\n\n");
+
+			// Write the deltas
+			fprintf(file, "Deltas in layer %d:\n", i);
+			for (int j = 0; j < network.layers[i].nb_neurons; j++) {
+				fprintf(file, "%.1f\t", network.layers[i].deltas[j]);
+			}
+			fprintf(file, "\n\n\n");
+		}
+
+		// Close the file
+		fclose(file);
+	}
 
 	// Return that everything went well
 	return 0;
