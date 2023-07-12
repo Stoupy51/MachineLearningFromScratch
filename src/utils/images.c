@@ -4,8 +4,8 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "../libs/stb_image.h"
-#include "../libs/stb_image_write.h"
+#include "../../libs/stb_image.h"
+#include "../../libs/stb_image_write.h"
 
 /**
  * @brief Load an image from a file, fills the width, height and channels variables
