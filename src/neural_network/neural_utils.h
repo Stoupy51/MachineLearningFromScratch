@@ -88,7 +88,7 @@ typedef struct NeuralNetworkD {
 	double learning_rate;					// Arbitrary
 	double (*activation_function)(double);	// Arbitrary
 
-	size_t memory_size;						// Memory size of the neural network (in bytes)
+	long long memory_size;					// Memory size of the neural network (in bytes)
 } NeuralNetworkD;
 
 NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], double learning_rate, double (*activation_function)(double));

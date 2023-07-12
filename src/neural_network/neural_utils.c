@@ -27,79 +27,78 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 	network.nb_layers = nb_layers;
 	network.learning_rate = learning_rate;
 	network.activation_function = activation_function;
+
+	// Calculate all required memory size
+	long long required_memory_size = 0;
+	for (int i = 0; i < nb_layers; i++) {
+		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(double);	// activations_values
+		if (i == 0) continue;
+		required_memory_size += (long long)nb_neurons_per_layer[i] * (long long)nb_neurons_per_layer[i - 1] * sizeof(double);	// weights_flat
+		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(double*);	// weights
+		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(double);	// biases
+		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(double);	// deltas
+	}
+	network.memory_size = required_memory_size;
+	INFO_PRINT("createNeuralNetworkD(): Required memory size: %lld Bytes\n", required_memory_size);
 	
 	// Allocate memory for the layers
-	size_t this_malloc_size = nb_layers * sizeof(NeuronLayerD);
-	network.memory_size = this_malloc_size;
+	long long this_malloc_size = nb_layers * sizeof(NeuronLayerD);
 	network.layers = (NeuronLayerD*)malloc(this_malloc_size);
 	if (network.layers == NULL) {
-		ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the layers.\n");
+		ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the layers\n");
 		exit(EXIT_FAILURE);
 	}
 
 	// Memset the layers to 0
 	memset(network.layers, 0, this_malloc_size);
-	DEBUG_PRINT("createNeuralNetworkD():\t- Memory size: %zu Bytes\n", network.memory_size);
 
 	// Create the next layers
 	for (int i = 0; i < nb_layers; i++) {
-	DEBUG_PRINT("createNeuralNetworkD():\t- Memory size1: %zu Bytes\n", network.memory_size);
 		
 		// Create the layer
 		network.layers[i].nb_neurons = nb_neurons_per_layer[i];
 		network.layers[i].nb_inputs_per_neuron = (i == 0) ? 0 : nb_neurons_per_layer[i - 1];	// Depends on the previous layer
 
 		///// Allocate memory for the activations_values (nb_neurons * sizeof(double))
-		this_malloc_size = network.layers[i].nb_neurons * sizeof(double);
-		network.memory_size += this_malloc_size;
-		network.layers[i].activations_values = (double*)malloc(this_malloc_size);
+		network.layers[i].activations_values = (double*)malloc(network.layers[i].nb_neurons * sizeof(double));
 		if (network.layers[i].activations_values == NULL) {
-			ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the activations_values.\n");
+			ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the activations_values\n");
 			exit(EXIT_FAILURE);
 		}
-		DEBUG_PRINT("createNeuralNetworkD():\t- Memory size2: %zu Bytes\n", network.memory_size);
 
 		// Initialize the activations_values to random values
 		for (int j = 0; j < network.layers[i].nb_neurons; j++)
 			network.layers[i].activations_values[j] = generateRandomDouble(-1.0, 1.0);
-		DEBUG_PRINT("createNeuralNetworkD():\t- Memory size3: %zu Bytes\n", network.memory_size);
+
 		// Stop here if it's the first layer (no weights, biases, etc.)
 		if (i == 0) continue;
 		
 		///// Allocate memory for the weights (nb_neurons * nb_inputs_per_neuron * sizeof(double))
 		// Allocate memory for the weights_flat
-		this_malloc_size = network.layers[i].nb_neurons * network.layers[i].nb_inputs_per_neuron * sizeof(double);
-		network.memory_size += this_malloc_size;
+		this_malloc_size = (long long)network.layers[i].nb_neurons * (long long)network.layers[i].nb_inputs_per_neuron * sizeof(double);
 		network.layers[i].weights_flat = (double*)malloc(this_malloc_size);
 		if (network.layers[i].weights_flat == NULL) {
-			ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the weights.\n");
+			ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the weights\n");
 			exit(EXIT_FAILURE);
 		}
-		DEBUG_PRINT("createNeuralNetworkD():\t- Memory size4: %zu Bytes\n", network.memory_size);
 
 		// Allocate memory for the weights (2D array)
-		this_malloc_size = network.layers[i].nb_neurons * sizeof(double*);
-		network.memory_size += this_malloc_size;
-		network.layers[i].weights = (double**)malloc(this_malloc_size);
+		network.layers[i].weights = (double**)malloc(network.layers[i].nb_neurons * sizeof(double*));
 		if (network.layers[i].weights == NULL) {
-			ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the weights.\n");
+			ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the weights\n");
 			exit(EXIT_FAILURE);
 		}
-		DEBUG_PRINT("createNeuralNetworkD():\t- Memory size5: %zu Bytes\n", network.memory_size);
 
 		// Assign the weights_flat addresses to the weights
 		for (int j = 0; j < network.layers[i].nb_neurons; j++)
 			network.layers[i].weights[j] = &(network.layers[i].weights_flat[j * network.layers[i].nb_inputs_per_neuron]);
 
 		///// Allocate memory for the biases (nb_neurons * sizeof(double))
-		this_malloc_size = network.layers[i].nb_neurons * sizeof(double);
-		network.memory_size += this_malloc_size;
-		network.layers[i].biases = (double*)malloc(this_malloc_size);
+		network.layers[i].biases = (double*)malloc(network.layers[i].nb_neurons * sizeof(double));
 		if (network.layers[i].biases == NULL) {
-			ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the biases.\n");
+			ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the biases\n");
 			exit(EXIT_FAILURE);
 		}
-		DEBUG_PRINT("createNeuralNetworkD():\t- Memory size6: %zu Bytes\n", network.memory_size);
 
 		// Initialize the weights and biases with random values
 		for (int j = 0; j < network.layers[i].nb_neurons; j++) {
@@ -109,20 +108,16 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 		}
 
 		///// Allocate memory for the deltas (nb_neurons * sizeof(double))
-		this_malloc_size = network.layers[i].nb_neurons * sizeof(double);
-		network.memory_size += this_malloc_size;
-		network.layers[i].deltas = (double*)malloc(this_malloc_size);
+		network.layers[i].deltas = (double*)malloc(network.layers[i].nb_neurons * sizeof(double));
 		if (network.layers[i].deltas == NULL) {
-			ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the deltas.\n");
+			ERROR_PRINT("createNeuralNetworkD(): Could not allocate memory for the deltas\n");
 			exit(EXIT_FAILURE);
 		}
-	DEBUG_PRINT("createNeuralNetworkD():\t- Memory size7: %zu Bytes\n", network.memory_size);
 	}
 
 	// Assign the input and output layers pointers
 	network.input_layer = &(network.layers[0]);
 	network.output_layer = &(network.layers[nb_layers - 1]);
-	DEBUG_PRINT("createNeuralNetworkD():\t- Memory size: %zu Bytes\n", this_malloc_size);
 
 	// Return the neural network
 	return network;
@@ -145,7 +140,7 @@ void printNeuralNetworkD(NeuralNetworkD network) {
 	PRINTER(CYAN"- Input layer:\t\t"YELLOW"0x%p"CYAN" (nb_neurons: "YELLOW"%d"CYAN", nb_inputs_per_neuron: "YELLOW"%d"CYAN")\n", (void*)network.input_layer, network.input_layer->nb_neurons, network.input_layer->nb_inputs_per_neuron);
 	PRINTER(CYAN"- Output layer:\t\t"YELLOW"0x%p"CYAN" (nb_neurons: "YELLOW"%d"CYAN", nb_inputs_per_neuron: "YELLOW"%d"CYAN")\n", (void*)network.output_layer, network.output_layer->nb_neurons, network.output_layer->nb_inputs_per_neuron);
 	if (network.memory_size < 1000)
-		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%zu"CYAN" Bytes\n", network.memory_size); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%lld"CYAN" Bytes\n", network.memory_size); }
 	else if (network.memory_size < 1000000)
 		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" KB\n", (long double)network.memory_size / 1000); }
 	else if (network.memory_size < 1000000000)
@@ -207,7 +202,7 @@ int saveNeuralNetworkD(NeuralNetworkD network, char *filename, int generate_huma
 	// Write the number of layers, the learning rate, and the memory size
 	fwrite(&(network.nb_layers), sizeof(int), 1, file);
 	fwrite(&(network.learning_rate), sizeof(double), 1, file);
-	fwrite(&(network.memory_size), sizeof(size_t), 1, file);
+	fwrite(&(network.memory_size), sizeof(long long), 1, file);
 
 	// For each layer of the neural network, write the number of neurons
 	for (int i = 0; i < network.nb_layers; i++) {
@@ -234,7 +229,7 @@ int saveNeuralNetworkD(NeuralNetworkD network, char *filename, int generate_huma
 
 		// Get new path
 		char *new_path = (char*)malloc(strlen(filename) + sizeof("_human_readable.txt"));
-		ERROR_HANDLE_PTR_RETURN_INT(new_path, "saveNeuralNetworkD(): Could not allocate memory for the new path.\n");
+		ERROR_HANDLE_PTR_RETURN_INT(new_path, "saveNeuralNetworkD(): Could not allocate memory for the new path\n");
 		strcpy(new_path, filename);
 		strcat(new_path, "_human_readable.txt");
 		INFO_PRINT("saveNeuralNetworkD(): Generating human readable file '%s'\n", new_path);
@@ -247,7 +242,7 @@ int saveNeuralNetworkD(NeuralNetworkD network, char *filename, int generate_huma
 		fprintf(file, "\n");
 		fprintf(file, "Number of layers:\t%d\n", network.nb_layers);
 		fprintf(file, "Learning rate:\t\t%f\n", network.learning_rate);
-		fprintf(file, "Memory size:\t\t%zu Bytes\n\n", network.memory_size);
+		fprintf(file, "Memory size:\t\t%lld Bytes\n\n", network.memory_size);
 
 		// For each layer of the neural network, write the number of neurons
 		for (int i = 0; i < network.nb_layers; i++) {
@@ -336,7 +331,7 @@ NeuralNetworkD* loadNeuralNetworkD(char *filename, double (*activation_function)
 	// Allocate memory for the layers
 	size_t this_malloc_size = network->nb_layers * sizeof(NeuronLayerD);
 	network->layers = (NeuronLayerD*)malloc(this_malloc_size);
-	ERROR_HANDLE_PTR_RETURN_NULL(network->layers, "loadNeuralNetworkD(): Could not allocate memory for the layers.\n");
+	ERROR_HANDLE_PTR_RETURN_NULL(network->layers, "loadNeuralNetworkD(): Could not allocate memory for the layers\n");
 
 	// Memset the layers to 0
 	memset(network->layers, 0, this_malloc_size);
@@ -355,7 +350,7 @@ NeuralNetworkD* loadNeuralNetworkD(char *filename, double (*activation_function)
 		// Read the activations_values
 		this_malloc_size = network->layers[i].nb_neurons * sizeof(double);
 		network->layers[i].activations_values = (double*)malloc(this_malloc_size);
-		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].activations_values, "loadNeuralNetworkD(): Could not allocate memory for the activations_values.\n");
+		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].activations_values, "loadNeuralNetworkD(): Could not allocate memory for the activations_values\n");
 		fread(network->layers[i].activations_values, this_malloc_size, 1, file);
 
 		// Stop here if it's the first layer (no weights, biases, etc.)
@@ -364,13 +359,13 @@ NeuralNetworkD* loadNeuralNetworkD(char *filename, double (*activation_function)
 		// Read the weights_flat
 		this_malloc_size = network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double);
 		network->layers[i].weights_flat = (double*)malloc(this_malloc_size);
-		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].weights_flat, "loadNeuralNetworkD(): Could not allocate memory for the weights_flat.\n");
+		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].weights_flat, "loadNeuralNetworkD(): Could not allocate memory for the weights_flat\n");
 		fread(network->layers[i].weights_flat, this_malloc_size, 1, file);
 
 		// Allocate memory for the weights (2D array)
 		this_malloc_size = network->layers[i].nb_neurons * sizeof(double*);
 		network->layers[i].weights = (double**)malloc(this_malloc_size);
-		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].weights, "loadNeuralNetworkD(): Could not allocate memory for the weights.\n");
+		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].weights, "loadNeuralNetworkD(): Could not allocate memory for the weights\n");
 
 		// Assign the weights_flat addresses to the weights
 		for (int j = 0; j < network->layers[i].nb_neurons; j++)
@@ -379,12 +374,12 @@ NeuralNetworkD* loadNeuralNetworkD(char *filename, double (*activation_function)
 		// Read the biases
 		this_malloc_size = network->layers[i].nb_neurons * sizeof(double);
 		network->layers[i].biases = (double*)malloc(this_malloc_size);
-		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].biases, "loadNeuralNetworkD(): Could not allocate memory for the biases.\n");
+		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].biases, "loadNeuralNetworkD(): Could not allocate memory for the biases\n");
 		fread(network->layers[i].biases, this_malloc_size, 1, file);
 
 		// Allocate memory for the deltas
 		network->layers[i].deltas = (double*)malloc(this_malloc_size);
-		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].deltas, "loadNeuralNetworkD(): Could not allocate memory for the deltas.\n");
+		ERROR_HANDLE_PTR_RETURN_NULL(network->layers[i].deltas, "loadNeuralNetworkD(): Could not allocate memory for the deltas\n");
 	}
 
 	// Assign the input and output layers pointers

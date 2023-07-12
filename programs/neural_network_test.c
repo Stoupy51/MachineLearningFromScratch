@@ -40,7 +40,7 @@ int main() {
 		WARNING_PRINT("main(): No neural network found, creating a new one.\n");
 
 		// Create a neural network using double as type
-		int nb_neurons_per_layer[] = {512*512, 4096, 4096, 4096, 512*512};
+		int nb_neurons_per_layer[] = {256*256, 4096, 4096, 4096, 512*512};
 		int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 		network = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 0.1, sigmoid);
 	} else {
