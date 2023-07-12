@@ -4,9 +4,45 @@
 
 #include "../universal_utils.h"
 
-// Generate a random double/float between min and max
-double generateRandomDouble(double min, double max);
-float generateRandomFloat(float min, float max);
+/**
+ * @file Utils for neural networks
+ * @details How a Neural Network is working?
+ * 
+ * A neural network is composed of layers of neurons.
+ * Those layers can have different sizes each (number of neurons).
+ * There are 3 types of layers:
+ * - Input layer: the first layer of the neural network, it is the layer that will receive the inputs of the neural network
+ * (such as the pixels of an image for example)
+ * - Hidden layer: the layers between the input layer and the output layer, these layers consist of neurons that will
+ * process the inputs and send them to the next layer depending on their weights and biases
+ * - Output layer: the last layer of the neural network, it is the layer that will send the outputs of the neural network
+ * (such as the prediction of the neural network for example)
+ * 
+ * Each neuron of a layer is connected to each neuron of the previous layer (except for the input layer).
+ * All the neurons of a layer have:
+ * - A bias:				a value that will be added to the sum of the weighted inputs from the previous layer
+ * - A list of weights:		a list of values that will be multiplied by the inputs from the previous layer
+ * - An activation value:	the value of the neuron after the activation function has been applied to the sum of the weighted inputs
+ * - A delta:				the value of the error of the neuron (used for backpropagation)
+ * 
+ * The activation function is a function that will be applied to the sum of the weighted inputs of a neuron.
+ * It is often a sigmoid function (1 / (1 + e^(-x))) but it can be any function.
+ * It is used to "activate" the neuron, to give it a value between 0 and 1 (or -1 and 1) depending on the inputs.
+ * 
+ * The feed forward algorithm is the algorithm that will calculate the outputs of the neural network by feeding the inputs to the neural network.
+ * It requires an input array with the same size as the input layer of the neural network.
+ * Feeding the inputs means: for each layer of the neural network (except the input layer), calculate the activation values of the neurons.
+ * 
+ * The backpropagation algorithm is the algorithm that will adjust the weights of the neural network depending on the error of the neural network.
+ * It requires an excepted output array with the same size as the output layer of the neural network.
+ * The error of the neural network is the difference between the excepted output and the actual output of the neural network.
+ * The backpropagation algorithm will calculate the deltas of the neurons of the neural network and adjust the weights of the neural network.
+ * 
+ * The learning rate is a value between 0 and 1 that will be used to adjust the weights of the neural network.
+ * It is used to adjust the weights of the neural network by multiplying the delta of a neuron by the learning rate after the backpropagation algorithm.
+ * 
+ * @author redactor: Stoupy51 (COLLIGNON Alexandre)
+**/
 
 
 
@@ -58,6 +94,11 @@ typedef struct NeuralNetworkD {
 NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], double learning_rate, double (*activation_function)(double));
 void printNeuralNetworkD(NeuralNetworkD network);
 void freeNeuralNetworkD(NeuralNetworkD *network);
+
+
+// Generate a random double/float between min and max
+double generateRandomDouble(double min, double max);
+float generateRandomFloat(float min, float max);
 
 
 #endif

@@ -15,7 +15,12 @@
  * 			- Save the result in the activations_values array of the current layer
  * 
  * Basically, for each layer, for each neuron, the formula is:
- * - activation_value = activation_function( sum( weight * input ) + bias )
+ * - activation_value = activation_function( sum( input * weight  ) + bias )
+ * - where input is the activation_value of the previous layer
+ * 
+ * @details i = Index of the selected layer
+ * @details j = Index of the selected neuron
+ * @details k = Index of the previous layer selected neuron
  * 
  * @param network	Pointer to the neural network
  * @param input		Pointer to the input array (double), must be the same size as the input layer
@@ -24,11 +29,10 @@
  */
 void NeuralNetworkDfeedForward(NeuralNetworkD *network, double *input) {
 
-	// Set the input layer
-	for (int i = 0; i < network->input_layer->nb_neurons; i++)
-		network->input_layer->activations_values[i] = input[i];
+	// Set the input layer (copy the input array into the input layer of the neural network)
+	memcpy(network->input_layer->activations_values, input, network->input_layer->nb_neurons * sizeof(double));
 
-	// Feed forward
+	// Feed forward: for each layer of the neural network (except the input layer),
 	for (int i = 1; i < network->nb_layers; i++) {
 
 		// For each neuron of the current layer,
@@ -36,8 +40,8 @@ void NeuralNetworkDfeedForward(NeuralNetworkD *network, double *input) {
 
 			// Calculate the sum of all the weights of the previous layer linked to the current neuron
 			double weighted_sum = 0;
-			for (int k = 0; k < network->layers[i - 1].nb_neurons; k++)
-				weighted_sum += network->layers[i - 1].activations_values[k] * network->layers[i].weights[j][k];
+			for (int k = 0; k < network->layers[i].nb_inputs_per_neuron; k++)
+				weighted_sum += network->layers[i - 1].activations_values[k] * network->layers[i].weights[j][k];	// weights[j][k] where j = current neuron, k = previous neuron
 
 			// Add the bias of the current neuron
 			weighted_sum += network->layers[i].biases[j];

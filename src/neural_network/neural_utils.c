@@ -38,12 +38,16 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 	// Memset the layers to 0
 	memset(network.layers, 0, this_malloc_size);
 
-	// Create the layers
-	for (int i = 0; i < nb_layers; i++) {
+	// Create the input layer
+	network.layers[0].nb_neurons = nb_neurons_per_layer[0];
+	network.layers[0].nb_inputs_per_neuron = 0;	// No inputs for the input layer, seems logical ;-;
+
+	// Create the next layers
+	for (int i = 1; i < nb_layers; i++) {
 		
 		// Create the layer
 		network.layers[i].nb_neurons = nb_neurons_per_layer[i];
-		network.layers[i].nb_inputs_per_neuron = (i == 0) ? 0 : nb_neurons_per_layer[i - 1];	// Depends on the previous layer
+		network.layers[i].nb_inputs_per_neuron = nb_neurons_per_layer[i - 1];	// Depends on the previous layer
 		
 		///// Allocate memory for the weights (nb_neurons * nb_inputs_per_neuron * sizeof(double))
 		// Allocate memory for the weights_flat
