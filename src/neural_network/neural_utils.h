@@ -96,6 +96,7 @@ void printNeuralNetworkD(NeuralNetworkD network);
 void freeNeuralNetworkD(NeuralNetworkD *network);
 int saveNeuralNetworkD(NeuralNetworkD network, char *filename);
 NeuralNetworkD loadNeuralNetworkD(char *filename, double (*activation_function)(double));
+void NeuralNetworkDfeedForward(NeuralNetworkD *network, double *input);
 
 
 // Generate a random double/float between min and max

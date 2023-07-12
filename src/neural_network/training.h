@@ -4,7 +4,6 @@
 
 #include "neural_utils.h"
 
-void NeuralNetworkDfeedForward(NeuralNetworkD *network, double *input);
 void NeuralNetworkDbackpropagation(NeuralNetworkD *network, double *excepted_output);
 void NeuralNetworkDupdateWeightsAndBiases(NeuralNetworkD *network);
 void NeuralNetworkDtrain(NeuralNetworkD *network, double *input, double *excepted_output);
