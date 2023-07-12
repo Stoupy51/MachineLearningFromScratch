@@ -3,7 +3,7 @@
 
 #include "../src/universal_utils.h"
 #include "../src/gpu/gpu_utils.h"
-#include "../src/vectors.h"
+#include "../src/utils/vectors.h"
 
 #define VECTOR_SIZE 100000000
 

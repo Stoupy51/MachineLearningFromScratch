@@ -3,7 +3,7 @@
 
 #include "../src/universal_utils.h"
 #include "../src/gpu/gpu_utils.h"
-#include "../src/vectors.h"
+#include "../src/utils/vectors.h"
 #include "../src/st_benchmark.h"
 
 // Global variables

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 #include "vectors.h"
-#include "universal_utils.h"
+#include "../universal_utils.h"
 
 /**
  * @brief Create a random vector of integers.
