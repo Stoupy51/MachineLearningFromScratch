@@ -1,0 +1,55 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"generated_makefile": "makefile",
+			"vector": "c",
+			"iosfwd": "c",
+			"device_launch_parameters.h": "c",
+			"cuda_runtime.h": "c",
+			"*.cl": "opencl",
+			"utils.h": "c",
+			"stdio.h": "c",
+			"cl.h": "c",
+			"atomic": "c",
+			"chrono": "c",
+			"iomanip": "c",
+			"istream": "c",
+			"list": "c",
+			"ostream": "c",
+			"sstream": "c",
+			"streambuf": "c",
+			"xlocbuf": "c",
+			"locale": "c",
+			"xlocale": "c",
+			"__locale": "c",
+			"charconv": "c",
+			"xmemory": "c",
+			"gpu_utils.h": "c",
+			"fast_cpu_gpu.h": "c",
+			"array": "c",
+			"bitset": "c",
+			"format": "c",
+			"initializer_list": "c",
+			"type_traits": "c",
+			"xhash": "c",
+			"xstring": "c",
+			"xutility": "c",
+			"__hash_table": "c",
+			"__split_buffer": "c",
+			"iterator": "c",
+			"string": "c",
+			"string_view": "c",
+			"unordered_map": "c",
+			"utility": "c",
+			"algorithm": "c",
+			"limits": "c",
+			"ratio": "c"
+		},
+		"OpenCL.explorer.localizedProperties": false
+	}
+}
