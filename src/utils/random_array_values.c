@@ -1,5 +1,5 @@
 
-#include "fast_cpu_gpu.h"
+#include "random_array_values.h"
 
 #include "../universal_utils.h"
 #include "../gpu/gpu_utils.h"
@@ -8,8 +8,20 @@
 
 // Arbitrary values to determine if the GPU or the CPU should be used
 // The values are based on my own tests, and may not be optimal for your own hardware
-#define MIN_SIZE_FOR_GPU 100000
-#define MIN_SIZE_FOR_CPU_THREADS 1000
+#define MIN_SIZE_FOR_CPU_THREADS 500000
+
+struct frdacptt_args_t {
+	double* array;
+	int size;
+	double min;
+	double max_minus_min;
+	int nb_cores;
+	int thread_id;
+};
+struct frdacptt_args_ptr_t {
+	struct frdacptt_args_t* args;
+	int thread_id;
+};
 
 /**
  * @brief Thread function to fill an array of double with random values
@@ -22,21 +34,17 @@
 thread_return_type fillRandomDoubleArrayCPUThreadsThread(thread_param_type args) {
 
 	// Get the arguments
-	double* array = ((void**)args)[0];
-	int size = ((int*)args)[1];
-	double min = ((double*)args)[2];
-	double max_minus_min = ((double*)args)[3] - min;
-	int nb_cores = ((int*)args)[4];
-	int thread_id = ((int*)args)[5];
+	int thread_id = ((struct frdacptt_args_ptr_t*)args)->thread_id;
+	struct frdacptt_args_t* args_struct = ((struct frdacptt_args_ptr_t*)args)->args;
 
 	// Calculate the part of the array to fill
-	int start = thread_id * size / nb_cores;
-	int end = (thread_id + 1) * size / nb_cores;
-	end = end > size ? size : end;
+	int start = thread_id * args_struct->size / args_struct->nb_cores;
+	int end = (thread_id + 1) * args_struct->size / args_struct->nb_cores;
+	end = end > args_struct->size ? args_struct->size : end;
 
 	// Fill the array
 	for (int i = start; i < end; i++)
-		array[i] = (double)rand() / RAND_MAX * max_minus_min + min;
+		args_struct->array[i] = (double)rand() / RAND_MAX * args_struct->max_minus_min + args_struct->min;
 
 	// Return
 	return 0;
@@ -68,19 +76,23 @@ int fillRandomDoubleArrayCPUThreads(double* array, int size, double min, double 
 	#endif
 
 	// Prepare the arguments for the threads
-	void* args = malloc(sizeof(double*) + sizeof(int) + sizeof(double) + sizeof(double) + sizeof(int) + sizeof(int));
-	((void**)args)[0] = array;
-	((int*)args)[1] = size;
-	((double*)args)[2] = min;
-	((double*)args)[3] = max;
-	((int*)args)[4] = nb_cores;
-	((int*)args)[5] = 0;	// Thread ID (will be set later)
+	struct frdacptt_args_t args;
+	args.array = array;
+	args.size = size;
+	args.min = min;
+	args.max_minus_min = max - min;
+	args.nb_cores = nb_cores;
+	struct frdacptt_args_ptr_t *args_ptr = malloc(nb_cores * sizeof(struct frdacptt_args_ptr_t));
+	ERROR_HANDLE_PTR_RETURN_INT(args_ptr, "fillRandomDoubleArrayCPUThreads(): Failed to allocate memory for the args_ptr\n");
+	for (int i = 0; i < nb_cores; i++) {
+		args_ptr[i].args = &args;
+		args_ptr[i].thread_id = i;
+	}
 
 	// Create the threads
 	pthread_t* threads = malloc(nb_cores * sizeof(pthread_t));
 	for (int i = 0; i < nb_cores; i++) {
-		((int*)args)[5] = i;	// Set the thread ID
-		pthread_create(&threads[i], NULL, &fillRandomDoubleArrayCPUThreadsThread, args);
+		pthread_create(&threads[i], NULL, fillRandomDoubleArrayCPUThreadsThread, &args_ptr[i]);
 	}
 
 	// Wait for the threads to finish
@@ -88,7 +100,7 @@ int fillRandomDoubleArrayCPUThreads(double* array, int size, double min, double 
 		pthread_join(threads[i], NULL);
 	
 	// Free the memory
-	free(args);
+	free(args_ptr);
 	free(threads);
 
 	// Return
@@ -108,10 +120,6 @@ int fillRandomDoubleArrayCPUThreads(double* array, int size, double min, double 
  * @return void
  */
 void fillRandomDoubleArray(double* array, int size, double min, double max) {
-	
-	// If the array is big enough, try to use the GPU
-	if (size > MIN_SIZE_FOR_GPU && fillRandomDoubleArrayGPU(array, size, min, max) == 0)
-		return;
 
 	// If the array is big enough, try to use the CPU with threads
 	if (size > MIN_SIZE_FOR_CPU_THREADS && fillRandomDoubleArrayCPUThreads(array, size, min, max) == 0)
@@ -122,5 +130,4 @@ void fillRandomDoubleArray(double* array, int size, double min, double max) {
 	for (int i = 0; i < size; i++)
 		array[i] = (double)rand() / RAND_MAX * (max_minus_min) + min;
 }
-
 

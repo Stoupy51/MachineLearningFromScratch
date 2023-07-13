@@ -1,6 +1,6 @@
 
-#ifndef __FAST_CPU_GPU_H__
-#define __FAST_CPU_GPU_H__
+#ifndef __RANDOM_ARRAY_VALUES_H__
+#define __RANDOM_ARRAY_VALUES_H__
 
 // Private functions
 

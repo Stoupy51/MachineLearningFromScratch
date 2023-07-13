@@ -1,6 +1,6 @@
 
 #include "../src/universal_utils.h"
-#include "../src/utils/fast_cpu_gpu.h"
+#include "../src/utils/random_array_values.h"
 #include "../src/gpu/gpu_utils.h"
 #include "../src/st_benchmark.h"
 
@@ -27,7 +27,7 @@ void exitProgram() {
 int main() {
 
 	// Print program header and register exitProgram() with atexit()
-	mainInit("main(): Launching 'testing_fast_cpu_gpu' program.\n");
+	mainInit("main(): Launching 'testing_random_array_values' program.\n");
 	atexit(exitProgram);
 
 	// Create an array of double
