@@ -570,7 +570,8 @@ int fillRandomDoubleArrayGPU(double* array, int size, double min, double max) {
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 1, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 	ocfe_code = clSetKernelArg(kernel, 2, sizeof(double), &min);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 2, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
-	ocfe_code = clSetKernelArg(kernel, 3, sizeof(double), &max);
+	double max_minus_min = max - min;
+	ocfe_code = clSetKernelArg(kernel, 3, sizeof(double), &max_minus_min);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 3, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Execute the kernel
