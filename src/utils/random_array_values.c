@@ -12,7 +12,7 @@
 
 struct frdacptt_args_t {
 	double* array;
-	int size;
+	unsigned long long size;
 	double min;
 	double max_minus_min;
 	int nb_cores;
@@ -38,12 +38,12 @@ thread_return_type fillRandomDoubleArrayCPUThreadsThread(thread_param_type args)
 	struct frdacptt_args_t* args_struct = ((struct frdacptt_args_ptr_t*)args)->args;
 
 	// Calculate the part of the array to fill
-	int start = thread_id * args_struct->size / args_struct->nb_cores;
-	int end = (thread_id + 1) * args_struct->size / args_struct->nb_cores;
+	unsigned long long start = (unsigned long long)thread_id * args_struct->size / args_struct->nb_cores;
+	unsigned long long end = (unsigned long long)(thread_id + 1) * args_struct->size / args_struct->nb_cores;
 	end = end > args_struct->size ? args_struct->size : end;
 
 	// Fill the array
-	for (int i = start; i < end; i++)
+	for (unsigned long long i = start; i < end; i++)
 		args_struct->array[i] = (double)rand() / RAND_MAX * args_struct->max_minus_min + args_struct->min;
 
 	// Return
@@ -61,7 +61,7 @@ thread_return_type fillRandomDoubleArrayCPUThreadsThread(thread_param_type args)
  * 
  * @return int			0 if everything went well, -1 otherwise
  */
-int fillRandomDoubleArrayCPUThreads(double* array, int size, double min, double max) {
+int fillRandomDoubleArrayCPUThreads(double* array, unsigned long long size, double min, double max) {
 	
 	// Get the number of cores
 	int nb_cores;
@@ -119,7 +119,7 @@ int fillRandomDoubleArrayCPUThreads(double* array, int size, double min, double 
  * 
  * @return void
  */
-void fillRandomDoubleArray(double* array, int size, double min, double max) {
+void fillRandomDoubleArray(double* array, unsigned long long size, double min, double max) {
 
 	// If the array is big enough, try to use the CPU with threads
 	if (size > MIN_SIZE_FOR_CPU_THREADS && fillRandomDoubleArrayCPUThreads(array, size, min, max) == 0)
@@ -127,7 +127,7 @@ void fillRandomDoubleArray(double* array, int size, double min, double max) {
 
 	// Otherwise, use 1 core CPU
 	int max_minus_min = max - min;
-	for (int i = 0; i < size; i++)
+	for (unsigned long long i = 0; i < size; i++)
 		array[i] = (double)rand() / RAND_MAX * (max_minus_min) + min;
 }
 
