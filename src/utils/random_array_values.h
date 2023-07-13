@@ -4,13 +4,13 @@
 
 // Private functions
 
-int fillRandomDoubleArrayCPUThreads(double* array, int size, double min, double max);
+int fillRandomDoubleArrayCPUThreads(double* array, unsigned long long size, double min, double max);
 
 
 
 // One call functions
 
-void fillRandomDoubleArray(double* array, int size, double min, double max);
+void fillRandomDoubleArray(double* array, unsigned long long size, double min, double max);
 
 #endif
 
