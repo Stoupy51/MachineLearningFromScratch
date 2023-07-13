@@ -8,6 +8,11 @@
  * @brief Function run at the end of the program
  * [registered with atexit()] in the main() function.
  * 
+ * Conclusions:
+ * - The GPU should not be used to generate random values because it is slower than 12 CPU threads.
+ * - Single core CPU should be used to generate random values if the size is less than 500000.
+ * - Otherwise, multiple CPU threads should be used to generate random values if the size is greater than 500000.
+ * 
  * @return void
 */
 void exitProgram() {
