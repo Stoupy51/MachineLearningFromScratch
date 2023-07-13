@@ -1,4 +1,37 @@
 
+/**
+ * @brief Function to calculate the activation values of all the neurons
+ * of the network in the feed forward algorithm.
+ *
+ * @param previous_layer_activation_values	The activation values of the previous layer
+ * @param weights							The weights of the current layer
+ * @param biases							The biases of the current layer
+ * @param activation_values					The activation values of the current layer
+ * @param current_layer_size				The size of the current layer
+ * @param previous_layer_size				The size of the previous layer
+ *
+ * @return void
+ */
+kernel void feedForwardActivationValues(global double* previous_layer_activation_values, global double* weights, global double* biases, global double* activation_values, int current_layer_size, int previous_layer_size) {
+
+	// Get the index of the current thread
+	int index = get_global_id(0);
+
+	// If the index is smaller than the current layer size
+	if (index < current_layer_size) {
+
+		// Prepare the index of the weights array
+		int weight_index = index * previous_layer_size;
+
+		// Calculate the sum of all the weights of the previous layer linked to the current neuron
+		double weighted_sum = 0;
+		for (int k = 0; k < previous_layer_size; k++)
+			weighted_sum += previous_layer_activation_values[k] * weights[weight_index + k]; // weights[index][k] where index = current neuron, k = previous neuron
+
+		// Apply the activation function to the weighted sum (often sigmoid)
+		activation_values[index] = 1 / (1 + exp(-(weighted_sum + biases[index])));
+	}
+}
 
 /**
  * @brief Function to calculate the output delta for the output layer

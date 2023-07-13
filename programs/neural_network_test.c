@@ -41,8 +41,8 @@ int main() {
 		WARNING_PRINT("main(): No neural network found, creating a new one.\n");
 
 		// Create a neural network using double as type
-		//int nb_neurons_per_layer[] = {128*128, 4096, 4096, 4096, 256*256};
-		int nb_neurons_per_layer[] = {16*16, 4096, 4096, 4096, 32*32};
+		int nb_neurons_per_layer[] = {128*128, 4096, 4096, 4096, 256*256};
+		//int nb_neurons_per_layer[] = {16*16, 4096, 4096, 4096, 32*32};
 		int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 		network = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 0.1, sigmoid);
 	} else {
@@ -73,7 +73,7 @@ int main() {
 	free(excepted_output);
 
 	// Save the neural network to a file and another human readable file
-	saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 1);
+	//saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 0);
 
 	// Final print and return
 	INFO_PRINT("main(): End of program.\n");
