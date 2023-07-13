@@ -485,6 +485,14 @@ cl_program ocfe_program = NULL;
 cl_kernel ocfe_kernel = NULL;
 struct opencl_context_t ocfe_oc;
 int ocfe_initialized = 0, ocfe_current_kernel = -1;
+void stopOneCallFunctionsOpenCL() {
+	if (!ocfe_initialized) return;
+	clReleaseProgram(ocfe_program);
+	clReleaseKernel(ocfe_kernel);
+	clReleaseCommandQueue(ocfe_oc.command_queue);
+	clReleaseContext(ocfe_oc.context);
+	ocfe_initialized = 0;
+}
 
 /**
  * @brief This function setup the 'one call functions' efficiency variables.
@@ -523,14 +531,6 @@ int setupOneCallFunctionsOpenCL() {
 	ocfe_initialized = 1;
 	return 0;
 }
-void stopOneCallFunctionsOpenCL() {
-	if (!ocfe_initialized) return;
-	clReleaseProgram(ocfe_program);
-	clReleaseKernel(ocfe_kernel);
-	clReleaseCommandQueue(ocfe_oc.command_queue);
-	clReleaseContext(ocfe_oc.context);
-	ocfe_initialized = 0;
-}
 
 /**
  * @brief This function fills an array of double with random values
@@ -552,7 +552,7 @@ int fillRandomDoubleArrayGPU(double* array, int size, double min, double max) {
 	// Create the kernel if needed
 	int this_kernel_id = 1;
 	if (ocfe_current_kernel != this_kernel_id) {
-		kernel = clCreateKernel(ocfe_program, "fillRandomDoubleArrayGPU", &ocfe_code);
+		ocfe_kernel = clCreateKernel(ocfe_program, "fillRandomDoubleArrayGPU", &ocfe_code);
 		ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot create kernel, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 		ocfe_current_kernel = this_kernel_id;
 	}
@@ -564,20 +564,20 @@ int fillRandomDoubleArrayGPU(double* array, int size, double min, double max) {
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot copy array to buffer, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Set the kernel arguments
-	ocfe_code = clSetKernelArg(kernel, 0, sizeof(cl_mem), &buffer);
+	ocfe_code = clSetKernelArg(ocfe_kernel, 0, sizeof(cl_mem), &buffer);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 0, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
-	ocfe_code = clSetKernelArg(kernel, 1, sizeof(int), &size);
+	ocfe_code = clSetKernelArg(ocfe_kernel, 1, sizeof(int), &size);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 1, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
-	ocfe_code = clSetKernelArg(kernel, 2, sizeof(double), &min);
+	ocfe_code = clSetKernelArg(ocfe_kernel, 2, sizeof(double), &min);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 2, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 	double max_minus_min = max - min;
-	ocfe_code = clSetKernelArg(kernel, 3, sizeof(double), &max_minus_min);
+	ocfe_code = clSetKernelArg(ocfe_kernel, 3, sizeof(double), &max_minus_min);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 3, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Execute the kernel
 	size_t global_item_size = size;
 	size_t local_item_size = 1;
-	ocfe_code = clEnqueueNDRangeKernel(ocfe_oc.command_queue, kernel, 1, NULL, &global_item_size, &local_item_size, 0, NULL, NULL);
+	ocfe_code = clEnqueueNDRangeKernel(ocfe_oc.command_queue, ocfe_kernel, 1, NULL, &global_item_size, &local_item_size, 0, NULL, NULL);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot execute kernel, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 	ocfe_code = clFinish(ocfe_oc.command_queue);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot finish command queue, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));

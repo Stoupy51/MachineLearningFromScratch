@@ -32,7 +32,7 @@ int main() {
 
 	// Create an array of double
 	#define ARRAY_SIZE 1000000000 // (1 GB)
-	double array[ARRAY_SIZE];
+	double* array = malloc(ARRAY_SIZE * sizeof(double));
 	ERROR_HANDLE_PTR_RETURN_INT(array, "main(): Failed to allocate memory for the array\n");
 
 	// Sizes to test

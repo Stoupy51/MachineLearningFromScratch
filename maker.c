@@ -293,7 +293,7 @@ long long getTimestampRecursive(const char* filepath, const char* past_filepath)
 
 	// For each line in the file,
 	char* line = NULL;
-	size_t len = 64;
+	size_t len = 128;
 	int read;
 	while ((read = custom_getline(&line, &len, file)) != -1) {
 
@@ -414,7 +414,7 @@ int findCFiles(str_linked_list_t *files_timestamps) {
 
 	// For each line in the PIPE,
 	char* line = NULL;
-	size_t len = 64;
+	size_t len = 128;
 	int read;
 	while ((read = custom_getline(&line, &len, pipe)) != -1) {
 
@@ -480,7 +480,7 @@ int findCFiles(str_linked_list_t *files_timestamps) {
 			create_folders_from_path(obj_path);
 
 			// Compile the file
-			char command[1024];
+			char command[32768];
 			sprintf(
 				command,
 				CC" -c \"%s\" -o \"%s\" %s",
@@ -577,7 +577,7 @@ int compile_programs() {
 
 	// For each line in the PIPE,
 	char* line = NULL;
-	size_t len = 64;
+	size_t len = 128;
 	int read;
 	while ((read = custom_getline(&line, &len, pipe)) != -1) {
 
@@ -610,7 +610,7 @@ int compile_programs() {
 				printf("Compiling programs...\n");
 
 			// Compile the file
-			char command[1024];
+			char command[32768];
 			sprintf(
 				command,
 				CC" \"%s\" -o \""BIN_FOLDER"/%s\" %s %s %s",

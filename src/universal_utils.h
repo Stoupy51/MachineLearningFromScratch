@@ -57,7 +57,7 @@ typedef unsigned char byte;
 // #define WARNING_PRINT(...) : For warnings, always print in stderr
 // #define ERROR_PRINT(...) : For errors, always print in stderr
 // #define PRINTER(...) : For printing in the console, without any default color or level
-#define PRINT_ERRNO_STDERR(...) { if (errno != 0) { char buffer[16384]; sprintf(buffer, __VA_ARGS__); int err_pos = strlen(buffer); while (err_pos > 0 && buffer[err_pos] != '\n') err_pos--; buffer[err_pos] = '\0'; fprintf(stderr, "%s: %s\n", buffer, strerror(errno)); errno = 0; } else { fprintf(stderr, __VA_ARGS__); } }
+#define PRINT_ERRNO_STDERR(...) { if (errno != 0) { char buffer[16384]; sprintf(buffer, __VA_ARGS__); int err_pos = strlen(buffer); while (err_pos > 0 && buffer[err_pos] != '\n') err_pos--; buffer[err_pos] = '\0'; fprintf(stderr, "%s: %s\n", buffer, strerror(errno)); errno = 0; } else { fprintf(stderr, __VA_ARGS__); } fflush(stderr); }
 #if DEVELOPMENT_MODE
 	#define PRINTER(...) PRINT_ERRNO_STDERR(__VA_ARGS__)
 #else
