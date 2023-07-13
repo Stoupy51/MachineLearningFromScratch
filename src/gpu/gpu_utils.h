@@ -14,7 +14,9 @@ struct opencl_context_t {
 };
 
 
+
 // Function prototypes
+
 const char* getOpenCLErrorString(cl_int error);
 int printProgramBuildLog(cl_program program, cl_device_id device_id, int mode, char* prefix);
 struct opencl_context_t setupOpenCL(cl_device_type type_of_device);
@@ -23,6 +25,13 @@ void printPlatformInfo(cl_platform_id platform_id);
 void printDeviceInfo(cl_device_id device_id);
 char* readKernelProgram(char* path);
 int createKernelFromSource(char* kernel_source, char* kernel_name, cl_program* program, cl_kernel* kernel, struct opencl_context_t* oc);
+
+
+
+// One call functions
+
+int fillRandomDoubleArrayGPU(double* array, int size, double min, double max);
+
 
 
 // Generic macros

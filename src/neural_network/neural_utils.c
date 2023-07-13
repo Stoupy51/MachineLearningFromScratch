@@ -39,6 +39,17 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(double);	// deltas
 	}
 	network.memory_size = required_memory_size;
+
+	// If the memory size is too big (> 4 GB), ask the user if he wants to continue
+	if (network.memory_size > 4000000000) {
+		WARNING_PRINT("createNeuralNetworkD(): The memory size of the neural network is very big (%lld Bytes)\n", network.memory_size);
+		WARNING_PRINT("createNeuralNetworkD(): Do you want to continue? (Y/n) ");
+		char answer = getchar();
+		if (answer != 'Y' && answer != 'y' && answer != '\n') {
+			ERROR_PRINT("createNeuralNetworkD(): The user did not confirm the creation of the neural network\n");
+			exit(EXIT_FAILURE);
+		}
+	}
 	
 	// Allocate memory for the layers
 	long long this_malloc_size = nb_layers * sizeof(NeuronLayerD);

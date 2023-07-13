@@ -475,3 +475,122 @@ int createKernelFromSource(char* k_source, char* k_name, cl_program* program, cl
 	return 0;
 }
 
+
+
+
+///// One call functions /////
+// Variables for 'one call functions' efficiency
+cl_int ocfe_code = 0;
+cl_program ocfe_program = NULL;
+cl_kernel ocfe_kernel = NULL;
+struct opencl_context_t ocfe_oc;
+int ocfe_initialized = 0, ocfe_current_kernel = -1;
+
+/**
+ * @brief This function setup the 'one call functions' efficiency variables.
+ * This function is automatically called by the 'one call functions'.
+ * 
+ * @return int	0 if success, -1 otherwise
+ */
+int setupOneCallFunctionsOpenCL() {
+	if (ocfe_initialized) return 0;
+
+	// Initialize OpenCL
+	ocfe_oc = setupOpenCL(CL_DEVICE_TYPE_GPU);
+
+	// Create the program
+	char path[] = "kernels/gpu_utils.cl";
+	char* kernel_source = readKernelProgram(path);
+	ERROR_HANDLE_PTR_RETURN_INT(kernel_source, "setupOneCallFunctionsOpenCL(): Cannot read kernel program '%s'\n", path);
+	ocfe_program = clCreateProgramWithSource(ocfe_oc.context, 1, (const char**)&kernel_source, NULL, &ocfe_code);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "setupOneCallFunctionsOpenCL(): Cannot create program, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+
+	// Build the program
+	ocfe_code = clBuildProgram(ocfe_program, 1, &ocfe_oc.device_id, NULL, NULL, NULL);
+	if (ocfe_code != CL_SUCCESS) {
+		ERROR_PRINT("setupOneCallFunctionsOpenCL(): Cannot build program, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+		printProgramBuildLog(ocfe_program, ocfe_oc.device_id, ERROR_LEVEL, "setupOneCallFunctionsOpenCL(): ");
+		return ocfe_code;
+	}
+
+	// Free the kernel source code
+	free(kernel_source);
+
+	// Register the exit function
+	atexit(stopOneCallFunctionsOpenCL);
+
+	// Set the initialized flag & return
+	ocfe_initialized = 1;
+	return 0;
+}
+void stopOneCallFunctionsOpenCL() {
+	if (!ocfe_initialized) return;
+	clReleaseProgram(ocfe_program);
+	clReleaseKernel(ocfe_kernel);
+	clReleaseCommandQueue(ocfe_oc.command_queue);
+	clReleaseContext(ocfe_oc.context);
+	ocfe_initialized = 0;
+}
+
+/**
+ * @brief This function fills an array of double with random values
+ * between min and max, using first available GPU device.
+ * 
+ * This function should be called at least as possible and only
+ * with large arrays to be efficient over the CPU version.
+ * 
+ * @param array			The array to fill
+ * @param size			The size of the array
+ * @param min			The minimum value
+ * @param max			The maximum value
+ * 
+ * @return int			0 if success, -1 otherwise (no GPU device found, or error while filling the array)
+ */
+int fillRandomDoubleArrayGPU(double* array, int size, double min, double max) {
+	if (setupOneCallFunctionsOpenCL() != 0) return -1;
+
+	// Create the kernel if needed
+	int this_kernel_id = 1;
+	if (ocfe_current_kernel != this_kernel_id) {
+		kernel = clCreateKernel(ocfe_program, "fillRandomDoubleArrayGPU", &ocfe_code);
+		ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot create kernel, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+		ocfe_current_kernel = this_kernel_id;
+	}
+
+	// Create the buffer & copy the array
+	cl_mem buffer = clCreateBuffer(ocfe_oc.context, CL_MEM_READ_WRITE, sizeof(double) * size, NULL, &ocfe_code);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot create buffer, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ocfe_code = clEnqueueWriteBuffer(ocfe_oc.command_queue, buffer, CL_TRUE, 0, sizeof(double) * size, array, 0, NULL, NULL);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot copy array to buffer, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+
+	// Set the kernel arguments
+	ocfe_code = clSetKernelArg(kernel, 0, sizeof(cl_mem), &buffer);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 0, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ocfe_code = clSetKernelArg(kernel, 1, sizeof(int), &size);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 1, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ocfe_code = clSetKernelArg(kernel, 2, sizeof(double), &min);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 2, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ocfe_code = clSetKernelArg(kernel, 3, sizeof(double), &max);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 3, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+
+	// Execute the kernel
+	size_t global_item_size = size;
+	size_t local_item_size = 1;
+	ocfe_code = clEnqueueNDRangeKernel(ocfe_oc.command_queue, kernel, 1, NULL, &global_item_size, &local_item_size, 0, NULL, NULL);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot execute kernel, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ocfe_code = clFinish(ocfe_oc.command_queue);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot finish command queue, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+
+	// Copy the buffer to the array
+	ocfe_code = clEnqueueReadBuffer(ocfe_oc.command_queue, buffer, CL_TRUE, 0, sizeof(double) * size, array, 0, NULL, NULL);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot copy buffer to array, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+
+	// Release the buffer
+	ocfe_code = clReleaseMemObject(buffer);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot release buffer, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+
+	// Return success
+	return 0;
+}
+
+
