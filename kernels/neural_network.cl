@@ -86,3 +86,40 @@ kernel void backpropagationHiddenLayersDeltas(global double* next_layer_weights,
 	}
 }
 
+/**
+ * @brief Function to update the weights and biases of the network
+ * in the backpropagation algorithm.
+ * 
+ * @param previous_layer_activation_values	The activation values of the previous layer
+ * @param deltas							The deltas of the current layer
+ * @param weights							The weights of the current layer
+ * @param biases							The biases of the current layer
+ * @param current_layer_size				The size of the current layer
+ * @param previous_layer_size				The size of the previous layer
+ * @param learning_rate						The learning rate of the network
+ * 
+ * @return void
+ */
+kernel void updateWeightsAndBiases(global double* previous_layer_activation_values, global double* deltas, global double* weights, global double* biases, int current_layer_size, int previous_layer_size, double learning_rate) {
+
+	// Get the index of the current thread
+	int index = get_global_id(0);
+
+	// If the index is smaller than the current layer size
+	if (index < current_layer_size) {
+
+		// Prepare the index of the weights array
+		int weight_index = index * previous_layer_size;
+
+		// For each weight of the current neuron,
+		for (int k = 0; k < previous_layer_size; k++) {
+
+			// Update the weight (weight + (learning_rate * delta of the current neuron * activation_value of the previous layer))
+			weights[weight_index + k] += learning_rate * deltas[index] * previous_layer_activation_values[k];
+		}
+
+		// Update the bias (bias + (learning_rate * delta of the current neuron))
+		biases[index] += learning_rate * deltas[index];
+	}
+}
+

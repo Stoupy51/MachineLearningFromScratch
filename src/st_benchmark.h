@@ -7,6 +7,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <time.h>
+#include <stdint.h>
 
 #ifdef _WIN32
 

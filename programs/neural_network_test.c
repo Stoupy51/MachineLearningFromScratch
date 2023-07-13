@@ -6,6 +6,7 @@
 #include "../src/neural_network/neural_utils.h"
 #include "../src/neural_network/training.h"
 #include "../src/utils/random_array_values.h"
+#include "../src/st_benchmark.h"
 
 #define NEURAL_NETWORK_PATH "bin/neural_network_test.bin"
 
@@ -62,11 +63,26 @@ int main() {
 	fillRandomDoubleArray(input, network.input_layer->nb_neurons, 0.0, 1.0);
 	fillRandomDoubleArray(excepted_output, network.output_layer->nb_neurons, 0.0, 1.0);
 	
-	// Train the neural network
-	NeuralNetworkDtrain(&network, input, excepted_output);
+	///// Train the neural network with CPU & GPU and compare the results
+	// Benchmark the CPU training
+	char buffer[2048];
+	ST_BENCHMARK_SOLO_TIME(buffer,
+		{
+			NeuralNetworkDtrain(&network, input, excepted_output);
+		},
+		"NeuralNetworkDtrain (CPU)", 30	// 30 seconds at least
+	);
+	PRINTER(buffer);
 
-	// Run the neural network with the input array and get the output array
-	NeuralNetworkDfeedForward(&network, input);
+	// Benchmark the GPU training
+	ST_BENCHMARK_SOLO_TIME(buffer,
+		{
+			NeuralNetworkDtrainGPU(&network, input, excepted_output);
+		},
+		"NeuralNetworkDtrainGPU (GPU)", 30	// 30 seconds at least
+	);
+	PRINTER(buffer);
+
 
 	// Free the input and excepted output arrays
 	free(input);

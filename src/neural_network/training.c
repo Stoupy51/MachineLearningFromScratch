@@ -198,16 +198,13 @@ void NeuralNetworkDupdateWeightsAndBiases(NeuralNetworkD *network) {
 void NeuralNetworkDtrain(NeuralNetworkD *network, double *input, double *excepted_output) {
 
 	// Feed forward
-	//NeuralNetworkDfeedForward(network, input);
-	NeuralNetworkDfeedForwardGPU(network, input);
+	NeuralNetworkDfeedForward(network, input);
 
 	// Backpropagation
-	//NeuralNetworkDbackpropagation(network, excepted_output);
-	NeuralNetworkDbackpropagationGPU(network, excepted_output);
+	NeuralNetworkDbackpropagation(network, excepted_output);
 
 	// Update weights and biases
 	NeuralNetworkDupdateWeightsAndBiases(network);
-	//NeuralNetworkDupdateWeightsAndBiasesGPU(network);
 }
 
 
@@ -266,8 +263,8 @@ int setupNeuralNetworkGpuOpenCL() {
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuOpenCL(): Cannot create kernel 'backpropagationOutputLayerDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 	gpu_kernels[2] = clCreateKernel(gpu_program, "backpropagationHiddenLayersDeltas", &gpu_code);
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuOpenCL(): Cannot create kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
-	// gpu_kernels[3] = clCreateKernel(gpu_program, "updateWeightsAndBiases", &gpu_code);
-	// ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuOpenCL(): Cannot create kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	gpu_kernels[3] = clCreateKernel(gpu_program, "updateWeightsAndBiases", &gpu_code);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuOpenCL(): Cannot create kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
 	// Register the exit function
 	atexit(stopNeuralNetworkGpuOpenCL);
@@ -376,7 +373,6 @@ int NeuralNetworkDfeedForwardGPU(NeuralNetworkD *network, double *input) {
 	// Return
 	return 0;
 }
-
 
 /**
  * @brief Backpropagate the neural network with the excepted output array
@@ -495,6 +491,142 @@ int NeuralNetworkDbackpropagationGPU(NeuralNetworkD *network, double *excepted_o
 	free(activation_values_buffers);
 	free(deltas_buffers);
 	free(weights_buffers);
+
+	// Return
+	return 0;
+}
+
+/**
+ * @brief Update/Nudge the weights and biases of the neural network
+ * For a neural network using double as type and using GPU
+ * 
+ * Detailed description of the update weights and biases algorithm:
+ * - For each layer of the neural network (except the input layer):
+ * 		- For each neuron of the current layer:
+ * 			- For each weight of the current neuron:
+ * 				- Update the weight (weight + (learning_rate * delta of the current neuron * activation_value of the previous layer))
+ * 			- Update the bias (bias + (learning_rate * delta of the current neuron))
+ * 
+ * Basically, for each layer, for each neuron, the formula is:
+ * - bias = bias + (learning_rate * delta of the current neuron)
+ * - for each weight of the current neuron:
+ *   - weight = weight + (learning_rate * delta of the current neuron * activation_value of the previous layer)
+ * 
+ * @details i = Index of the selected layer (except the input layer)
+ * @details j = Index of the selected neuron
+ * @details k = Index of the previous layer selected neuron
+ * 
+ * @param network	Pointer to the neural network
+ * 
+ * @return void
+ */
+int NeuralNetworkDupdateWeightsAndBiasesGPU(NeuralNetworkD *network) {
+	setupNeuralNetworkGpuOpenCL();
+
+	// Create the buffers & copy all the data to the GPU
+	cl_mem *activation_values_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
+	cl_mem *deltas_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
+	cl_mem *weights_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
+	cl_mem *biases_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
+	for (int i = 0; i < network->nb_layers; i++) {
+		activation_values_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot create buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		if (i == 0) continue;
+		deltas_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot create buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		weights_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_WRITE, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), NULL, &gpu_code);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot create buffer 'weights_buffers[%d]' (size: %d = %d * %d), reason: %d / %s\n", i, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron, network->layers[i].nb_neurons, network->layers[i].nb_inputs_per_neuron, gpu_code, getOpenCLErrorString(gpu_code));
+		biases_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_WRITE, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot create buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+	}
+	for (int i = 0; i < network->nb_layers; i++) {
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].activations_values, 0, NULL, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot write buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		if (i == 0) continue;
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, deltas_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].deltas, 0, NULL, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot write buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, weights_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), network->layers[i].weights_flat, 0, NULL, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot write buffer 'weights_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, biases_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].biases, 0, NULL, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot write buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+	}
+
+	// For each layer of the neural network (except the input layer),
+	for (int i = 1; i < network->nb_layers; i++) {
+
+		// For each neuron of the current layer,
+		int current_layer_size = network->layers[i].nb_neurons;
+		int previous_layer_size = network->layers[i - 1].nb_neurons;
+		double learning_rate = network->learning_rate;
+		gpu_code = clSetKernelArg(gpu_kernels[3], 0, sizeof(cl_mem), &activation_values_buffers[i - 1]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 0 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clSetKernelArg(gpu_kernels[3], 1, sizeof(cl_mem), &deltas_buffers[i]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 1 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clSetKernelArg(gpu_kernels[3], 2, sizeof(cl_mem), &weights_buffers[i]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 2 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clSetKernelArg(gpu_kernels[3], 3, sizeof(cl_mem), &biases_buffers[i]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 3 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clSetKernelArg(gpu_kernels[3], 4, sizeof(int), &current_layer_size);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 4 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clSetKernelArg(gpu_kernels[3], 5, sizeof(int), &previous_layer_size);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 5 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clSetKernelArg(gpu_kernels[3], 6, sizeof(double), &learning_rate);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 6 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		size_t global_work_size = current_layer_size;
+		gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[3], 1, NULL, &global_work_size, NULL, 0, NULL, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot enqueue kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	}
+
+	// Copy the data from the GPU to the CPU (except the input layer): weights and biases
+	for (int i = 1; i < network->nb_layers; i++) {
+		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, weights_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), network->layers[i].weights_flat, 0, NULL, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot read buffer 'weights_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, biases_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].biases, 0, NULL, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot read buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+	}
+
+	// Finish & free the buffers
+	gpu_code = clFinish(gpu_oc.command_queue);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot finish, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	for (int i = 0; i < network->nb_layers; i++) {
+		clReleaseMemObject(activation_values_buffers[i]);
+		if (i == 0) continue;
+		clReleaseMemObject(deltas_buffers[i]);
+		clReleaseMemObject(weights_buffers[i]);
+		clReleaseMemObject(biases_buffers[i]);
+	}
+	free(activation_values_buffers);
+	free(deltas_buffers);
+	free(weights_buffers);
+	free(biases_buffers);
+
+	// Return
+	return 0;
+}
+
+/**
+ * @brief Train the neural network using the backpropagation algorithm
+ * For a neural network using double as type and using GPU
+ * 
+ * @param network			Pointer to the neural network
+ * @param input				Pointer to the input array (double), must be the same size as the input layer
+ * @param excepted_output	Pointer to the excepted output array (double), must be the same size as the output layer
+ * 
+ * @return void
+ */
+int NeuralNetworkDtrainGPU(NeuralNetworkD *network, double *input, double *excepted_output) {
+
+	// Feed forward
+	gpu_code = NeuralNetworkDfeedForwardGPU(network, input);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot feed forward, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+
+	// Backpropagation
+	gpu_code = NeuralNetworkDbackpropagationGPU(network, excepted_output);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot backpropagate, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+
+	// Update weights and biases
+	gpu_code = NeuralNetworkDupdateWeightsAndBiasesGPU(network);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot update weights and biases, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
 	// Return
 	return 0;
