@@ -2,6 +2,60 @@
 #include "training.h"
 
 /**
+ * @brief Feed forward the neural network with the input array
+ * For a neural network using double as type
+ * 
+ * Detailed description of the feed forward algorithm:
+ * - Copy the input array into the input layer of the neural network
+ * - For each layer of the neural network (except the input layer):
+ * 		- For each neuron of the current layer:
+ * 			- Calculate the sum of all the weights of the previous layer linked to the current neuron
+ * 			- Add the bias of the current neuron
+ * 			- Apply the activation function to the weighted sum (often sigmoid)
+ * 			- Save the result in the activations_values array of the current layer
+ * 
+ * Basically, for each layer, for each neuron, the formula is:
+ * - activation_value = activation_function( sum( input * weight  ) + bias )
+ * - where input is the activation_value of the previous layer
+ * 
+ * @details i = Index of the selected layer
+ * @details j = Index of the selected neuron
+ * @details k = Index of the previous layer selected neuron
+ * 
+ * @param network	Pointer to the neural network
+ * @param input		Pointer to the input array (double), must be the same size as the input layer
+ * 
+ * @return void
+ */
+void NeuralNetworkDfeedForward(NeuralNetworkD *network, double *input) {
+
+	// Set the input layer (copy the input array into the input layer of the neural network)
+	memcpy(network->input_layer->activations_values, input, network->input_layer->nb_neurons * sizeof(double));
+
+	// Feed forward: for each layer of the neural network (except the input layer),
+	for (int i = 1; i < network->nb_layers; i++) {
+
+		// For each neuron of the current layer,
+		for (int j = 0; j < network->layers[i].nb_neurons; j++) {
+
+			// Calculate the sum of all the weights of the previous layer linked to the current neuron
+			double weighted_sum = 0;
+			for (int k = 0; k < network->layers[i].nb_inputs_per_neuron; k++) {
+				double input_value = network->layers[i - 1].activations_values[k];
+				double weight = network->layers[i].weights[j][k];	// weights[j][k] where j = current neuron, k = previous neuron
+				weighted_sum += input_value * weight;
+			}
+
+			// Add the bias of the current neuron
+			weighted_sum += network->layers[i].biases[j];
+
+			// Apply the activation function to the weighted sum (often sigmoid)
+			network->layers[i].activations_values[j] = network->activation_function(weighted_sum);
+		}
+	}
+}
+
+/**
  * @brief Backpropagate the neural network with the excepted output array
  * For a neural network using double as type
  * 
@@ -131,7 +185,6 @@ void NeuralNetworkDupdateWeightsAndBiases(NeuralNetworkD *network) {
 	}
 }
 
-
 /**
  * @brief Train the neural network using the backpropagation algorithm
  * For a neural network using double as type
@@ -151,12 +204,200 @@ void NeuralNetworkDtrain(NeuralNetworkD *network, double *input, double *excepte
 
 	// Backpropagation
 	DEBUG_PRINT("NeuralNetworkDtrain(): Backpropagation in progress...\n");
-	NeuralNetworkDbackpropagation(network, excepted_output);
+	//NeuralNetworkDbackpropagation(network, excepted_output);
+	NeuralNetworkDbackpropagationGPU(network, excepted_output);
 	DEBUG_PRINT("NeuralNetworkDtrain(): Backpropagation done!\n");
 
 	// Update weights and biases
 	DEBUG_PRINT("NeuralNetworkDtrain(): Update weights and biases in progress...\n");
 	NeuralNetworkDupdateWeightsAndBiases(network);
 	DEBUG_PRINT("NeuralNetworkDtrain(): Update weights and biases done!\n");
+}
+
+
+///// GPU Part /////
+#include "../gpu/gpu_utils.h"
+
+// Variables for gpu efficiency
+cl_int gpu_code = 0;
+cl_program gpu_program = NULL;
+cl_kernel gpu_kernels[] = {NULL, NULL, NULL, NULL};
+struct opencl_context_t gpu_oc;
+int gpu_initialized = 0, gpu_current_kernel = -1;
+void stopNeuralNetworkGpuOpenCL() {
+	if (!gpu_initialized) return;
+	clReleaseProgram(gpu_program);
+	clReleaseKernels((int)(sizeof(gpu_kernels) / sizeof(cl_kernel)), gpu_kernels);
+	clReleaseCommandQueue(gpu_oc.command_queue);
+	clReleaseContext(gpu_oc.context);
+	gpu_initialized = 0;
+}
+
+/**
+ * @brief This function setup the gpu efficiency variables.
+ * This function is automatically called by the NeuralNetworkDtrainGpuOpenCL() function.
+ * 
+ * @return int	0 if success, -1 otherwise
+ */
+int setupNeuralNetworkGpuOpenCL() {
+	if (gpu_initialized) return 0;
+
+	// Initialize OpenCL
+	gpu_oc = setupOpenCL(CL_DEVICE_TYPE_GPU);
+
+	// Create the program
+	char path[] = "kernels/neural_network.cl";
+	char* kernel_source = readKernelProgram(path);
+	ERROR_HANDLE_PTR_RETURN_INT(kernel_source, "setupNeuralNetworkGpuOpenCL(): Cannot read kernel program '%s'\n", path);
+	gpu_program = clCreateProgramWithSource(gpu_oc.context, 1, (const char**)&kernel_source, NULL, &gpu_code);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuOpenCL(): Cannot create program, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+
+	// Build the program
+	gpu_code = clBuildProgram(gpu_program, 1, &gpu_oc.device_id, NULL, NULL, NULL);
+	if (gpu_code != CL_SUCCESS) {
+		ERROR_PRINT("setupNeuralNetworkGpuOpenCL(): Cannot build program, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		printProgramBuildLog(gpu_program, gpu_oc.device_id, ERROR_LEVEL, "setupNeuralNetworkGpuOpenCL(): ");
+		return gpu_code;
+	}
+
+	// Free the kernel source code
+	free(kernel_source);
+
+	// Create the kernels
+	// gpu_kernels[0] = clCreateKernel(gpu_program, "feedForward", &gpu_code);
+	// ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuOpenCL(): Cannot create kernel 'feedForward', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	gpu_kernels[1] = clCreateKernel(gpu_program, "backpropagationOutputLayerDeltas", &gpu_code);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuOpenCL(): Cannot create kernel 'backpropagationOutputLayerDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	gpu_kernels[2] = clCreateKernel(gpu_program, "backpropagationHiddenLayersDeltas", &gpu_code);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuOpenCL(): Cannot create kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	// gpu_kernels[3] = clCreateKernel(gpu_program, "updateWeightsAndBiases", &gpu_code);
+	// ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuOpenCL(): Cannot create kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+
+	// Register the exit function
+	atexit(stopNeuralNetworkGpuOpenCL);
+
+	// Set the initialized flag & return
+	gpu_initialized = 1;
+	return 0;
+}
+
+/**
+ * @brief Backpropagate the neural network with the excepted output array
+ * For a neural network using double as type and using GPU
+ * 
+ * Detailed description of the backpropagation algorithm:
+ * - For each neuron of the output layer:
+ * 		- Calculate the error of the neuron (excepted_output - activation_value)
+ * 		- Calculate the derivative of the activation function of the neuron (activation_value * (1 - activation_value))
+ * 		- Calculate the delta of the neuron (error * derivative)
+ * 		- Save the delta of the neuron in the deltas array of the output layer
+ * - For each layer of the neural network (except the output layer and the input layer) (order last to first):
+ * 		- For each neuron of the current layer:
+ * 			- Calculate the error of the neuron (sum( weight * delta of the next layer ))
+ * 			- Calculate the derivative of the activation function of the neuron (activation_value * (1 - activation_value))
+ * 			- Calculate the delta of the neuron (error * derivative)
+ * 			- Save the delta of the neuron in the deltas array of the current layer
+ * 
+ * Basically, for each layer, for each neuron, the formula is:
+ * - delta = error * derivative
+ * - where error = sum( weight * delta of the next layer )
+ * - where derivative = activation_value * (1 - activation_value)
+ * 
+ * @details i = Index of the selected layer (order last to first)
+ * @details j = Index of the selected neuron
+ * @details k = Index of the next layer selected neuron
+ * 
+ * @param network			Pointer to the neural network
+ * @param excepted_output	Pointer to the excepted output array (double), must be the same size as the output layer
+ * 
+ * @return void
+ */
+int NeuralNetworkDbackpropagationGPU(NeuralNetworkD *network, double *excepted_output) {
+	setupNeuralNetworkGpuOpenCL();
+
+	// Create the buffers & copy all the data to the GPU
+	cl_mem excepted_output_buffer = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->output_layer->nb_neurons * sizeof(double), NULL, &gpu_code);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot create buffer 'excepted_output_buffer', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	cl_mem *activation_values_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
+	cl_mem *deltas_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
+	cl_mem *weights_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
+	for (int i = 0; i < network->nb_layers; i++) {
+		activation_values_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot create buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		if (i == 0) continue;
+		deltas_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_WRITE, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot create buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		weights_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), NULL, &gpu_code);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot create buffer 'weights_buffers[%d]' (size: %d = %d * %d), reason: %d / %s\n", i, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron, network->layers[i].nb_neurons, network->layers[i].nb_inputs_per_neuron, gpu_code, getOpenCLErrorString(gpu_code));
+	}
+	gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, excepted_output_buffer, CL_TRUE, 0, network->output_layer->nb_neurons * sizeof(double), excepted_output, 0, NULL, NULL);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot write buffer 'excepted_output_buffer', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	for (int i = 0; i < network->nb_layers; i++) {
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].activations_values, 0, NULL, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot write buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		if (i == 0) continue;
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, deltas_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].deltas, 0, NULL, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot write buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, weights_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), network->layers[i].weights_flat, 0, NULL, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot write buffer 'weights_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+	}
+
+	// For each neuron of the output layer, calculate the delta of the neuron (excepted_output - activation_value) * derivative
+	int output_layer_size = network->output_layer->nb_neurons;
+	gpu_code = clSetKernelArg(gpu_kernels[1], 0, sizeof(cl_mem), &excepted_output_buffer);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 0 of kernel 'backpropagationOutputDelta', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	gpu_code = clSetKernelArg(gpu_kernels[1], 1, sizeof(cl_mem), &activation_values_buffers[network->nb_layers - 1]);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 1 of kernel 'backpropagationOutputDelta', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	gpu_code = clSetKernelArg(gpu_kernels[1], 2, sizeof(cl_mem), &deltas_buffers[network->nb_layers - 1]);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 2 of kernel 'backpropagationOutputDelta', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	gpu_code = clSetKernelArg(gpu_kernels[1], 3, sizeof(int), &output_layer_size);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 3 of kernel 'backpropagationOutputDelta', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	size_t global_work_size[] = {output_layer_size};
+	gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[1], 1, NULL, global_work_size, NULL, 0, NULL, NULL);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot enqueue kernel 'backpropagationOutputDelta', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	// For each layer of the neural network (except the output layer and the input layer) (order last to first),
+	for (int i = network->nb_layers - 2; i > 0; i--) {
+
+		// For each neuron of the current layer,
+		int current_layer_size = network->layers[i].nb_neurons;
+		int next_layer_size = network->layers[i + 1].nb_neurons;
+		gpu_code = clSetKernelArg(gpu_kernels[2], 0, sizeof(cl_mem), &weights_buffers[i + 1]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 0 of kernel 'backpropagationDelta', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clSetKernelArg(gpu_kernels[2], 1, sizeof(cl_mem), &deltas_buffers[i + 1]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 1 of kernel 'backpropagationDelta', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clSetKernelArg(gpu_kernels[2], 2, sizeof(cl_mem), &activation_values_buffers[i]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 2 of kernel 'backpropagationDelta', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clSetKernelArg(gpu_kernels[2], 3, sizeof(cl_mem), &deltas_buffers[i]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 3 of kernel 'backpropagationDelta', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clSetKernelArg(gpu_kernels[2], 4, sizeof(int), &current_layer_size);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 4 of kernel 'backpropagationDelta', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clSetKernelArg(gpu_kernels[2], 5, sizeof(int), &next_layer_size);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 5 of kernel 'backpropagationDelta', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		size_t global_work_size[] = {current_layer_size};
+		gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[2], 1, NULL, global_work_size, NULL, 0, NULL, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot enqueue kernel 'backpropagationDelta', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	}
+
+	// Copy the deltas back to the CPU
+	for (int i = 0; i < network->nb_layers; i++) {
+		if (i == 0) continue;
+		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, deltas_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].deltas, 0, NULL, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot read buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+	}
+
+	// Free the buffers
+	clReleaseMemObject(excepted_output_buffer);
+	for (int i = 0; i < network->nb_layers; i++) {
+		clReleaseMemObject(activation_values_buffers[i]);
+		if (i == 0) continue;
+		clReleaseMemObject(deltas_buffers[i]);
+		clReleaseMemObject(weights_buffers[i]);
+	}
+	free(activation_values_buffers);
+	free(deltas_buffers);
+	free(weights_buffers);
+
+	// Return
+	return 0;
 }
 

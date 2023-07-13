@@ -35,6 +35,12 @@ int fillRandomDoubleArrayGPU(double* array, unsigned long long size, double min,
 
 
 // Generic macros
+#define clReleaseKernels(n, kernels) { \
+	int ii; \
+	for (ii = 0; ii < n; ii++) { \
+		clReleaseKernel(kernels[ii]); \
+	} \
+}
 #define clReleaseMemObjects(n, buffers) { \
 	int ii; \
 	for (ii = 0; ii < n; ii++) { \
