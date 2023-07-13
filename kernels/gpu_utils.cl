@@ -3,6 +3,8 @@
  * @brief Fills an array with random double values.
  * Function called in gpu_utils.c by fillRandomDoubleArrayGPU().
  * 
+ * @details Should be prohibited because slower than fillRandomDoubleArrayCPUThreads().
+ * 
  * @param array				The array to fill
  * @param size				The size of the array
  * @param min				The minimum value of the random values
@@ -10,7 +12,7 @@
  * 
  * @return void
  */
-kernel void fillRandomDoubleArrayGPU(global double* array, int size, double min, double max_minus_min) {
+kernel void fillRandomDoubleArrayGPU(global double* array, unsigned long long size, double min, double max_minus_min) {
 
 	// Get the index of the current element
 	int i = get_global_id(0);

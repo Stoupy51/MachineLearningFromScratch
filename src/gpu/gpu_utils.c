@@ -546,7 +546,7 @@ int setupOneCallFunctionsOpenCL() {
  * 
  * @return int			0 if success, -1 otherwise (no GPU device found, or error while filling the array)
  */
-int fillRandomDoubleArrayGPU(double* array, int size, double min, double max) {
+int fillRandomDoubleArrayGPU(double* array, unsigned long long size, double min, double max) {
 	if (setupOneCallFunctionsOpenCL() != 0) return -1;
 
 	// Create the kernel if needed
@@ -566,7 +566,7 @@ int fillRandomDoubleArrayGPU(double* array, int size, double min, double max) {
 	// Set the kernel arguments
 	ocfe_code = clSetKernelArg(ocfe_kernel, 0, sizeof(cl_mem), &buffer);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 0, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
-	ocfe_code = clSetKernelArg(ocfe_kernel, 1, sizeof(int), &size);
+	ocfe_code = clSetKernelArg(ocfe_kernel, 1, sizeof(unsigned long long), &size);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 1, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 	ocfe_code = clSetKernelArg(ocfe_kernel, 2, sizeof(double), &min);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 2, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
@@ -593,5 +593,4 @@ int fillRandomDoubleArrayGPU(double* array, int size, double min, double max) {
 	// Return success
 	return 0;
 }
-
 

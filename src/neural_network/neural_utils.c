@@ -1,13 +1,8 @@
 
 #include "neural_utils.h"
+#include "../utils/random_array_values.h"
 
 #include <fcntl.h>
-
-// Generate a random double/float between min and max
-double generateRandomDouble(double min, double max) { return (double)rand() / RAND_MAX * (max - min) + min; }
-float generateRandomFloat(float min, float max) { return (float)rand() / RAND_MAX * (max - min) + min; }
-
-
 
 /**
  * @brief Function that creates a neural network using double as type
@@ -77,8 +72,8 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 		}
 
 		// Initialize the activations_values to random values
-		for (int j = 0; j < network.layers[i].nb_neurons; j++)
-			network.layers[i].activations_values[j] = generateRandomDouble(-1.0, 1.0);
+		fillRandomDoubleArray(network.layers[i].activations_values, network.layers[i].nb_neurons, -1.0, 1.0);
+
 
 		// Stop here if it's the first layer (no weights, biases, etc.)
 		if (i == 0) continue;
@@ -111,11 +106,8 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 		}
 
 		// Initialize the weights and biases with random values
-		for (int j = 0; j < network.layers[i].nb_neurons; j++) {
-			for (int k = 0; k < network.layers[i].nb_inputs_per_neuron; k++)
-				network.layers[i].weights[j][k] = generateRandomDouble(-1.0, 1.0);
-			network.layers[i].biases[j] = generateRandomDouble(-1.0, 1.0);
-		}
+		fillRandomDoubleArray(network.layers[i].weights_flat, network.layers[i].nb_neurons * network.layers[i].nb_inputs_per_neuron, -1.0, 1.0);
+		fillRandomDoubleArray(network.layers[i].biases, network.layers[i].nb_neurons, -1.0, 1.0);
 
 		///// Allocate memory for the deltas (nb_neurons * sizeof(double))
 		network.layers[i].deltas = (double*)malloc(network.layers[i].nb_neurons * sizeof(double));

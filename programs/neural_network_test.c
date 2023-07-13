@@ -5,6 +5,7 @@
 #include "../src/math/sigmoid.h"
 #include "../src/neural_network/neural_utils.h"
 #include "../src/neural_network/training.h"
+#include "../src/utils/random_array_values.h"
 
 #define NEURAL_NETWORK_PATH "bin/neural_network_test.bin"
 
@@ -57,10 +58,8 @@ int main() {
 	double *excepted_output = (double*)malloc(network.output_layer->nb_neurons * sizeof(double));
 
 	// Make random input and excepted output
-	for (int i = 0; i < network.input_layer->nb_neurons; i++)
-		input[i] = generateRandomDouble(0.0, 1.0);
-	for (int i = 0; i < network.output_layer->nb_neurons; i++)
-		excepted_output[i] = generateRandomDouble(0.0, 1.0);
+	fillRandomDoubleArray(input, network.input_layer->nb_neurons, 0.0, 1.0);
+	fillRandomDoubleArray(excepted_output, network.output_layer->nb_neurons, 0.0, 1.0);
 	
 	// Train the neural network
 	NeuralNetworkDtrain(&network, input, excepted_output);
