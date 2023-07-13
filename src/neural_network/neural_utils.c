@@ -37,7 +37,12 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 
 	// If the memory size is too big (> 4 GB), ask the user if he wants to continue
 	if (network.memory_size > 4000000000) {
-		WARNING_PRINT("createNeuralNetworkD(): The memory size of the neural network is very big (%lld Bytes)\n", network.memory_size);
+		// WARNING_PRINT("createNeuralNetworkD(): The memory size of the neural network is very big (%lld Bytes)\n", network.memory_size);
+		WARNING_PRINT("createNeuralNetworkD(): The memory size of the neural network is very big (");
+		if (network.memory_size < 1000) { PRINTER("%lld Bytes", network.memory_size); }
+		else if (network.memory_size < 1000000) { PRINTER("%.2Lf KB (%lld)", (long double)network.memory_size / 1000, network.memory_size); }
+		else if (network.memory_size < 1000000000) { PRINTER("%.2Lf MB (%lld)", (long double)network.memory_size / 1000000, network.memory_size); }
+		else { PRINTER("%.2Lf GB (%lld)", (long double)network.memory_size / 1000000000, network.memory_size); }
 		WARNING_PRINT("createNeuralNetworkD(): Do you want to continue? (Y/n) ");
 		char answer = getchar();
 		if (answer != 'Y' && answer != 'y' && answer != '\n') {
@@ -144,11 +149,11 @@ void printNeuralNetworkD(NeuralNetworkD network) {
 	if (network.memory_size < 1000)
 		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%lld"CYAN" Bytes\n", network.memory_size); }
 	else if (network.memory_size < 1000000)
-		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" KB\n", (long double)network.memory_size / 1000); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" KB ("YELLOW"%lld"CYAN")\n", (long double)network.memory_size / 1000, network.memory_size); }
 	else if (network.memory_size < 1000000000)
-		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" MB\n", (long double)network.memory_size / 1000000); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" MB ("YELLOW"%lld"CYAN")\n", (long double)network.memory_size / 1000000, network.memory_size); }
 	else
-		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" GB\n", (long double)network.memory_size / 1000000000); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" GB ("YELLOW"%lld"CYAN")\n", (long double)network.memory_size / 1000000000, network.memory_size); }
 	long long total_neurons = 0;
 	long long total_weights = 0;
 	for (int i = 0; i < network.nb_layers; i++) {
@@ -156,7 +161,15 @@ void printNeuralNetworkD(NeuralNetworkD network) {
 		total_weights += network.layers[i].nb_neurons * network.layers[i].nb_inputs_per_neuron;
 	}
 	PRINTER(CYAN"- Total neurons:\t"YELLOW"%lld\n", total_neurons);
-	PRINTER(CYAN"- Total weights:\t"YELLOW"%lld\n", total_weights);
+	PRINTER(CYAN"- Total weights:\t");
+	if (total_weights < 1000)
+		{ PRINTER(YELLOW"%lld"CYAN"\n", total_weights); }
+	else if (total_weights < 1000000)
+		{ PRINTER(YELLOW"%.2Lf"CYAN" K ("YELLOW"%lld"CYAN")\n", (long double)total_weights / 1000, total_weights); }
+	else if (total_weights < 1000000000)
+		{ PRINTER(YELLOW"%.2Lf"CYAN" M ("YELLOW"%lld"CYAN")\n", (long double)total_weights / 1000000, total_weights); }
+	else
+		{ PRINTER(YELLOW"%.2Lf"CYAN" B ("YELLOW"%lld"CYAN")\n", (long double)total_weights / 1000000000, total_weights); }
 	PRINTER(RESET"\n");
 }
 

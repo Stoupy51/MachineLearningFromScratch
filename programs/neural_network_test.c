@@ -70,7 +70,7 @@ int main() {
 		{
 			NeuralNetworkDtrain(&network, input, excepted_output);
 		},
-		"NeuralNetworkDtrain (CPU)", 30	// 30 seconds at least
+		"NeuralNetworkDtrain (CPU)", 10	// 10 seconds at least
 	);
 	PRINTER(buffer);
 
@@ -79,10 +79,9 @@ int main() {
 		{
 			NeuralNetworkDtrainGPU(&network, input, excepted_output);
 		},
-		"NeuralNetworkDtrainGPU (GPU)", 30	// 30 seconds at least
+		"NeuralNetworkDtrainGPU (GPU)", 10	// 10 seconds at least
 	);
 	PRINTER(buffer);
-
 
 	// Free the input and excepted output arrays
 	free(input);
