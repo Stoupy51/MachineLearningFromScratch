@@ -63,23 +63,13 @@ int main() {
 	fillRandomDoubleArray(input, network.input_layer->nb_neurons, 0.0, 1.0);
 	fillRandomDoubleArray(excepted_output, network.output_layer->nb_neurons, 0.0, 1.0);
 	
-	///// Train the neural network with CPU & GPU and compare the results
-	// Benchmark the CPU training
-	char buffer[2048];
-	ST_BENCHMARK_SOLO_TIME(buffer,
-		{
-			NeuralNetworkDtrain(&network, input, excepted_output);
-		},
-		"NeuralNetworkDtrain (CPU)", 10	// 10 seconds at least
-	);
-	PRINTER(buffer);
-
 	// Benchmark the GPU training
-	ST_BENCHMARK_SOLO_TIME(buffer,
+	char buffer[1024];
+	ST_BENCHMARK_SOLO_COUNT(buffer,
 		{
-			NeuralNetworkDtrainGPU(&network, input, excepted_output, 0);
+			NeuralNetworkDtrainGPU(&network, input, excepted_output, 1);
 		},
-		"NeuralNetworkDtrainGPU (GPU)", 10	// 10 seconds at least
+		"NeuralNetworkDtrainGPU (GPU)", 1	// 1 execution
 	);
 	PRINTER(buffer);
 
@@ -88,7 +78,7 @@ int main() {
 	free(excepted_output);
 
 	// Save the neural network to a file and another human readable file
-	//saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 0);
+	saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 0);
 
 	// Final print and return
 	INFO_PRINT("main(): End of program.\n");

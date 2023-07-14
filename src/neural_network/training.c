@@ -322,11 +322,15 @@ int setupNeuralNetworkGpuBuffersOpenCL(NeuralNetworkD *network) {
 
 	// Free the write events
 	for (int i = 0; i < network->nb_layers; i++) {
-		clReleaseEvent(write_events_act_val[i]);
+		gpu_code = clReleaseEvent(write_events_act_val[i]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuBuffersOpenCL(): Cannot release 'act_val' event %d, reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
 		if (i == 0) continue;
-		clReleaseEvent(write_events_others[(i - 1) * 3]);
-		clReleaseEvent(write_events_others[(i - 1) * 3 + 1]);
-		clReleaseEvent(write_events_others[(i - 1) * 3 + 2]);
+		gpu_code = clReleaseEvent(write_events_others[(i - 1) * 3]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuBuffersOpenCL(): Cannot release 'others' event %d, reason: %d / %s\n", (i - 1) * 3, gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clReleaseEvent(write_events_others[(i - 1) * 3 + 1]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuBuffersOpenCL(): Cannot release 'others' event %d, reason: %d / %s\n", (i - 1) * 3 + 1, gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clReleaseEvent(write_events_others[(i - 1) * 3 + 2]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuBuffersOpenCL(): Cannot release 'others' event %d, reason: %d / %s\n", (i - 1) * 3 + 2, gpu_code, getOpenCLErrorString(gpu_code));
 	}
 	free(write_events_act_val);
 	free(write_events_others);
@@ -555,8 +559,10 @@ int NeuralNetworkDbackpropagationGPU(NeuralNetworkD *network, double *excepted_o
 		}
 		gpu_code = clWaitForEvents(network->nb_layers - 1, read_events);
 		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot wait for events 'read_events[1:%d]', reason: %d / %s\n", network->nb_layers - 2, gpu_code, getOpenCLErrorString(gpu_code));
-		for (int i = 1; i < network->nb_layers; i++)
+		for (int i = 1; i < network->nb_layers; i++) {
 			gpu_code = clReleaseEvent(read_events[i - 1]);
+			ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot release event 'read_events[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		}
 		free(read_events);
 	}
 
