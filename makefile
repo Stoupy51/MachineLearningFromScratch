@@ -32,6 +32,6 @@ clean:
 	@./maker.exe clean
 
 restart:
-	@make clean --no-print-directory
+	@if [ -f "maker.exe" ]; then make clean --no-print-directory; fi
 	@make init --no-print-directory
 

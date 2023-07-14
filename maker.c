@@ -9,8 +9,6 @@
 	#include <unistd.h>
 #endif
 
-// TODO: Programs should be compiled only with required .o files (not all of them)
-
 #if 1 == 1
 
 typedef struct file_path_t {
@@ -95,9 +93,79 @@ void str_linked_list_free(str_linked_list_t* list) {
 // Global variables
 char* additional_flags = NULL;
 char* linking_flags = NULL;
-char* obj_files = NULL;
-int obj_files_size = 0;
 str_linked_list_t files_timestamps;
+
+/**
+ * @brief Utility function to normalize a path:
+ * - Replace all the \ by /
+ * - Remove all the /./
+ * - Remove all the /../ and the folder before
+ * 
+ * @param path		Path to normalize
+ * 
+ * @return char*	Normalized path (same pointer as the parameter)
+ */
+char* normalize_path(char *path) {
+	int size = strlen(path);
+
+	// Replace all the \ by /
+	#ifdef _WIN32
+		for (int i = 0; i < size; i++)
+			if (path[i] == '\\')
+				path[i] = '/';
+	#endif
+
+	// Remove all the /./
+	int tries = 0;
+	while (tries > 0) {
+		tries--;
+		for (int i = 0; i < size - 2; i++) {
+
+			// If there is a /./, remove it
+			if (path[i] == '/' && path[i + 1] == '.' && path[i + 2] == '/') {
+				for (int j = i; j < size - 2; j++)
+					path[j] = path[j + 2];
+				size -= 2;
+				i--;
+				path[size] = '\0';
+				tries++;
+				break;
+			}
+		}
+	}
+
+	// Remove all the /../ and the folder before
+	tries = 1;
+	while (tries > 0) {
+		tries--;
+		for (int i = 0; i < size - 3; i++) {
+
+			// If there is a /../,
+			if (path[i] == '/' && path[i + 1] == '.' && path[i + 2] == '.' && path[i + 3] == '/') {
+
+				// Find the folder start index
+				int j = i - 1;
+				while (j > 0 && path[j - 1] != '/')
+					j--;
+				
+				// If there is a folder before, remove it
+				if (j > 0 || path[i + 3] == '/') {
+					int offset = i - j + 4;
+					int new_size = size - offset;
+					for (int k = j; k < new_size; k++)
+						path[k] = path[k + offset];
+					size = new_size;
+					path[size] = '\0';
+					tries++;
+					break;
+				}
+			}
+		}
+	}
+
+	// Return
+	return path;
+}
 
 /**
  * @brief Clean the project by deleting all the .o and .exe files in their respective folders
@@ -105,10 +173,10 @@ str_linked_list_t files_timestamps;
  * @return int		0 if success, -1 otherwise
  */
 int clean_project() {
-	printf("Cleaning the project...\n");
+	fprintf(stderr, "Cleaning the project...\n");
 
 	// Delete all the .o files in the obj folder
-	int code = system("rm -rf "OBJ_FOLDER"/**/*.o");
+	int code = system("rm -rf "OBJ_FOLDER"/");
 	if (code != 0) {
 		perror("Error while deleting the .o files\n");
 		return -1;
@@ -128,7 +196,7 @@ int clean_project() {
 	code = system("rm -f maker.exe");
 
 	// Return
-	printf("Project cleaned!\n\n");
+	fprintf(stderr, "Project cleaned!\n\n");
 	return 0;
 }
 
@@ -190,6 +258,9 @@ int load_files_timestamps(str_linked_list_t* files_timestamps) {
 		path.str = str;
 		path.timestamp = timestamp;
 		str_linked_list_insert(files_timestamps, path);
+
+		// Free the string
+		free(str);
 	}
 
 	// Close the file and return
@@ -304,7 +375,7 @@ long long getTimestampRecursive(const char* filepath, const char* past_filepath)
 
 			// Get the path of the included file
 			char* included_file = line + 9;
-			while (*included_file == ' ' || *included_file == '\t')
+			while (*included_file == ' ' || *included_file == '\t')	// Ignore spaces and tabs until the path
 				included_file++;
 			if (*included_file == '"' || *included_file == '<') {
 				included_file++;
@@ -338,6 +409,9 @@ long long getTimestampRecursive(const char* filepath, const char* past_filepath)
 			long long included_file_timestamp = getTimestampRecursive(included_file_path, filepath);
 			if (included_file_timestamp > timestamp)
 				timestamp = included_file_timestamp;
+			
+			// Free the path
+			free(included_file_path);
 		}
 	}
 
@@ -384,7 +458,6 @@ void create_folders_from_path(const char* filepath) {
 	free(folder);
 	return;
 }
-
 
 /**
  * @brief Find all the .c files in the src folder recursively,
@@ -449,41 +522,20 @@ int findCFiles(str_linked_list_t *files_timestamps) {
 		int i;
 		for (i = 0; i < sizeof(SRC_FOLDER) - 1; i++)
 			obj_path[i] = OBJ_FOLDER[i];
-		
-		// Add the .o file to the list of object files
-		if (obj_files == NULL) {
-			obj_files_size = 1024 * 1024 * sizeof(char);
-			obj_files = malloc(obj_files_size);
-		}
-		else {
-			int needed_size = strlen(obj_path) + 4;
-			if (obj_files_size < needed_size) {
-				obj_files_size = needed_size * 2;
-				char* newptr = realloc(obj_files, obj_files_size);
-				if (newptr == NULL) {
-					perror("Error while reallocating memory for the list of object files\n");
-					return -1;
-				}
-				obj_files = newptr;
-			}
-		}
-		strcat(obj_files, "\"");
-		strcat(obj_files, obj_path);
-		strcat(obj_files, "\" ");
 
 		// If the file is not in the list or if the timestamp is different,
 		if (element == NULL || element->path.timestamp != timestamp) {
 
 			// Manage the counter
 			if (compileCount++ == 0)
-				printf("Compiling the source files...\n");
+				fprintf(stderr, "Compiling the source files...\n");
 
 			// If the folder of the .o file doesn't exist, create it
 			create_folders_from_path(obj_path);
 
 			// Compile the file
 			char command[32768];
-			sprintf(
+			sprintf( 
 				command,
 				CC" -c \"%s\" -o \"%s\" %s",
 
@@ -491,7 +543,7 @@ int findCFiles(str_linked_list_t *files_timestamps) {
 				obj_path,
 				additional_flags == NULL ? "" : additional_flags
 			);
-			printf("- %s\n", command);
+			fprintf(stderr, "- %s\n", command);
 			if (system(command) != 0) {
 				save_files_timestamps(*files_timestamps);
 				exit(-1);
@@ -504,13 +556,17 @@ int findCFiles(str_linked_list_t *files_timestamps) {
 			else
 				element->path.timestamp = timestamp;
 		}
+
+		// Free the paths
+		free(relative_path);
+		free(obj_path);
 	}
 
 	// If there is no file to compile, print a message
 	if (compileCount == 0)
-		printf("No source file to compile...\n\n");
+		fprintf(stderr, "No source file to compile...\n\n");
 	else
-		printf("\nCompilation of %d source files done!\n\n", compileCount);
+		fprintf(stderr, "\nCompilation of %d source files done!\n\n", compileCount);
 
 	// Free the line
 	if (line != NULL)
@@ -547,6 +603,150 @@ int compile_sources() {
 		perror("Error while saving the files timestamps\n");
 		return -1;
 	}
+
+	// Return
+	return 0;
+}
+
+/**
+ * @brief Fill a list with all the .o files needed to compile a .c program file
+ * not by using a recursive function but by using a stack
+ * 
+ * @param obj_files_list		Pointer to the list
+ * @param filepath				Path of the file
+ * 
+ * @return int		0 if success, -1 otherwise
+ */
+int fillStackObjFilesList(str_linked_list_t *list, char *filepath) {
+
+	// Create the stack
+	str_linked_list_t stack;
+	str_linked_list_init(&stack);
+
+	// Add the filepath to the stack
+	file_path_t path;
+	path.size = strlen(filepath);
+	path.str = filepath;
+	path.timestamp = 0;
+	str_linked_list_insert(&stack, path);
+
+	// While there is a file in the stack,
+	while (stack.head != NULL) {
+
+		// Get the file
+		str_linked_list_element_t* stack_element = stack.head;
+		stack.head = stack.head->next;
+		stack.size--;
+
+		// Open the file
+		FILE* file = fopen(stack_element->path.str, "r");
+		if (file == NULL)	// Ignore files that don't exist
+			continue;
+		
+		// For each line in the file,
+		char* line = NULL;
+		size_t len = 128;
+		int read;
+		while ((read = custom_getline(&line, &len, file)) != -1) {
+
+			// If the line is an include,
+			if (strncmp(line, "#include", 8) == 0) {
+
+				// Get the path of the included file
+				char* included_file = line + 9;
+				while (*included_file == ' ' || *included_file == '\t')
+					included_file++;
+				if (*included_file == '"' || *included_file == '<') {
+					included_file++;
+					char* end = included_file;
+					while (*end != '"' && *end != '>')
+						end++;
+					*end = '\0';
+				}
+				else
+					continue;
+				normalize_path(included_file);
+				
+				// Get the path of the included file depending on the path of the current file
+				char* included_file_path = malloc(stack_element->path.size + strlen(included_file) + 2);
+				if (included_file_path == NULL) {
+					perror("Error while allocating memory for a file path\n");
+					return -1;
+				}
+				strcpy(included_file_path, stack_element->path.str);
+				char* last_slash = strrchr(included_file_path, '/');
+				if (last_slash != NULL)
+					*(last_slash + 1) = '\0';
+				strcat(included_file_path, included_file);
+				normalize_path(included_file_path);
+
+				// Get the path of the .o file
+				char* obj_path = strdup(included_file_path);
+				int src_pos = -1;
+				for (int i = 0; i < strlen(obj_path); i++) {
+					if (strncmp(obj_path + i, SRC_FOLDER"/", sizeof(SRC_FOLDER)) == 0) {
+						src_pos = i;
+						break;
+					}
+				}
+				char *real_obj_path = (src_pos == -1) ? obj_path : &obj_path[src_pos];
+				real_obj_path[strlen(real_obj_path) - 1] = 'o';	// Replace the .c by .o
+				if (src_pos != -1)
+					for (int i = 0; i < sizeof(SRC_FOLDER) - 1; i++)
+						real_obj_path[i] = OBJ_FOLDER[i];
+				
+				// If there is a "/../" in the path, delete it the folder before and the "/../"
+				normalize_path(real_obj_path);
+
+				// If the file doesn't exist, ignore it
+				FILE* obj_file = fopen(real_obj_path, "r");
+				if (obj_file == NULL) {
+					continue;
+				}
+				fclose(obj_file);
+				
+				// If the file is not in the list, add it
+				file_path_t path;
+				path.size = strlen(real_obj_path);
+				path.str = real_obj_path;
+				path.timestamp = 0;
+				str_linked_list_element_t* list_element = str_linked_list_search(*list, path);
+				if (list_element == NULL)
+					str_linked_list_insert(list, path);
+
+				// If the file is not in the list and if it's not the current file, add it to the stack
+				if (list_element == NULL && strcmp(included_file_path, stack_element->path.str) != 0) {
+					
+					// Insert the .h in the stack
+					path.size = strlen(included_file_path);
+					path.str = included_file_path;
+					path.timestamp = 0;
+					str_linked_list_insert(&stack, path);
+
+					// Insert the .c version of the .h in the stack
+					if (path.str[path.size - 1] == 'h') {
+						char* c_filepath = strdup(included_file_path);
+						c_filepath[path.size - 1] = 'c';
+						path.str = c_filepath;
+						str_linked_list_insert(&stack, path);
+					}
+				}
+
+				// Free the paths
+				free(included_file_path);
+			}
+		}
+
+		// Free the line
+		if (line != NULL)
+			free(line);
+
+		// Close the file
+		fclose(file);
+	}
+
+	// Free the stack
+	str_linked_list_free(&stack);
 
 	// Return
 	return 0;
@@ -607,13 +807,27 @@ int compile_programs() {
 			line[read - 2] = '\0';	// Remove the 'c' in ".c"
 			strcat(line, "exe");
 
+			// Get the path of the .o files
+			str_linked_list_t obj_files_list;
+			str_linked_list_init(&obj_files_list);
+			fillStackObjFilesList(&obj_files_list, filename);
+			char obj_files[16384] = "";
+			str_linked_list_element_t* current_element = obj_files_list.head;
+			while (current_element != NULL) {
+				strcat(obj_files, "\"");
+				strcat(obj_files, current_element->path.str);
+				strcat(obj_files, "\" ");
+				current_element = current_element->next;
+			}
+			str_linked_list_free(&obj_files_list);
+
 			// Manage the counter
 			if (compileCount++ == 0)
-				printf("Compiling programs...\n");
+				fprintf(stderr, "Compiling programs...\n");
 
 			// Compile the file
 			char command[32768];
-			sprintf(
+			sprintf( 
 				command,
 				CC" \"%s\" -o \""BIN_FOLDER"/%s\" %s %s %s",
 
@@ -626,9 +840,13 @@ int compile_programs() {
 			char command_reduced[96];
 			memcpy(command_reduced, command, 95);
 			command_reduced[95] = '\0';
-			printf("- %s...\n", command_reduced);
-			if (system(command) != 0)
+			fprintf(stderr, "- %s...\n", command_reduced);
+			int code = system(command);
+			if (code != 0) {
+				fprintf(stderr, "Error while compiling the program '%s': %d\n", line, code);
+				perror("");
 				continue;
+			}
 			
 			// If the file is not in the list, add it
 			if (element == NULL)
@@ -636,13 +854,16 @@ int compile_programs() {
 			else
 				element->path.timestamp = path.timestamp;
 		}
+
+		// Free the path
+		free(filename);
 	}
 
 	// If there is no file to compile, print a message
 	if (compileCount == 0)
-		printf("No program to compile...\n\n");
+		fprintf(stderr, "No program to compile...\n\n");
 	else
-		printf("\nCompilation of %d programs done!\n\n", compileCount);
+		fprintf(stderr, "\nCompilation of %d programs done!\n\n", compileCount);
 
 	// Free the line
 	if (line != NULL)
@@ -698,10 +919,6 @@ int main(int argc, char **argv) {
 	// Save & Free the list of files timestamps
 	save_files_timestamps(files_timestamps);
 	str_linked_list_free(&files_timestamps);
-
-	// Free the list of object files
-	if (obj_files != NULL)
-		free(obj_files);
 
 	// Return
 	return 0;
