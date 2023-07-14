@@ -6,6 +6,7 @@
  * 
  * @param first_vector		The first vector
  * @param second_vector		The second vector
+ * @param n					The size of the vectors
  * 
  * @return void
  */
@@ -39,6 +40,7 @@ kernel void computePowerNaiveExponentiation(global int* first_vector, global int
  * 
  * @param first_vector		The first vector
  * @param second_vector		The second vector
+ * @param n					The size of the vectors
  * 
  * @return void
  */
@@ -79,6 +81,7 @@ kernel void computePowerFastExponentiation(global int* first_vector, global int*
  * 
  * @param first_vector		The first vector
  * @param second_vector		The second vector
+ * @param n					The size of the vectors
  * 
  * @return void
  */
