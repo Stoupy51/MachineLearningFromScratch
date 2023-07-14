@@ -77,7 +77,7 @@ int main() {
 	// Benchmark the GPU training
 	ST_BENCHMARK_SOLO_TIME(buffer,
 		{
-			NeuralNetworkDtrainGPU(&network, input, excepted_output);
+			NeuralNetworkDtrainGPU(&network, input, excepted_output, 0);
 		},
 		"NeuralNetworkDtrainGPU (GPU)", 10	// 10 seconds at least
 	);

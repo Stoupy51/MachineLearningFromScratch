@@ -217,6 +217,11 @@ cl_program gpu_program = NULL;
 cl_kernel gpu_kernels[] = {NULL, NULL, NULL, NULL};
 struct opencl_context_t gpu_oc;
 int gpu_initialized = 0, gpu_current_kernel = -1;
+cl_mem *activation_values_buffers = NULL;
+cl_mem *weights_buffers = NULL;	// Flat versions of the weights of each layer
+cl_mem *biases_buffers = NULL;
+cl_mem *deltas_buffers = NULL;
+NeuralNetworkD *gpu_network = NULL;	// Used to check if the network is the same as the last time
 void stopNeuralNetworkGpuOpenCL() {
 	if (!gpu_initialized) return;
 	clReleaseProgram(gpu_program);
@@ -225,15 +230,126 @@ void stopNeuralNetworkGpuOpenCL() {
 	clReleaseContext(gpu_oc.context);
 	gpu_initialized = 0;
 }
+void stopNeuralNetworkGpuBuffersOpenCL() {
+	if (activation_values_buffers == NULL) return;
+	for (int i = 0; i < gpu_network->nb_layers; i++) {
+		clReleaseMemObject(activation_values_buffers[i]);
+		if (i == 0) continue;
+		clReleaseMemObject(weights_buffers[i]);
+		clReleaseMemObject(biases_buffers[i]);
+		clReleaseMemObject(deltas_buffers[i]);
+	}
+	free(activation_values_buffers);
+	free(weights_buffers);
+	free(biases_buffers);
+	free(deltas_buffers);
+	activation_values_buffers = NULL;
+	weights_buffers = NULL;
+	biases_buffers = NULL;
+	deltas_buffers = NULL;
+}
 
 /**
  * @brief This function setup the gpu efficiency variables.
  * This function is automatically called by the NeuralNetworkDtrainGpuOpenCL() function.
  * 
- * @return int	0 if success, -1 otherwise
+ * @param network	Pointer to the neural network
+ * 
+ * @return int		0 if success, -1 otherwise
  */
-int setupNeuralNetworkGpuOpenCL() {
-	if (gpu_initialized) return 0;
+int setupNeuralNetworkGpuBuffersOpenCL(NeuralNetworkD *network) {
+	if (gpu_network == network) return 0;
+	if (activation_values_buffers != NULL) stopNeuralNetworkGpuBuffersOpenCL();
+
+	// Create the buffers & copy all the data to the GPU
+	activation_values_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
+	weights_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
+	biases_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
+	deltas_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
+
+	// For each layer of the neural network,
+	for (int i = 0; i < network->nb_layers; i++) {
+
+		// Create the activation_values buffer
+		activation_values_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_WRITE, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuBuffersOpenCL(): Cannot create buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+
+		// If it's the input layer, continue
+		if (i == 0) continue;
+
+		// Create the weights buffer
+		weights_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), NULL, &gpu_code);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuBuffersOpenCL(): Cannot create buffer 'weights_buffers[%d]' (size: %d = %d * %d), reason: %d / %s\n", i, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron, network->layers[i].nb_neurons, network->layers[i].nb_inputs_per_neuron, gpu_code, getOpenCLErrorString(gpu_code));
+
+		// Create the biases buffer
+		biases_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuBuffersOpenCL(): Cannot create buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+
+		// Create the deltas buffer
+		deltas_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_WRITE, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuBuffersOpenCL(): Cannot create buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+	}
+
+	// Write the data to the GPU
+	cl_event *write_events_act_val = (cl_event*)malloc(network->nb_layers * sizeof(cl_event));
+	cl_event *write_events_others = (cl_event*)malloc((network->nb_layers - 1) * sizeof(cl_event) * 3);
+	for (int i = 0; i < network->nb_layers; i++) {
+		
+		// Write the activation_values buffer
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].activations_values, 0, NULL, &write_events_act_val[i]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuBuffersOpenCL(): Cannot write buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+
+		// If it's the input layer, continue
+		if (i == 0) continue;
+
+		// Write the weights buffer
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, weights_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), network->layers[i].weights_flat, 0, NULL, &write_events_others[(i - 1) * 3]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuBuffersOpenCL(): Cannot write buffer 'weights_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+
+		// Write the biases buffer
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, biases_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].biases, 0, NULL, &write_events_others[(i - 1) * 3 + 1]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuBuffersOpenCL(): Cannot write buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+
+		// Write the deltas buffer
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, deltas_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].deltas, 0, NULL, &write_events_others[(i - 1) * 3 + 2]);
+	}
+
+	// Wait for the write events to finish (skip the first one because it's the input layer)
+	gpu_code = clWaitForEvents(network->nb_layers, write_events_act_val);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuBuffersOpenCL(): Cannot wait for 'act_val' events, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	gpu_code = clWaitForEvents((network->nb_layers - 1) * 3, write_events_others);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "setupNeuralNetworkGpuBuffersOpenCL(): Cannot wait for 'others' events, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+
+	// Free the write events
+	for (int i = 0; i < network->nb_layers; i++) {
+		clReleaseEvent(write_events_act_val[i]);
+		if (i == 0) continue;
+		clReleaseEvent(write_events_others[(i - 1) * 3]);
+		clReleaseEvent(write_events_others[(i - 1) * 3 + 1]);
+		clReleaseEvent(write_events_others[(i - 1) * 3 + 2]);
+	}
+	free(write_events_act_val);
+	free(write_events_others);
+
+	// Register the exit function
+	atexit(stopNeuralNetworkGpuBuffersOpenCL);
+
+	// Set the network as the last network & return 0
+	gpu_network = network;
+	return 0;
+}
+
+/**
+ * @brief This function setup the gpu efficiency variables.
+ * This function is automatically called by the NeuralNetworkDtrainGpuOpenCL() function.
+ * 
+ * @param network	Pointer to the neural network
+ * 
+ * @return int		0 if success, -1 otherwise
+ */
+int setupNeuralNetworkGpuOpenCL(NeuralNetworkD *network) {
+	if (gpu_initialized)
+		return setupNeuralNetworkGpuBuffersOpenCL(network);
 
 	// Initialize OpenCL
 	gpu_oc = setupOpenCL(CL_DEVICE_TYPE_GPU);
@@ -269,9 +385,9 @@ int setupNeuralNetworkGpuOpenCL() {
 	// Register the exit function
 	atexit(stopNeuralNetworkGpuOpenCL);
 
-	// Set the initialized flag & return
+	// Set the initialized flag & return the code of buffers setup
 	gpu_initialized = 1;
-	return 0;
+	return setupNeuralNetworkGpuBuffersOpenCL(network);
 }
 
 
@@ -296,39 +412,21 @@ int setupNeuralNetworkGpuOpenCL() {
  * @details j = Index of the selected neuron
  * @details k = Index of the previous layer selected neuron
  * 
- * @param network	Pointer to the neural network
- * @param input		Pointer to the input array (double), must be the same size as the input layer
+ * @param network		Pointer to the neural network
+ * @param input			Pointer to the input array (double), must be the same size as the input layer
+ * @param read_buffer	Integer, if 1, read the activation_values buffer of the output layer, if 0, don't read it
  * 
  * @return void
  */
-int NeuralNetworkDfeedForwardGPU(NeuralNetworkD *network, double *input) {
-	setupNeuralNetworkGpuOpenCL();
+int NeuralNetworkDfeedForwardGPU(NeuralNetworkD *network, double *input, int read_buffer) {
+
+	// Setup the private variables if not already done
+	gpu_code = setupNeuralNetworkGpuOpenCL(network);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot setup GPU, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
 	// Set the input layer (copy the input array into the input layer of the neural network)
-	memcpy(network->input_layer->activations_values, input, network->input_layer->nb_neurons * sizeof(double));
-
-	// Create the buffers & copy all the data to the GPU (except the input layer): activations_values, weights, biases
-	cl_mem *activation_values_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
-	cl_mem *weights_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
-	cl_mem *biases_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
-	for (int i = 0; i < network->nb_layers; i++) {
-		activation_values_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_WRITE, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot create buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		if (i == 0) continue;
-		weights_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), NULL, &gpu_code);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot create buffer 'weights_buffers[%d]' (size: %d = %d * %d), reason: %d / %s\n", i, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron, network->layers[i].nb_neurons, network->layers[i].nb_inputs_per_neuron, gpu_code, getOpenCLErrorString(gpu_code));
-		biases_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot create buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-	}
-	for (int i = 0; i < network->nb_layers; i++) {
-		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].activations_values, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot write buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		if (i == 0) continue;
-		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, weights_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), network->layers[i].weights_flat, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot write buffer 'weights_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, biases_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].biases, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot write buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-	}
+	gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_TRUE, 0, network->input_layer->nb_neurons * sizeof(double), input, 0, NULL, NULL);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot write buffer 'activation_values_buffers[0]', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
 	// For each layer of the neural network (except the input layer),
 	for (int i = 1; i < network->nb_layers; i++) {
@@ -348,27 +446,18 @@ int NeuralNetworkDfeedForwardGPU(NeuralNetworkD *network, double *input) {
 		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot set kernel argument 4 of kernel 'feedForwardActivationValues', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[0], 5, sizeof(int), &previous_layer_size);
 		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot set kernel argument 5 of kernel 'feedForwardActivationValues', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
-		size_t global_work_size = current_layer_size;
-		gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[0], 1, NULL, &global_work_size, NULL, 0, NULL, NULL);
+		size_t global_work_size[] = {current_layer_size};
+		gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[0], 1, NULL, global_work_size, NULL, 0, NULL, NULL);
 		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot enqueue kernel 'feedForwardActivationValues', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 	}
 
-	// Copy the data from the GPU to the CPU (except the input layer): activations_values
-	for (int i = 1; i < network->nb_layers; i++) {
-		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, activation_values_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].activations_values, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot read buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+	// Read the activation_values buffer of the output layer if needed
+	if (read_buffer) {
+		gpu_code = clFinish(gpu_oc.command_queue);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot finish command queue, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, activation_values_buffers[network->nb_layers - 1], CL_TRUE, 0, network->output_layer->nb_neurons * sizeof(double), network->output_layer->activations_values, 0, NULL, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot read buffer 'activation_values_buffers[%d]', reason: %d / %s\n", network->nb_layers - 1, gpu_code, getOpenCLErrorString(gpu_code));
 	}
-
-	// Finish & free the buffers
-	for (int i = 0; i < network->nb_layers; i++) {
-		clReleaseMemObject(activation_values_buffers[i]);
-		if (i == 0) continue;
-		clReleaseMemObject(weights_buffers[i]);
-		clReleaseMemObject(biases_buffers[i]);
-	}
-	free(activation_values_buffers);
-	free(weights_buffers);
-	free(biases_buffers);
 
 	// Return
 	return 0;
@@ -402,38 +491,21 @@ int NeuralNetworkDfeedForwardGPU(NeuralNetworkD *network, double *input) {
  * 
  * @param network			Pointer to the neural network
  * @param excepted_output	Pointer to the excepted output array (double), must be the same size as the output layer
+ * @param read_buffer		Integer, if 1, read the all the deltas buffers, if 0, don't read them
  * 
  * @return void
  */
-int NeuralNetworkDbackpropagationGPU(NeuralNetworkD *network, double *excepted_output) {
-	setupNeuralNetworkGpuOpenCL();
+int NeuralNetworkDbackpropagationGPU(NeuralNetworkD *network, double *excepted_output, int read_buffer) {
+
+	// Setup the private variables if not already done
+	gpu_code = setupNeuralNetworkGpuOpenCL(network);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot setup GPU, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
 	// Create the buffers & copy all the data to the GPU
 	cl_mem excepted_output_buffer = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->output_layer->nb_neurons * sizeof(double), NULL, &gpu_code);
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot create buffer 'excepted_output_buffer', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
-	cl_mem *activation_values_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
-	cl_mem *deltas_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
-	cl_mem *weights_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
-	for (int i = 0; i < network->nb_layers; i++) {
-		activation_values_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot create buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		if (i == 0) continue;
-		deltas_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_WRITE, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot create buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		weights_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), NULL, &gpu_code);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot create buffer 'weights_buffers[%d]' (size: %d = %d * %d), reason: %d / %s\n", i, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron, network->layers[i].nb_neurons, network->layers[i].nb_inputs_per_neuron, gpu_code, getOpenCLErrorString(gpu_code));
-	}
 	gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, excepted_output_buffer, CL_TRUE, 0, network->output_layer->nb_neurons * sizeof(double), excepted_output, 0, NULL, NULL);
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot write buffer 'excepted_output_buffer', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
-	for (int i = 0; i < network->nb_layers; i++) {
-		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].activations_values, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot write buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		if (i == 0) continue;
-		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, deltas_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].deltas, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot write buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, weights_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), network->layers[i].weights_flat, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot write buffer 'weights_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-	}
 
 	// For each neuron of the output layer, calculate the delta of the neuron (excepted_output - activation_value) * derivative
 	int output_layer_size = network->output_layer->nb_neurons;
@@ -448,6 +520,7 @@ int NeuralNetworkDbackpropagationGPU(NeuralNetworkD *network, double *excepted_o
 	size_t global_work_size[] = {output_layer_size};
 	gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[1], 1, NULL, global_work_size, NULL, 0, NULL, NULL);
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot enqueue kernel 'backpropagationOutputLayerDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+
 	// For each layer of the neural network (except the output layer and the input layer) (order last to first),
 	for (int i = network->nb_layers - 2; i > 0; i--) {
 
@@ -471,26 +544,21 @@ int NeuralNetworkDbackpropagationGPU(NeuralNetworkD *network, double *excepted_o
 		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot enqueue kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 	}
 
-	// Copy the deltas back to the CPU
-	for (int i = 0; i < network->nb_layers; i++) {
-		if (i == 0) continue;
-		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, deltas_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].deltas, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot read buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+	// Copy the deltas back to the CPU if needed
+	if (read_buffer) {
+		gpu_code = clFinish(gpu_oc.command_queue);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot finish command queue, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		cl_event *read_events = (cl_event*)malloc((network->nb_layers - 1) * sizeof(cl_event));
+		for (int i = 1; i < network->nb_layers; i++) {
+			gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, deltas_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].deltas, 0, NULL, &read_events[i - 1]);
+			ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot read buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		}
+		gpu_code = clWaitForEvents(network->nb_layers - 1, read_events);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot wait for events 'read_events[1:%d]', reason: %d / %s\n", network->nb_layers - 2, gpu_code, getOpenCLErrorString(gpu_code));
+		for (int i = 1; i < network->nb_layers; i++)
+			gpu_code = clReleaseEvent(read_events[i - 1]);
+		free(read_events);
 	}
-
-	// Finish & free the buffers
-	gpu_code = clFinish(gpu_oc.command_queue);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot finish, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
-	clReleaseMemObject(excepted_output_buffer);
-	for (int i = 0; i < network->nb_layers; i++) {
-		clReleaseMemObject(activation_values_buffers[i]);
-		if (i == 0) continue;
-		clReleaseMemObject(deltas_buffers[i]);
-		clReleaseMemObject(weights_buffers[i]);
-	}
-	free(activation_values_buffers);
-	free(deltas_buffers);
-	free(weights_buffers);
 
 	// Return
 	return 0;
@@ -516,40 +584,16 @@ int NeuralNetworkDbackpropagationGPU(NeuralNetworkD *network, double *excepted_o
  * @details j = Index of the selected neuron
  * @details k = Index of the previous layer selected neuron
  * 
- * @param network	Pointer to the neural network
+ * @param network		Pointer to the neural network
+ * @param read_buffer	Integer, if 1, read the all the weights and biases buffers, if 0, don't read them
  * 
  * @return void
  */
-int NeuralNetworkDupdateWeightsAndBiasesGPU(NeuralNetworkD *network) {
-	setupNeuralNetworkGpuOpenCL();
+int NeuralNetworkDupdateWeightsAndBiasesGPU(NeuralNetworkD *network, int read_buffer) {
 
-	// Create the buffers & copy all the data to the GPU
-	cl_mem *activation_values_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
-	cl_mem *deltas_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
-	cl_mem *weights_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
-	cl_mem *biases_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
-	for (int i = 0; i < network->nb_layers; i++) {
-		activation_values_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot create buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		if (i == 0) continue;
-		deltas_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_ONLY, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot create buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		weights_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_WRITE, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), NULL, &gpu_code);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot create buffer 'weights_buffers[%d]' (size: %d = %d * %d), reason: %d / %s\n", i, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron, network->layers[i].nb_neurons, network->layers[i].nb_inputs_per_neuron, gpu_code, getOpenCLErrorString(gpu_code));
-		biases_buffers[i] = clCreateBuffer(gpu_oc.context, CL_MEM_READ_WRITE, network->layers[i].nb_neurons * sizeof(double), NULL, &gpu_code);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot create buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-	}
-	for (int i = 0; i < network->nb_layers; i++) {
-		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].activations_values, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot write buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		if (i == 0) continue;
-		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, deltas_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].deltas, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot write buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, weights_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), network->layers[i].weights_flat, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot write buffer 'weights_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, biases_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].biases, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot write buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-	}
+	// Setup the private variables if not already done
+	gpu_code = setupNeuralNetworkGpuOpenCL(network);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot setup GPU, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
 	// For each layer of the neural network (except the input layer),
 	for (int i = 1; i < network->nb_layers; i++) {
@@ -572,33 +616,32 @@ int NeuralNetworkDupdateWeightsAndBiasesGPU(NeuralNetworkD *network) {
 		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 5 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[3], 6, sizeof(double), &learning_rate);
 		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 6 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
-		size_t global_work_size = current_layer_size;
-		gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[3], 1, NULL, &global_work_size, NULL, 0, NULL, NULL);
+		size_t global_work_size[] = {current_layer_size};
+		gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[3], 1, NULL, global_work_size, NULL, 0, NULL, NULL);
 		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot enqueue kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 	}
 
-	// Copy the data from the GPU to the CPU (except the input layer): weights and biases
-	for (int i = 1; i < network->nb_layers; i++) {
-		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, weights_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), network->layers[i].weights_flat, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot read buffer 'weights_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, biases_buffers[i], CL_TRUE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].biases, 0, NULL, NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot read buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+	// Copy the data from the GPU to the CPU (except the input layer): weights and biases buffers if needed
+	if (read_buffer) {
+		gpu_code = clFinish(gpu_oc.command_queue);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot finish command queue, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		cl_event *write_events = (cl_event*)malloc((network->nb_layers - 1) * sizeof(cl_event) * 2);
+		for (int i = 1; i < network->nb_layers; i++) {
+			gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, weights_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), network->layers[i].weights_flat, 0, NULL, &write_events[(i - 1) * 2]);
+			ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot read buffer 'weights_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+			gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, biases_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].biases, 0, NULL, &write_events[(i - 1) * 2 + 1]);
+			ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot read buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		}
+		gpu_code = clWaitForEvents((network->nb_layers - 1) * 2, write_events);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot wait for events 'write_events[1:%d]', reason: %d / %s\n", (network->nb_layers - 1) * 2 - 1, gpu_code, getOpenCLErrorString(gpu_code));
+		for (int i = 1; i < network->nb_layers; i++) {
+			gpu_code = clReleaseEvent(write_events[(i - 1) * 2]);
+			ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot release event 'write_events[%d]', reason: %d / %s\n", (i - 1) * 2, gpu_code, getOpenCLErrorString(gpu_code));
+			gpu_code = clReleaseEvent(write_events[(i - 1) * 2 + 1]);
+			ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot release event 'write_events[%d]', reason: %d / %s\n", (i - 1) * 2 + 1, gpu_code, getOpenCLErrorString(gpu_code));
+		}
+		free(write_events);
 	}
-
-	// Finish & free the buffers
-	gpu_code = clFinish(gpu_oc.command_queue);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot finish, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
-	for (int i = 0; i < network->nb_layers; i++) {
-		clReleaseMemObject(activation_values_buffers[i]);
-		if (i == 0) continue;
-		clReleaseMemObject(deltas_buffers[i]);
-		clReleaseMemObject(weights_buffers[i]);
-		clReleaseMemObject(biases_buffers[i]);
-	}
-	free(activation_values_buffers);
-	free(deltas_buffers);
-	free(weights_buffers);
-	free(biases_buffers);
 
 	// Return
 	return 0;
@@ -611,22 +654,55 @@ int NeuralNetworkDupdateWeightsAndBiasesGPU(NeuralNetworkD *network) {
  * @param network			Pointer to the neural network
  * @param input				Pointer to the input array (double), must be the same size as the input layer
  * @param excepted_output	Pointer to the excepted output array (double), must be the same size as the output layer
+ * @param read_all_buffers	Integer, if 1, read all the buffers, if 0, don't read them
  * 
  * @return void
  */
-int NeuralNetworkDtrainGPU(NeuralNetworkD *network, double *input, double *excepted_output) {
+int NeuralNetworkDtrainGPU(NeuralNetworkD *network, double *input, double *excepted_output, int read_all_buffers) {
 
 	// Feed forward
-	gpu_code = NeuralNetworkDfeedForwardGPU(network, input);
+	gpu_code = NeuralNetworkDfeedForwardGPU(network, input, 0);
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot feed forward, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
 	// Backpropagation
-	gpu_code = NeuralNetworkDbackpropagationGPU(network, excepted_output);
+	gpu_code = NeuralNetworkDbackpropagationGPU(network, excepted_output, 0);
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot backpropagate, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
 	// Update weights and biases
-	gpu_code = NeuralNetworkDupdateWeightsAndBiasesGPU(network);
+	gpu_code = NeuralNetworkDupdateWeightsAndBiasesGPU(network, 0);
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot update weights and biases, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+
+	// Read all the buffers if needed
+	if (read_all_buffers) {
+		cl_event *read_events_act_val = (cl_event*)malloc(network->nb_layers * sizeof(cl_event));
+		cl_event *read_events_others = (cl_event*)malloc((network->nb_layers - 1) * sizeof(cl_event) * 3);
+		for (int i = 0; i < network->nb_layers; i++) {
+			gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, activation_values_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].activations_values, 0, NULL, &read_events_act_val[i]);
+			ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot read buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		}
+		for (int i = 1; i < network->nb_layers; i++) {
+			gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, weights_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), network->layers[i].weights_flat, 0, NULL, &read_events_others[(i - 1) * 3]);
+			ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot read buffer 'weights_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+			gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, biases_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].biases, 0, NULL, &read_events_others[(i - 1) * 3 + 1]);
+			ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot read buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+			gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, deltas_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].deltas, 0, NULL, &read_events_others[(i - 1) * 3 + 2]);
+			ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot read buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		}
+		gpu_code = clWaitForEvents(network->nb_layers, read_events_act_val);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot wait for events 'read_events_act_val[0:%d]', reason: %d / %s\n", network->nb_layers - 1, gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clWaitForEvents((network->nb_layers - 1) * 3, read_events_others);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot wait for events 'read_events_others[0:%d]', reason: %d / %s\n", (network->nb_layers - 1) * 3 - 1, gpu_code, getOpenCLErrorString(gpu_code));
+		for (int i = 0; i < network->nb_layers; i++) {
+			gpu_code = clReleaseEvent(read_events_act_val[i]);
+			ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot release event 'read_events_act_val[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		}
+		for (int i = 0; i < (network->nb_layers - 1) * 3; i++) {
+			gpu_code = clReleaseEvent(read_events_others[i]);
+			ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot release event 'read_events_others[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		}
+		free(read_events_act_val);
+		free(read_events_others);
+	}
 
 	// Return
 	return 0;
