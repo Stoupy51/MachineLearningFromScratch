@@ -234,11 +234,15 @@ void stopNeuralNetworkGpuOpenCL() {
 void stopNeuralNetworkGpuBuffersOpenCL() {
 	if (activation_values_buffers == NULL) return;
 	for (int i = 0; i < gpu_network_nb_layers; i++) {
-		clReleaseMemObject(activation_values_buffers[i]);
+		gpu_code = clReleaseMemObject(activation_values_buffers[i]);
+		WARNING_HANDLE_INT(gpu_code, "stopNeuralNetworkGpuBuffersOpenCL(): Cannot release buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
 		if (i == 0) continue;
-		clReleaseMemObject(weights_buffers[i]);
-		clReleaseMemObject(biases_buffers[i]);
-		clReleaseMemObject(deltas_buffers[i]);
+		gpu_code = clReleaseMemObject(weights_buffers[i]);
+		WARNING_HANDLE_INT(gpu_code, "stopNeuralNetworkGpuBuffersOpenCL(): Cannot release buffer 'weights_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clReleaseMemObject(biases_buffers[i]);
+		WARNING_HANDLE_INT(gpu_code, "stopNeuralNetworkGpuBuffersOpenCL(): Cannot release buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clReleaseMemObject(deltas_buffers[i]);
+		WARNING_HANDLE_INT(gpu_code, "stopNeuralNetworkGpuBuffersOpenCL(): Cannot release buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
 	}
 	free(activation_values_buffers);
 	free(weights_buffers);
