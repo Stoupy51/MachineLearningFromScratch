@@ -561,8 +561,8 @@ int fillRandomDoubleArrayGPU(double* array, unsigned long long size, double min,
 	// Create the buffer & copy the array
 	cl_mem buffer = clCreateBuffer(ocfe_oc.context, CL_MEM_READ_WRITE, sizeof(double) * size, NULL, &ocfe_code);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot create buffer, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
-	ocfe_code = clEnqueueWriteBuffer(ocfe_oc.command_queue, buffer, CL_TRUE, 0, sizeof(double) * size, array, 0, NULL, NULL);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot copy array to buffer, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ocfe_code = clEnqueueWriteBuffer(ocfe_oc.command_queue, buffer, CL_TRUE, 0, size * sizeof(double), array, 0, NULL, NULL);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot copy array to buffer (%lld = %lld * %zu), reason: %d / %s\n", size * sizeof(double), size, sizeof(double), ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Set the kernel arguments
 	ocfe_code = clSetKernelArg(ocfe_kernel, 0, sizeof(cl_mem), &buffer);

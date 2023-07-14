@@ -12,7 +12,7 @@
  * 
  * @return void
  */
-kernel void fillRandomDoubleArrayGPU(global double* array, unsigned long long size, double min, double max_minus_min) {
+kernel void fillRandomDoubleArrayGPU(global double* array, ulong size, double min, double max_minus_min) {
 
 	// Get the index of the current element
 	int i = get_global_id(0);
