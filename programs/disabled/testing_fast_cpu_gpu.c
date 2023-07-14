@@ -86,6 +86,9 @@ int main() {
 		PRINTER(buffer);
 	}
 
+	// Free the array
+	free(array);
+
 	// Final print and return
 	INFO_PRINT("main(): End of program.\n");
 	return 0;

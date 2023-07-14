@@ -334,11 +334,12 @@ char* readKernelProgram(char* path) {
 	if (fd == -1) {
 
 		// If the file is not found, try to open it from ../ directory
-		char* new_path = malloc(sizeof(char) * (strlen(path) + 3));
+		char* new_path = malloc(sizeof(char) * (strlen(path) + 4));
 		strcpy(new_path, "../");
 		strcat(new_path, path);
 		fd = open(new_path, O_RDONLY);
-		ERROR_HANDLE_INT_RETURN_NULL(fd, "readKernelProgram(): Cannot open file %s\n", new_path);
+		free(new_path);
+		ERROR_HANDLE_INT_RETURN_NULL(fd, "readKernelProgram(): Cannot open file %s\n", path);
 	}
 
 	// Get the size of the file

@@ -79,7 +79,6 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 		// Initialize the activations_values to random values
 		fillRandomDoubleArray(network.layers[i].activations_values, network.layers[i].nb_neurons, -1.0, 1.0);
 
-
 		// Stop here if it's the first layer (no weights, biases, etc.)
 		if (i == 0) continue;
 		
