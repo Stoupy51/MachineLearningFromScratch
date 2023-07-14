@@ -222,6 +222,7 @@ cl_mem *weights_buffers = NULL;	// Flat versions of the weights of each layer
 cl_mem *biases_buffers = NULL;
 cl_mem *deltas_buffers = NULL;
 NeuralNetworkD *gpu_network = NULL;	// Used to check if the network is the same as the last time
+int gpu_network_nb_layers = 0;	// Used to free the buffers
 void stopNeuralNetworkGpuOpenCL() {
 	if (!gpu_initialized) return;
 	clReleaseProgram(gpu_program);
@@ -232,7 +233,7 @@ void stopNeuralNetworkGpuOpenCL() {
 }
 void stopNeuralNetworkGpuBuffersOpenCL() {
 	if (activation_values_buffers == NULL) return;
-	for (int i = 0; i < gpu_network->nb_layers; i++) {
+	for (int i = 0; i < gpu_network_nb_layers; i++) {
 		clReleaseMemObject(activation_values_buffers[i]);
 		if (i == 0) continue;
 		clReleaseMemObject(weights_buffers[i]);
@@ -338,7 +339,8 @@ int setupNeuralNetworkGpuBuffersOpenCL(NeuralNetworkD *network) {
 	// Register the exit function
 	atexit(stopNeuralNetworkGpuBuffersOpenCL);
 
-	// Set the network as the last network & return 0
+	// Set the network as the last network, set the number of layers & return 0
+	gpu_network_nb_layers = network->nb_layers;
 	gpu_network = network;
 	return 0;
 }
