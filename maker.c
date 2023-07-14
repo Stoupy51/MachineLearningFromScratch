@@ -9,6 +9,8 @@
 	#include <unistd.h>
 #endif
 
+// TODO: Programs should be compiled only with required .o files (not all of them)
+
 #if 1 == 1
 
 typedef struct file_path_t {
