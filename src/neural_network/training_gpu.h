@@ -1,15 +1,9 @@
 
-#ifndef __NEURAL_TRAINING_H__
-#define __NEURAL_TRAINING_H__
+#ifndef __NEURAL_TRAINING_GPU_H__
+#define __NEURAL_TRAINING_GPU_H__
 
 #include "neural_utils.h"
 
-void NeuralNetworkDfeedForward(NeuralNetworkD *network, double *input);
-void NeuralNetworkDbackpropagation(NeuralNetworkD *network, double *excepted_output);
-void NeuralNetworkDupdateWeightsAndBiases(NeuralNetworkD *network);
-void NeuralNetworkDtrain(NeuralNetworkD *network, double *input, double *excepted_output);
-
-///// GPU Part /////
 void stopNeuralNetworkGpuOpenCL();
 void stopNeuralNetworkGpuBuffersOpenCL();
 int NeuralNetworkDfeedForwardGPU(NeuralNetworkD *network, double *input, int read_buffer);

@@ -4,7 +4,8 @@
 #include "../src/universal_utils.h"
 #include "../src/math/sigmoid.h"
 #include "../src/neural_network/neural_utils.h"
-#include "../src/neural_network/training.h"
+#include "../src/neural_network/training_cpu.h"
+#include "../src/neural_network/training_gpu.h"
 #include "../src/utils/random_array_values.h"
 #include "../src/st_benchmark.h"
 
