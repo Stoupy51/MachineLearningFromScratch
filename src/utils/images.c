@@ -106,4 +106,3 @@ int image_save_jpg(const char* file_name, unsigned char* image, int width, int h
 	return 0;
 }
 
-

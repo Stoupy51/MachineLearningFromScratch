@@ -95,7 +95,6 @@ const char* getOpenCLErrorString(cl_int error) {
 	}
 }
 
-
 /**
  * @brief This function prints the program build log
  * to the output depending on the mode specified.
@@ -132,7 +131,6 @@ int printProgramBuildLog(cl_program program, cl_device_id device_id, int mode, c
 	free(log);
 	return 0;
 }
-
 
 /**
  * @brief This function initialize OpenCL, get a GPU device,
@@ -317,7 +315,6 @@ void printDeviceInfo(cl_device_id device_id) {
 	// Print a new line at the end
 	PRINTER("\n");
 }
-
 
 /**
  * @brief This function read a kernel program from a file and return it by

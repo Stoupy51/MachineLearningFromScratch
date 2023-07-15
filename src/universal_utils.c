@@ -244,7 +244,13 @@ int hash_string(char* str) {
  * @return int	0 if the directory is removed, -1 otherwise.
 */
 int remove_directory(char* path) {
-	return rmdir(path);
-	// TODO: Remove all the files in the directory
+	char command[2048];
+	#ifdef _WIN32
+		sprintf(command, "rmdir /s /q \"%s\"", path);
+		return system(command);
+	#else
+		sprintf(command, "rm -rf \"%s\"", path);
+		return system(command);
+	#endif
 }
 
