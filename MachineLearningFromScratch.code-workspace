@@ -48,7 +48,9 @@
 			"utility": "c",
 			"algorithm": "c",
 			"limits": "c",
-			"ratio": "c"
+			"ratio": "c",
+			"windows.h": "c",
+			"system_error": "c"
 		},
 		"OpenCL.explorer.localizedProperties": false
 	}

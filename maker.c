@@ -11,14 +11,14 @@
 
 #if 1 == 1
 
-typedef struct file_path_t {
+typedef struct string_and_timestamp_t {
 	int size;				// Size of the string
 	char* str;				// String
 	long long timestamp;	// Last modification time of the file and all the files included
-} file_path_t;
+} string_and_timestamp_t;
 
 typedef struct strlinked_list_element_t {
-	file_path_t path;
+	string_and_timestamp_t path;
 	struct strlinked_list_element_t* next;
 } str_linked_list_element_t;
 
@@ -33,7 +33,7 @@ int str_linked_list_init(str_linked_list_t* list) {
 	return 0;
 }
 
-str_linked_list_element_t* str_linked_list_insert(str_linked_list_t* list, file_path_t path) {
+str_linked_list_element_t* str_linked_list_insert(str_linked_list_t* list, string_and_timestamp_t path) {
 	str_linked_list_element_t* new_element = malloc(sizeof(str_linked_list_element_t));
 	if (new_element == NULL) {
 		perror("Error while allocating memory for a new element of the linked list\n");
@@ -46,7 +46,7 @@ str_linked_list_element_t* str_linked_list_insert(str_linked_list_t* list, file_
 	return new_element;
 }
 
-str_linked_list_element_t* str_linked_list_search(str_linked_list_t list, file_path_t path) {
+str_linked_list_element_t* str_linked_list_search(str_linked_list_t list, string_and_timestamp_t path) {
 	str_linked_list_element_t* current_element = list.head;
 	while (current_element != NULL) {
 		if (strcmp(current_element->path.str, path.str) == 0)
@@ -62,6 +62,8 @@ void str_linked_list_free(str_linked_list_t* list) {
 	str_linked_list_element_t* current_element = list->head;
 	while (current_element != NULL) {
 		str_linked_list_element_t* next_element = current_element->next;
+		if (current_element->path.str != NULL)
+			free(current_element->path.str);
 		free(current_element);
 		current_element = next_element;
 	}
@@ -73,10 +75,25 @@ void str_linked_list_free(str_linked_list_t* list) {
 
 #ifdef _WIN32
 	#include <direct.h>
+	#include <windows.h>
 	#define mkdir(path, mode) _mkdir(path)
 	#define WINDOWS_FLAGS " -lws2_32"
+	#define sleep(x) Sleep((int)x * 1000)
 #else
 	#define WINDOWS_FLAGS ""
+#endif
+
+#ifdef _WIN32
+	#include <windows.h>
+	#define thread_return_type DWORD WINAPI
+	#define thread_param_type LPVOID
+	#define pthread_t HANDLE
+	#define pthread_create(thread, attr, start_routine, arg) (*thread = CreateThread(NULL, 0, start_routine, arg, 0, NULL))
+	#define pthread_join(thread, value_ptr) WaitForSingleObject(thread, INFINITE)
+#else
+	#include <pthread.h>
+	#define thread_return_type void *
+	#define thread_param_type void *
 #endif
 
 #define SRC_FOLDER "src"
@@ -94,6 +111,9 @@ void str_linked_list_free(str_linked_list_t* list) {
 char* additional_flags = NULL;
 char* linking_flags = NULL;
 str_linked_list_t files_timestamps;
+str_linked_list_t compile_commands;
+int parallel_compilation = 0;
+int print_entire_command = 1;
 
 /**
  * @brief Utility function to normalize a path:
@@ -173,7 +193,7 @@ char* normalize_path(char *path) {
  * @return int		0 if success, -1 otherwise
  */
 int clean_project() {
-	fprintf(stderr, "Cleaning the project...\n");
+	printf("Cleaning the project...\n");
 
 	// Delete all the .o files in the obj folder
 	int code = system("rm -rf "OBJ_FOLDER"/");
@@ -196,7 +216,7 @@ int clean_project() {
 	code = system("rm -f maker.exe");
 
 	// Return
-	fprintf(stderr, "Project cleaned!\n\n");
+	printf("Project cleaned!\n\n");
 	return 0;
 }
 
@@ -232,7 +252,7 @@ int load_files_timestamps(str_linked_list_t* files_timestamps) {
 			break;
 
 		// Read the string
-		char* str = malloc(size + 1);
+		char* str = malloc(size + 2);
 		if (str == NULL) {
 			perror("Error while allocating memory for a string in the .files_timestamps file\n");
 			return -1;
@@ -253,14 +273,11 @@ int load_files_timestamps(str_linked_list_t* files_timestamps) {
 		}
 
 		// Insert the string in the list
-		file_path_t path;
+		string_and_timestamp_t path;
 		path.size = size;
 		path.str = str;
 		path.timestamp = timestamp;
 		str_linked_list_insert(files_timestamps, path);
-
-		// Free the string
-		free(str);
 	}
 
 	// Close the file and return
@@ -510,7 +527,7 @@ int findCFiles(str_linked_list_t *files_timestamps) {
 		long long timestamp = getTimestampRecursive(line, NULL);
 
 		// Get the saved timestamp of the file
-		file_path_t path;
+		string_and_timestamp_t path;
 		path.size = strlen(relative_path);
 		path.str = relative_path;
 		path.timestamp = timestamp;
@@ -528,12 +545,12 @@ int findCFiles(str_linked_list_t *files_timestamps) {
 
 			// Manage the counter
 			if (compileCount++ == 0)
-				fprintf(stderr, "Compiling the source files...\n");
+				printf("Compiling the source files...\n");
 
 			// If the folder of the .o file doesn't exist, create it
 			create_folders_from_path(obj_path);
 
-			// Compile the file
+			// Prepare the compilation command
 			char command[32768];
 			sprintf( 
 				command,
@@ -543,11 +560,13 @@ int findCFiles(str_linked_list_t *files_timestamps) {
 				obj_path,
 				additional_flags == NULL ? "" : additional_flags
 			);
-			fprintf(stderr, "- %s\n", command);
-			if (system(command) != 0) {
-				save_files_timestamps(*files_timestamps);
-				exit(-1);
-			}
+			
+			// Add the command to the list
+			string_and_timestamp_t compile_command;
+			compile_command.size = strlen(command);
+			compile_command.str = strdup(command);
+			compile_command.timestamp = 0;
+			str_linked_list_insert(&compile_commands, compile_command);
 
 			// If the file is not in the list, add it
 			if (element == NULL)
@@ -558,15 +577,8 @@ int findCFiles(str_linked_list_t *files_timestamps) {
 		}
 
 		// Free the paths
-		free(relative_path);
 		free(obj_path);
 	}
-
-	// If there is no file to compile, print a message
-	if (compileCount == 0)
-		fprintf(stderr, "No source file to compile...\n\n");
-	else
-		fprintf(stderr, "\nCompilation of %d source files done!\n\n", compileCount);
 
 	// Free the line
 	if (line != NULL)
@@ -574,6 +586,41 @@ int findCFiles(str_linked_list_t *files_timestamps) {
 	
 	// Close the PIPE
 	pclose(pipe);
+
+	// Return
+	return 0;
+}
+
+/**
+ * @brief Thread function to compile a file
+ * 
+ * @param param		Command to execute
+ * 
+ * @return thread_return_type
+ */
+thread_return_type compile_thread(thread_param_type param) {
+
+	// Get the command
+	char *command = (char*)param;
+
+	// Compile the file
+	if (system(param) != 0) {
+		perror("Error while compiling a file\n");
+		return -1;
+	}
+
+	// Print the command
+	if (print_entire_command)
+		printf("- %s\n", command);
+	else {
+		char reduced_command[96];
+		memcpy(reduced_command, command, 95);
+		reduced_command[95] = '\0';
+		if (reduced_command[94] == ' ')
+			printf("- %s...\n", reduced_command);
+		else
+			printf("- %s ...\n", reduced_command);
+	}
 
 	// Return
 	return 0;
@@ -595,8 +642,64 @@ int compile_sources() {
 		return -1;
 	}
 
-	// For each .c file in the src folder,
+	// For each .c file in the src folder, add it to the list if it's not in it
+	str_linked_list_init(&compile_commands);
 	findCFiles(&files_timestamps);
+
+	// If there is no file to compile,
+	if (compile_commands.size == 0)
+		printf("No source file to compile...\n\n");
+	
+	// Else,
+	else {
+
+		// If the parallel compilation is enabled,
+		if (parallel_compilation) {
+
+			// Create the threads
+			pthread_t *threads = malloc(compile_commands.size * sizeof(pthread_t));
+			int thread_count = 0;
+
+			// For each command in the list,
+			str_linked_list_element_t* current_element = compile_commands.head;
+			while (current_element != NULL) {
+
+				// Create the thread
+				pthread_t thread;
+				pthread_create(&thread, NULL, compile_thread, current_element->path.str);
+
+				// Add the thread to the list, increment the counter and go to the next element
+				threads[thread_count++] = thread;
+				current_element = current_element->next;
+			}
+
+			// Wait for all the threads to finish
+			for (int i = 0; i < thread_count; i++)
+				pthread_join(threads[i], NULL);
+			
+			// Free the list of threads
+			free(threads);
+		}
+
+		// Else, compile the files one by one
+		else {
+
+			// For each command in the list,
+			str_linked_list_element_t* current_element = compile_commands.head;
+			while (current_element != NULL) {
+
+				// Compile the file & go to the next element
+				compile_thread(current_element->path.str);
+				current_element = current_element->next;
+			}
+		}
+
+		// Print the end of the compilation
+		printf("\nCompilation of %d source file%s done!\n\n", compile_commands.size, (compile_commands.size == 0) ? "" : "s");
+	}
+
+	// Free the list of commands
+	str_linked_list_free(&compile_commands);
 
 	// Save the last modification time of each file in the .files_timestamps file
 	if (save_files_timestamps(files_timestamps) != 0) {
@@ -624,7 +727,7 @@ int fillStackObjFilesList(str_linked_list_t *list, char *filepath) {
 	str_linked_list_init(&stack);
 
 	// Add the filepath to the stack
-	file_path_t path;
+	string_and_timestamp_t path;
 	path.size = strlen(filepath);
 	path.str = filepath;
 	path.timestamp = 0;
@@ -706,7 +809,7 @@ int fillStackObjFilesList(str_linked_list_t *list, char *filepath) {
 				fclose(obj_file);
 				
 				// If the file is not in the list, add it
-				file_path_t path;
+				string_and_timestamp_t path;
 				path.size = strlen(real_obj_path);
 				path.str = real_obj_path;
 				path.timestamp = 0;
@@ -774,7 +877,8 @@ int compile_programs() {
 		return -1;
 	}
 
-	// Initialize the counter
+	// Initialize the counter & compile commands list
+	str_linked_list_init(&compile_commands);
 	int compileCount = 0;
 
 	// For each line in the PIPE,
@@ -796,7 +900,7 @@ int compile_programs() {
 		strcat(filename, line);
 
 		// Check timestamp
-		file_path_t path;
+		string_and_timestamp_t path;
 		path.size = strlen(filename);
 		path.str = filename;
 		path.timestamp = getTimestampRecursive(filename, NULL);
@@ -823,9 +927,9 @@ int compile_programs() {
 
 			// Manage the counter
 			if (compileCount++ == 0)
-				fprintf(stderr, "Compiling programs...\n");
+				printf("Compiling programs...\n");
 
-			// Compile the file
+			// Prepare the compilation command
 			char command[32768];
 			sprintf( 
 				command,
@@ -837,16 +941,13 @@ int compile_programs() {
 				additional_flags == NULL ? "" : additional_flags,
 				linking_flags == NULL ? "" : linking_flags
 			);
-			char command_reduced[96];
-			memcpy(command_reduced, command, 95);
-			command_reduced[95] = '\0';
-			fprintf(stderr, "- %s...\n", command_reduced);
-			int code = system(command);
-			if (code != 0) {
-				fprintf(stderr, "Error while compiling the program '%s': %d\n", line, code);
-				perror("");
-				continue;
-			}
+
+			// Add the command to the list
+			string_and_timestamp_t compile_command;
+			compile_command.size = strlen(command);
+			compile_command.str = strdup(command);
+			compile_command.timestamp = 0;
+			str_linked_list_insert(&compile_commands, compile_command);
 			
 			// If the file is not in the list, add it
 			if (element == NULL)
@@ -854,16 +955,59 @@ int compile_programs() {
 			else
 				element->path.timestamp = path.timestamp;
 		}
-
-		// Free the path
-		free(filename);
 	}
 
 	// If there is no file to compile, print a message
 	if (compileCount == 0)
-		fprintf(stderr, "No program to compile...\n\n");
-	else
-		fprintf(stderr, "\nCompilation of %d programs done!\n\n", compileCount);
+		printf("No program to compile...\n\n");
+	else {
+
+		// If the parallel compilation is enabled,
+		print_entire_command = 0;
+		if (parallel_compilation) {
+
+			// Create the threads
+			pthread_t *threads = malloc(compile_commands.size * sizeof(pthread_t));
+			int thread_count = 0;
+
+			// For each command in the list,
+			str_linked_list_element_t* current_element = compile_commands.head;
+			while (current_element != NULL) {
+
+				// Create the thread
+				pthread_t thread;
+				pthread_create(&thread, NULL, compile_thread, current_element->path.str);
+
+				// Add the thread to the list, increment the counter and go to the next element
+				threads[thread_count++] = thread;
+				current_element = current_element->next;
+			}
+
+			// Wait for all the threads to finish
+			for (int i = 0; i < thread_count; i++)
+				pthread_join(threads[i], NULL);
+			
+			// Free the list of threads
+			free(threads);
+		}
+
+		// Else, compile the files one by one
+		else {
+
+			// For each command in the list,
+			str_linked_list_element_t* current_element = compile_commands.head;
+			while (current_element != NULL) {
+
+				// Compile the file & go to the next element
+				compile_thread(current_element->path.str);
+				current_element = current_element->next;
+			}
+		}
+
+		// Free the list of commands & print a message
+		str_linked_list_free(&compile_commands);
+		printf("\nCompilation of %d program%s done!\n\n", compileCount, (compileCount == 0) ? "" : "s");
+	}
 
 	// Free the line
 	if (line != NULL)
@@ -881,7 +1025,11 @@ int compile_programs() {
  * @brief Program that compiles the entire project
  * 
  * @param argc Number of arguments
- * @param argv Arguments, accept only: "clean"
+ * @param argv Arguments:
+ * - argv[1] can be "clean" to clean the project
+ * - argv[1] can be the additional flags to add to the compiler
+ * - argv[2] can be the additional flags to add to the linker
+ * - argv[3] can be a value to set the parallel compilation (0 = no, 1 = yes)
  * 
  * @author Stoupy51 (COLLIGNON Alexandre)
  */
@@ -893,9 +1041,10 @@ int main(int argc, char **argv) {
 	// Check if the user wants to clean the project
 	if (argc == 2 && strcmp(argv[1], "clean") == 0)
 		return clean_project();
-	else if (argc == 3) {
+	else if (argc == 4) {
 		additional_flags = argv[1];
 		linking_flags = argv[2];
+		parallel_compilation = atoi(argv[3]);
 	}
 
 	// Create folders if they don't exist
