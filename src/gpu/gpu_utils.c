@@ -561,7 +561,8 @@ int fillRandomDoubleArrayGPU(double* array, unsigned long long size, double min,
 	// Create the buffer & copy the array
 	cl_mem buffer = clCreateBuffer(ocfe_oc.context, CL_MEM_READ_WRITE, sizeof(double) * size, NULL, &ocfe_code);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot create buffer, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
-	ocfe_code = clEnqueueWriteBuffer(ocfe_oc.command_queue, buffer, CL_TRUE, 0, size * sizeof(double), array, 0, NULL, NULL);
+	cl_event write_event;
+	ocfe_code = clEnqueueWriteBuffer(ocfe_oc.command_queue, buffer, CL_FALSE, 0, size * sizeof(double), array, 0, NULL, &write_event);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot copy array to buffer (%lld = %lld * %zu), reason: %d / %s\n", size * sizeof(double), size, sizeof(double), ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Set the kernel arguments
@@ -578,14 +579,18 @@ int fillRandomDoubleArrayGPU(double* array, unsigned long long size, double min,
 	// Execute the kernel
 	size_t global_item_size = size;
 	size_t local_item_size = 1;
-	ocfe_code = clEnqueueNDRangeKernel(ocfe_oc.command_queue, ocfe_kernel, 1, NULL, &global_item_size, &local_item_size, 0, NULL, NULL);
+	cl_event kernel_event;
+	ocfe_code = clEnqueueNDRangeKernel(ocfe_oc.command_queue, ocfe_kernel, 1, NULL, &global_item_size, &local_item_size, 1, &write_event, &kernel_event);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot execute kernel, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
-	ocfe_code = clFinish(ocfe_oc.command_queue);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot finish command queue, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Copy the buffer to the array
-	ocfe_code = clEnqueueReadBuffer(ocfe_oc.command_queue, buffer, CL_TRUE, 0, sizeof(double) * size, array, 0, NULL, NULL);
+	cl_event read_event;
+	ocfe_code = clEnqueueReadBuffer(ocfe_oc.command_queue, buffer, CL_FALSE, 0, sizeof(double) * size, array, 1, &kernel_event, &read_event);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot copy buffer to array, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+
+	// Wait for the read event to finish
+	ocfe_code = clWaitForEvents(1, &read_event);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot wait for read event, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Release the buffer
 	ocfe_code = clReleaseMemObject(buffer);

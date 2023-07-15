@@ -16,12 +16,8 @@ struct frdacptt_args_t {
 	double min;
 	double max_minus_min;
 	int nb_cores;
-	int thread_id;
 };
-struct frdacptt_args_ptr_t {
-	struct frdacptt_args_t* args;
-	int thread_id;
-};
+struct frdacptt_args_t frdacptt_args;
 
 /**
  * @brief Thread function to fill an array of double with random values
@@ -33,18 +29,17 @@ struct frdacptt_args_ptr_t {
  */
 thread_return_type fillRandomDoubleArrayCPUThreadsThread(thread_param_type args) {
 
-	// Get the arguments
-	int thread_id = ((struct frdacptt_args_ptr_t*)args)->thread_id;
-	struct frdacptt_args_t* args_struct = ((struct frdacptt_args_ptr_t*)args)->args;
+	// Get the argument
+	int thread_id = *(int*)args;
 
 	// Calculate the part of the array to fill
-	unsigned long long start = (unsigned long long)thread_id * args_struct->size / args_struct->nb_cores;
-	unsigned long long end = (unsigned long long)(thread_id + 1) * args_struct->size / args_struct->nb_cores;
-	end = end > args_struct->size ? args_struct->size : end;
+	unsigned long long start = (unsigned long long)thread_id * frdacptt_args.size / frdacptt_args.nb_cores;
+	unsigned long long end = (unsigned long long)(thread_id + 1) * frdacptt_args.size / frdacptt_args.nb_cores;
+	end = end > frdacptt_args.size ? frdacptt_args.size : end;
 
 	// Fill the array
 	for (unsigned long long i = start; i < end; i++)
-		args_struct->array[i] = (double)rand() / RAND_MAX * args_struct->max_minus_min + args_struct->min;
+		frdacptt_args.array[i] = (double)rand() / RAND_MAX * frdacptt_args.max_minus_min + frdacptt_args.min;
 
 	// Return
 	return 0;
@@ -76,23 +71,19 @@ int fillRandomDoubleArrayCPUThreads(double* array, unsigned long long size, doub
 	#endif
 
 	// Prepare the arguments for the threads
-	struct frdacptt_args_t args;
-	args.array = array;
-	args.size = size;
-	args.min = min;
-	args.max_minus_min = max - min;
-	args.nb_cores = nb_cores;
-	struct frdacptt_args_ptr_t *args_ptr = malloc(nb_cores * sizeof(struct frdacptt_args_ptr_t));
-	ERROR_HANDLE_PTR_RETURN_INT(args_ptr, "fillRandomDoubleArrayCPUThreads(): Failed to allocate memory for the args_ptr\n");
-	for (int i = 0; i < nb_cores; i++) {
-		args_ptr[i].args = &args;
-		args_ptr[i].thread_id = i;
-	}
+	frdacptt_args.array = array;
+	frdacptt_args.size = size;
+	frdacptt_args.min = min;
+	frdacptt_args.max_minus_min = max - min;
+	frdacptt_args.nb_cores = nb_cores;
+	int *threads_ids = malloc(nb_cores * sizeof(int));
+	ERROR_HANDLE_PTR_RETURN_INT(threads_ids, "fillRandomDoubleArrayCPUThreads(): Failed to allocate memory for the threads_ids\n");
 
 	// Create the threads
 	pthread_t* threads = malloc(nb_cores * sizeof(pthread_t));
 	for (int i = 0; i < nb_cores; i++) {
-		pthread_create(&threads[i], NULL, fillRandomDoubleArrayCPUThreadsThread, &args_ptr[i]);
+		threads_ids[i] = i;
+		pthread_create(&threads[i], NULL, fillRandomDoubleArrayCPUThreadsThread, &threads_ids[i]);
 	}
 
 	// Wait for the threads to finish
@@ -100,7 +91,7 @@ int fillRandomDoubleArrayCPUThreads(double* array, unsigned long long size, doub
 		pthread_join(threads[i], NULL);
 	
 	// Free the memory
-	free(args_ptr);
+	free(threads_ids);
 	free(threads);
 
 	// Return
