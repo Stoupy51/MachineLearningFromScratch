@@ -4,8 +4,10 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "../../libs/stb_image.h"
 #include "../../libs/stb_image_write.h"
+#include "../../libs/stb_image_resize.h"
 
 /**
  * @brief Allocate the memory for the image structure
@@ -149,7 +151,6 @@ int image_save_jpg(const char* file_name, image_t image, int quality) {
 	return 0;
 }
 
-
 /**
  * @brief Split an image into multiple images of the specified size.
  * 
@@ -201,3 +202,83 @@ int image_split_by_size(image_t image, int split_size, image_t** images, int* nb
 	// Return
 	return 0;
 }
+
+/**
+ * @brief Merge multiple images into one image.
+ * 
+ * @param images_array		Array of images to merge
+ * @param nb_images		Number of images to merge
+ * @param image			Pointer to the image structure to fill the data 
+ * 						(width & height must be set but not the rest)
+ * 
+ * @return int			0 if no error occurred, -1 otherwise
+ */
+int image_merge(image_t* images_array, int nb_images, image_t* image) {
+
+	// Check the parameters
+	ERROR_HANDLE_PTR_RETURN_INT(images_array, "image_merge(): Parameter images is NULL\n");
+	ERROR_HANDLE_PTR_RETURN_INT(image, "image_merge(): Parameter image is NULL\n");
+
+	// Initialize the image structure
+	image->channels = images_array[0].channels;
+	image->flat_data = malloc(image->width * image->height * image->channels * sizeof(unsigned char));
+	ERROR_HANDLE_PTR_RETURN_INT(image->flat_data, "image_merge(): Error allocating the image data\n");
+	memset(image->flat_data, 0, image->width * image->height * image->channels * sizeof(unsigned char));
+
+	// Allocate the memory for the image structure
+	int code = image_structure_allocations(image);
+	ERROR_HANDLE_INT_RETURN_INT(code, "image_merge(): Error allocating the image structure\n");
+
+	// Merge the images
+	for (int image_index = 0; image_index < nb_images; image_index++) {
+
+		// Copy the image data to the new image without going out of bounds
+		int x = (image_index % (image->width / images_array[image_index].width)) * images_array[image_index].width;
+		int y = (image_index / (image->width / images_array[image_index].width)) * images_array[image_index].height;
+		for (int i = 0; i < images_array[image_index].height; i++)
+			for (int j = 0; j < images_array[image_index].width; j++)
+				for (int k = 0; k < image->channels; k++)
+					image->data[y + i][x + j][k] = images_array[image_index].data[i][j][k];
+	}
+
+	// Return
+	return 0;
+}
+
+/**
+ * @brief Resize an image.
+ * 
+ * @param image				Image to resize
+ * @param new_width			New width of the image
+ * @param new_height		New height of the image
+ * @param resized_image		Pointer to the resized image
+ * 
+ * @return int				0 if no error occurred, -1 otherwise
+ */
+int image_resize(image_t image, int new_width, int new_height, image_t* resized_image) {
+	
+	// Check the parameters
+	ERROR_HANDLE_PTR_RETURN_INT(image.data, "image_resize(): Parameter Image data is NULL\n");
+	ERROR_HANDLE_PTR_RETURN_INT(resized_image, "image_resize(): Parameter resized_image is NULL\n");
+
+	// Initialize the image structure
+	resized_image->width = new_width;
+	resized_image->height = new_height;
+	resized_image->channels = image.channels;
+	resized_image->flat_data = malloc(new_width * new_height * image.channels * sizeof(unsigned char));
+	ERROR_HANDLE_PTR_RETURN_INT(resized_image->flat_data, "image_resize(): Error allocating the image data\n");
+	memset(resized_image->flat_data, 0, new_width * new_height * image.channels * sizeof(unsigned char));
+
+	// Allocate the memory for the image structure
+	int code = image_structure_allocations(resized_image);
+	ERROR_HANDLE_INT_RETURN_INT(code, "image_resize(): Error allocating the image structure\n");
+
+	// Resize the image
+	code = stbir_resize_uint8(image.flat_data, image.width, image.height, 0, resized_image->flat_data, new_width, new_height, 0, image.channels);
+	ERROR_HANDLE_INT_RETURN_INT(code, "image_resize(): Error resizing the image\n");
+
+	// Return
+	return 0;
+}
+
+

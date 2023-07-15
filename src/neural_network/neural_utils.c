@@ -39,10 +39,10 @@ NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], d
 	if (network.memory_size > 4000000000) {
 		// WARNING_PRINT("createNeuralNetworkD(): The memory size of the neural network is very big (%lld Bytes)\n", network.memory_size);
 		WARNING_PRINT("createNeuralNetworkD(): The memory size of the neural network is very big (");
-		if (network.memory_size < 1000) { PRINTER("%lld Bytes", network.memory_size); }
-		else if (network.memory_size < 1000000) { PRINTER("%.2Lf KB (%lld)", (long double)network.memory_size / 1000, network.memory_size); }
-		else if (network.memory_size < 1000000000) { PRINTER("%.2Lf MB (%lld)", (long double)network.memory_size / 1000000, network.memory_size); }
-		else { PRINTER("%.2Lf GB (%lld)", (long double)network.memory_size / 1000000000, network.memory_size); }
+		if (network.memory_size < 1000) { PRINTER("%lld Bytes)\n", network.memory_size); }
+		else if (network.memory_size < 1000000) { PRINTER("%.2Lf KB [%lld])\n", (long double)network.memory_size / 1000, network.memory_size); }
+		else if (network.memory_size < 1000000000) { PRINTER("%.2Lf MB [%lld])\n", (long double)network.memory_size / 1000000, network.memory_size); }
+		else { PRINTER("%.2Lf GB [%lld])\n", (long double)network.memory_size / 1000000000, network.memory_size); }
 		WARNING_PRINT("createNeuralNetworkD(): Do you want to continue? (Y/n) ");
 		char answer = getchar();
 		if (answer != 'Y' && answer != 'y' && answer != '\n') {
@@ -170,6 +170,7 @@ void printNeuralNetworkD(NeuralNetworkD network) {
 	else
 		{ PRINTER(YELLOW"%.2Lf"CYAN" B ("YELLOW"%lld"CYAN")\n", (long double)total_weights / 1000000000, total_weights); }
 	PRINTER(RESET"\n");
+	PRINTER("\n");
 }
 
 /**

@@ -10,11 +10,15 @@ typedef struct image_t {
 	unsigned char*** data;		// 3D array: data[height][width][channels]
 } image_t;
 
+int image_structure_allocations(image_t* image);
 int image_load(const char* file_name, image_t* image);
+void image_free(image_t* image);
 int image_save_png(const char* file_name, image_t image);
 int image_save_jpg(const char* file_name, image_t image, int quality);
 
 int image_split_by_size(image_t image, int split_size, image_t** images, int* nb_images);
+int image_merge(image_t* images_array, int nb_images, image_t* image);
+int image_resize(image_t image, int new_width, int new_height, image_t* resized_image);
 
 
 #endif

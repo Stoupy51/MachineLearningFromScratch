@@ -53,7 +53,8 @@
 			"system_error": "c",
 			"training_cpu.h": "c",
 			"xiosbase": "c",
-			"ios": "c"
+			"ios": "c",
+			"images.h": "c"
 		},
 		"OpenCL.explorer.localizedProperties": false
 	}

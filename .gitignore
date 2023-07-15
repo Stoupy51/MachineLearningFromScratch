@@ -1,7 +1,11 @@
 
+# Any project files
 *obj/*
 *bin/*
 *.o
 .files_timestamps
 maker.exe
+
+# Project specific
+images/*
 
