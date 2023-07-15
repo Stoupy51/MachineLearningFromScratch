@@ -12,7 +12,7 @@
  *
  * @return void
  */
-kernel void feedForwardActivationValues(global double* previous_layer_activation_values, global double* weights, global double* biases, global double* activation_values, int current_layer_size, int previous_layer_size) {
+kernel void feedForwardActivationValuesSigmoid(global double* previous_layer_activation_values, global double* weights, global double* biases, global double* activation_values, int current_layer_size, int previous_layer_size) {
 
 	// Get the index of the current thread
 	int index = get_global_id(0);

@@ -67,13 +67,8 @@ int main() {
 	// Benchmark the GPU training
 	char buffer[1024];
 	ST_BENCHMARK_SOLO_COUNT(buffer,
-		NeuralNetworkDtrainStepByStepGPU(&network, input, excepted_output, 1),
-		"NeuralNetworkDtrainStepByStep (GPU)", 100
-	);
-	PRINTER(buffer);
-	ST_BENCHMARK_SOLO_COUNT(buffer,
 		NeuralNetworkDtrainGPU(&network, input, excepted_output, 0),
-		"NeuralNetworkDtrain (GPU)", 100
+		"NeuralNetworkDtrain (GPU)", 10
 	);
 	PRINTER(buffer);
 	int code = NeuralNetworkDReadAllBuffersGPU(&network);
@@ -84,7 +79,7 @@ int main() {
 	free(excepted_output);
 
 	// Save the neural network to a file and another human readable file
-	//saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 0);
+	saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 0);
 
 	// Free the neural network & free private GPU buffers
 	freeNeuralNetworkD(&network);
