@@ -51,7 +51,9 @@
 			"ratio": "c",
 			"windows.h": "c",
 			"system_error": "c",
-			"training_cpu.h": "c"
+			"training_cpu.h": "c",
+			"xiosbase": "c",
+			"ios": "c"
 		},
 		"OpenCL.explorer.localizedProperties": false
 	}
