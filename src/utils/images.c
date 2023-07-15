@@ -281,4 +281,3 @@ int image_resize(image_t image, int new_width, int new_height, image_t* resized_
 	return 0;
 }
 
-

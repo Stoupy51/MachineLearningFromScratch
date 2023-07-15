@@ -51,7 +51,7 @@ int main() {
 
 		// Create a neural network using double as type
 		WARNING_PRINT("main(): No neural network found, creating a new one.\n");
-		int nb_neurons_per_layer[] = {128*128*3 + 1, 4096, 4096, 4096, 128*128*3};
+		int nb_neurons_per_layer[] = {128*128*3 + 1, 8192, 8192, 8192, 128*128*3};
 		int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 		network = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 0.1, sigmoid);
 	} else {
@@ -112,64 +112,65 @@ int main() {
 
 	// For each splitted image, train the neural network
 	img_list_elt_t *current_elt = img_list_split.head;
-	int i = 0;
+	int img_number = 0;
 	while (current_elt != NULL) {
 
 		// Print the current image
-		INFO_PRINT("main(): Training image %d/%d\n", ++i, img_list_split.size);
+		char buffer[1024];
+		char benchmark_name[512];
+		sprintf(benchmark_name, "NeuralNetworkDtrain (GPU) image %d/%d (%dx%d)", ++img_number, img_list_split.size, current_elt->image.width, current_elt->image.height);
+		ST_BENCHMARK_SOLO_COUNT(buffer,
+			{
+				// Get the image
+				image_t *image = &current_elt->image;
 
-		// Get the image
-		image_t *image = &current_elt->image;
+				// Create a list of resized images (from 128x128 to 16x16 pixel per pixel (7 images))
+				img_list_t img_list_resized = img_list_new();
+				for (int size = image->width; size > 16; size -= 16) {
+					
+					// Resize the image & add it to the list
+					image_t resized_image;
+					int code = image_resize(*image, size, size, &resized_image);
+					ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error resizing the image %d/%d to size %dx%d\n", img_number, img_list_split.size, size, size);
+					code = img_list_insert(&img_list_resized, resized_image);
+					ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error inserting the resized image %d/%d to size %dx%d in the list\n", img_number, img_list_split.size, size, size);
+				}
 
-		// Create a list of resized images (from 128x128 to 16x16 pixel per pixel (7 images))
-		img_list_t img_list_resized = img_list_new();
-		for (int size = image->width; size > 16; size -= 16) {
-			
-			// Resize the image & add it to the list
-			image_t resized_image;
-			int code = image_resize(*image, size, size, &resized_image);
-			ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error resizing the image %d/%d to size %dx%d\n", i, img_list_split.size, size, size);
-			code = img_list_insert(&img_list_resized, resized_image);
-			ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error inserting the resized image %d/%d to size %dx%d in the list\n", i, img_list_split.size, size, size);
-		}
+				// Prepare the excepted output array
+				double *excepted_output = (double*)malloc(network.output_layer->nb_neurons * sizeof(double));
+				ERROR_HANDLE_PTR_RETURN_INT(excepted_output, "main(): Error allocating the excepted output array\n");
+				for (int i = 0; i < network.output_layer->nb_neurons; i++)
+					excepted_output[i] = (double)image->flat_data[i] / 255.0;
 
-		// Prepare the excepted output array
-		double *excepted_output = (double*)malloc(network.output_layer->nb_neurons * sizeof(double));
-		for (int i = 0; i < network.output_layer->nb_neurons; i++)
-			excepted_output[i] = (double)image->flat_data[i] / 255.0;
+				// For each resized image, train the neural network
+				img_list_elt_t *current_elt_resized = img_list_resized.head;
+				while (current_elt_resized != NULL) {
 
-		// For each resized image, train the neural network
-		img_list_elt_t *current_elt_resized = img_list_resized.head;
-		int j = 0;
-		while (current_elt_resized != NULL) {
+					// Prepare the input array
+					double *input = (double*)malloc(network.input_layer->nb_neurons * sizeof(double));
+					ERROR_HANDLE_PTR_RETURN_INT(input, "main(): Error allocating the input array\n");
+					memset(input, 0, network.input_layer->nb_neurons * sizeof(double));
+					input[0] = (double)current_elt_resized->image.width / (double)image->width;	// Ratio of the resized image
+					int img_size = current_elt_resized->image.width * current_elt_resized->image.height * current_elt_resized->image.channels;
+					for (int i = 0; i < img_size; i++)
+						input[i + 1] = (double)current_elt_resized->image.flat_data[i] / 255.0;
 
-			// Prepare the input array
-			double *input = (double*)malloc(network.input_layer->nb_neurons * sizeof(double));
-			input[0] = (double)current_elt_resized->image.width / (double)image->width;	// Ratio of the resized image
-			for (int i = 0; i < network.input_layer->nb_neurons - 1; i++)
-				input[i + 1] = (double)current_elt_resized->image.flat_data[i] / 255.0;
+					// Train the neural network
+					NeuralNetworkDtrainGPU(&network, input, excepted_output, 0);
 
-			// Benchmark name
-			char benchmark_name[512];
-			sprintf(benchmark_name, "NeuralNetworkDtrain (GPU) - image %d/%d - resized image %d/%d", i, img_list_split.size, ++j, img_list_resized.size);
+					// Free the input array & go next resized image
+					free(input);
+					current_elt_resized = current_elt_resized->next;
+				}
 
-			// Benchmark the GPU training
-			char buffer[1024];
-			ST_BENCHMARK_SOLO_COUNT(buffer,
-				NeuralNetworkDtrainGPU(&network, input, excepted_output, 0),
-				benchmark_name, 1
-			);
-			PRINTER(buffer);
-
-			// Free the input array & go next resized image
-			free(input);
-			current_elt_resized = current_elt_resized->next;
-		}
-
-		// Free the resized images list & the excepted output array & go next image
-		img_list_free(&img_list_resized);
-		free(excepted_output);
-		current_elt = current_elt->next;
+				// Free the resized images list & the excepted output array & go next image
+				img_list_free(&img_list_resized);
+				free(excepted_output);
+				current_elt = current_elt->next;
+			},
+			benchmark_name, 1
+		);
+		PRINTER(buffer);
 	}
 
 	// Free the splitted images list
