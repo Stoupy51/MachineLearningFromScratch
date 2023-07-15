@@ -6,11 +6,12 @@
 
 void stopNeuralNetworkGpuOpenCL();
 void stopNeuralNetworkGpuBuffersOpenCL();
+int NeuralNetworkDReadAllBuffersGPU(NeuralNetworkD *network);
 int NeuralNetworkDfeedForwardGPU(NeuralNetworkD *network, double *input, int read_buffer);
 int NeuralNetworkDbackpropagationGPU(NeuralNetworkD *network, double *excepted_output, int read_buffer);
 int NeuralNetworkDupdateWeightsAndBiasesGPU(NeuralNetworkD *network, int read_buffer);
+int NeuralNetworkDtrainStepByStepGPU(NeuralNetworkD *network, double *input, double *excepted_output, int read_all_buffers);
 int NeuralNetworkDtrainGPU(NeuralNetworkD *network, double *input, double *excepted_output, int read_all_buffers);
-int NeuralNetworkDReadAllBuffersGPU(NeuralNetworkD *network);
 
 #endif
 

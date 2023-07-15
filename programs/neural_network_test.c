@@ -67,10 +67,17 @@ int main() {
 	// Benchmark the GPU training
 	char buffer[1024];
 	ST_BENCHMARK_SOLO_COUNT(buffer,
-		NeuralNetworkDtrainGPU(&network, input, excepted_output, 1),
-		"NeuralNetworkDtrainGPU (GPU)", 1	// 1 execution
+		NeuralNetworkDtrainStepByStepGPU(&network, input, excepted_output, 1),
+		"NeuralNetworkDtrainStepByStep (GPU)", 100
 	);
 	PRINTER(buffer);
+	ST_BENCHMARK_SOLO_COUNT(buffer,
+		NeuralNetworkDtrainGPU(&network, input, excepted_output, 0),
+		"NeuralNetworkDtrain (GPU)", 100
+	);
+	PRINTER(buffer);
+	int code = NeuralNetworkDReadAllBuffersGPU(&network);
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Failed to read all buffers from GPU\n");
 
 	// Free the input and excepted output arrays
 	free(input);
