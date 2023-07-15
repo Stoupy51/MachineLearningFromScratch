@@ -10,6 +10,7 @@ int NeuralNetworkDfeedForwardGPU(NeuralNetworkD *network, double *input, int rea
 int NeuralNetworkDbackpropagationGPU(NeuralNetworkD *network, double *excepted_output, int read_buffer);
 int NeuralNetworkDupdateWeightsAndBiasesGPU(NeuralNetworkD *network, int read_buffer);
 int NeuralNetworkDtrainGPU(NeuralNetworkD *network, double *input, double *excepted_output, int read_all_buffers);
+int NeuralNetworkDReadAllBuffersGPU(NeuralNetworkD *network);
 
 #endif
 

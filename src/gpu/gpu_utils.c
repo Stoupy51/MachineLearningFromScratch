@@ -593,6 +593,14 @@ int fillRandomDoubleArrayGPU(double* array, unsigned long long size, double min,
 	ocfe_code = clReleaseMemObject(buffer);
 	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot release buffer, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 
+	// Release the events
+	ocfe_code = clReleaseEvent(write_event);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot release write event, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ocfe_code = clReleaseEvent(kernel_event);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot release kernel event, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ocfe_code = clReleaseEvent(read_event);
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot release read event, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+
 	// Return success
 	return 0;
 }
