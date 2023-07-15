@@ -170,7 +170,6 @@ void printNeuralNetworkD(NeuralNetworkD network) {
 	else
 		{ PRINTER(YELLOW"%.2Lf"CYAN" B ("YELLOW"%lld"CYAN")\n", (long double)total_weights / 1000000000, total_weights); }
 	PRINTER(RESET"\n");
-	PRINTER("\n");
 }
 
 /**

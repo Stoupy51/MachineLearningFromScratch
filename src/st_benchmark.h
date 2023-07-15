@@ -57,7 +57,7 @@ int gettimeofday(struct timeval * tp, struct timezone * tzp) {
 		ST_BENCH_f2; \
 		ST_BENCH_countF2 += 1; \
 	} \
-	sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED ST_BENCH_f1_name " %s than " ST_BENCH_f2_name " by " ST_COLOR_YELLOW "%f" ST_COLOR_RED " times with" ST_COLOR_YELLOW "\n[BENCHMARK] " ST_COLOR_RED ST_BENCH_f1_name " executed " ST_COLOR_YELLOW "%ld" ST_COLOR_RED " time%s and " ST_BENCH_f2_name " executed " ST_COLOR_YELLOW "%ld" ST_COLOR_RED " time%s\n" ST_COLOR_RESET, (ST_BENCH_countF1 > ST_BENCH_countF2) ? "faster" : "slower", (double)ST_BENCH_countF1 / (double)ST_BENCH_countF2, ST_BENCH_countF1, (ST_BENCH_countF1 == 1 ? "" : "s"), ST_BENCH_countF2, (ST_BENCH_countF2 == 1 ? "" : "s")); \
+	sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "%s %s than %s by " ST_COLOR_YELLOW "%f" ST_COLOR_RED " times with" ST_COLOR_YELLOW "\n[BENCHMARK] " ST_COLOR_RED ST_BENCH_f1_name " executed " ST_COLOR_YELLOW "%ld" ST_COLOR_RED " time%s and " ST_BENCH_f2_name " executed " ST_COLOR_YELLOW "%ld" ST_COLOR_RED " time%s\n" ST_COLOR_RESET, ST_BENCH_f1_name, (ST_BENCH_countF1 > ST_BENCH_countF2) ? "faster" : "slower", ST_BENCH_f2_name, (double)ST_BENCH_countF1 / (double)ST_BENCH_countF2, ST_BENCH_countF1, (ST_BENCH_countF1 == 1 ? "" : "s"), ST_BENCH_countF2, (ST_BENCH_countF2 == 1 ? "" : "s")); \
 }
 
 
@@ -71,7 +71,10 @@ int gettimeofday(struct timeval * tp, struct timezone * tzp) {
 	} \
 	gettimeofday(&ST_BENCH_timeval2, NULL); \
 	ST_BENCH_time = 1000000 * ST_BENCH_timeval2.tv_sec + ST_BENCH_timeval2.tv_usec - ST_BENCH_time; \
-	sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED ST_BENCH_f_name " executed " ST_COLOR_YELLOW "%d" ST_COLOR_RED " time%s in " ST_COLOR_YELLOW "%lf" ST_COLOR_RED "s\n" ST_COLOR_RESET, ST_BENCH_count, (ST_BENCH_count == 1 ? "" : "s"), (double)ST_BENCH_time / 1000000.0); \
+	if (ST_BENCH_count != 1) \
+		sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "%s executed " ST_COLOR_YELLOW "%d" ST_COLOR_RED " time%s in " ST_COLOR_YELLOW "%lf" ST_COLOR_RED "s\n" ST_COLOR_RESET, ST_BENCH_f_name, ST_BENCH_count, (ST_BENCH_count == 1 ? "" : "s"), (double)ST_BENCH_time / 1000000.0); \
+	else \
+		sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "%s executed in " ST_COLOR_YELLOW "%lf" ST_COLOR_RED "s\n" ST_COLOR_RESET, ST_BENCH_f_name, (double)ST_BENCH_time / 1000000.0); \
 }
 
 
@@ -84,7 +87,7 @@ int gettimeofday(struct timeval * tp, struct timezone * tzp) {
 		ST_BENCH_f; \
 		ST_BENCH_count += 1; \
 	} \
-	sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED ST_BENCH_f_name " executed " ST_COLOR_YELLOW "%ld" ST_COLOR_RED " time%s in " ST_COLOR_YELLOW "%ld" ST_COLOR_RED "s\n" ST_COLOR_RESET, ST_BENCH_count, (ST_BENCH_count == 1 ? "" : "s"), (long)ST_BENCH_testing_time); \
+	sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "%s executed " ST_COLOR_YELLOW "%ld" ST_COLOR_RED " time%s in " ST_COLOR_YELLOW "%ld" ST_COLOR_RED "s\n" ST_COLOR_RESET, ST_BENCH_f_name, ST_BENCH_count, (ST_BENCH_count == 1 ? "" : "s"), (long)ST_BENCH_testing_time); \
 }
 
 #endif
