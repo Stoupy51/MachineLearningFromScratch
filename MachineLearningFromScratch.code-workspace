@@ -54,7 +54,9 @@
 			"training_cpu.h": "c",
 			"xiosbase": "c",
 			"ios": "c",
-			"images.h": "c"
+			"images.h": "c",
+			"st_benchmark.h": "c",
+			"training_gpu.h": "c"
 		},
 		"OpenCL.explorer.localizedProperties": false
 	}

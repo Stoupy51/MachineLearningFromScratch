@@ -12,8 +12,7 @@
 #ifdef _WIN32
 
 #include <windows.h>
-
-int gettimeofday(struct timeval * tp, struct timezone * tzp) {
+int st_gettimeofday(struct timeval * tp, struct timezone * tzp) {
     static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL);
 	if (tzp != NULL) {
 		tzp = NULL; // No timezone for Windows
@@ -36,6 +35,7 @@ int gettimeofday(struct timeval * tp, struct timezone * tzp) {
 #else
 	#include <unistd.h>
 	#include <sys/time.h>
+	#define st_gettimeofday gettimeofday
 #endif
 
 #define ST_COLOR_RESET "\033[0m"
@@ -63,13 +63,13 @@ int gettimeofday(struct timeval * tp, struct timezone * tzp) {
 
 #define ST_BENCHMARK_SOLO_COUNT(ST_BENCH_buffer, ST_BENCH_f, ST_BENCH_f_name, ST_BENCH_count) { \
 	struct timeval ST_BENCH_timeval, ST_BENCH_timeval2; \
-	gettimeofday(&ST_BENCH_timeval, NULL); \
+	st_gettimeofday(&ST_BENCH_timeval, NULL); \
 	unsigned long ST_BENCH_time = 1000000 * ST_BENCH_timeval.tv_sec + ST_BENCH_timeval.tv_usec; \
 	long ST_BENCH_i = 0; \
 	for (ST_BENCH_i = 0; ST_BENCH_i < ST_BENCH_count; ST_BENCH_i++) { \
 		ST_BENCH_f; \
 	} \
-	gettimeofday(&ST_BENCH_timeval2, NULL); \
+	st_gettimeofday(&ST_BENCH_timeval2, NULL); \
 	ST_BENCH_time = 1000000 * ST_BENCH_timeval2.tv_sec + ST_BENCH_timeval2.tv_usec - ST_BENCH_time; \
 	if (ST_BENCH_count != 1) \
 		sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "%s executed " ST_COLOR_YELLOW "%d" ST_COLOR_RED " time%s in " ST_COLOR_YELLOW "%lf" ST_COLOR_RED "s\n" ST_COLOR_RESET, ST_BENCH_f_name, ST_BENCH_count, (ST_BENCH_count == 1 ? "" : "s"), (double)ST_BENCH_time / 1000000.0); \

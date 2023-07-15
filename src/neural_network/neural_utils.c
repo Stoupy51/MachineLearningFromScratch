@@ -181,6 +181,7 @@ void printNeuralNetworkD(NeuralNetworkD network) {
  * @return void
  */
 void freeNeuralNetworkD(NeuralNetworkD *network) {
+	if (network->nb_layers == 0) return;
 
 	// Free the layers
 	for (int i = 0; i < network->nb_layers; i++) {

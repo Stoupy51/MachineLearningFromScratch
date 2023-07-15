@@ -12,6 +12,9 @@
 #define NEURAL_NETWORK_PATH "bin/image_upscaler_network.bin"
 #define IMAGES_PATH "images/"
 
+NeuralNetworkD network;
+int code;
+
 /**
  * @brief Function run at the end of the program
  * [registered with atexit()] in the main() function.
@@ -19,6 +22,15 @@
  * @return void
 */
 void exitProgram() {
+
+	// Read all the buffers & Save the neural network to a file
+	WARNING_HANDLE_INT(NeuralNetworkDReadAllBuffersGPU(&network), "exitProgram(): Error reading all the buffers\n");
+	WARNING_HANDLE_INT(saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 0), "exitProgram(): Error saving the neural network\n");
+
+	// Free the neural network & free private GPU buffers
+	freeNeuralNetworkD(&network);
+	stopNeuralNetworkGpuOpenCL();
+	stopNeuralNetworkGpuBuffersOpenCL();
 
 	// Print end of program
 	INFO_PRINT("exitProgram(): End of program, press enter to exit.\n");
@@ -46,7 +58,6 @@ int main() {
 
 	// Try to load a neural network
 	NeuralNetworkD *loaded_network = loadNeuralNetworkD(NEURAL_NETWORK_PATH, sigmoid);
-	NeuralNetworkD network;
 	if (loaded_network == NULL) {
 
 		// Create a neural network using double as type
@@ -63,9 +74,6 @@ int main() {
 	// Print the neural network information
 	printNeuralNetworkD(network);
 
-	// Create an image list
-	img_list_t img_list = img_list_new();
-
 	// List all the images in the folder using a pipe
 	char command[512];
 	sprintf(command, "ls %s", IMAGES_PATH);
@@ -80,108 +88,113 @@ int main() {
 		// Get the image path
 		char image_path[512];
 		sprintf(image_path, "%s%s", IMAGES_PATH, file_name);
+		INFO_PRINT("main(): Image path: '%s'\n", image_path);
 
-		// Load the image & add it to the list
+		// Create an image list
+		img_list_t img_list = img_list_new();
+
+		// Load the image
 		image_t image;
 		int code = image_load(image_path, &image);
 		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error loading the image '%s'\n", image_path);
 		code = img_list_insert(&img_list, image);
 		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error inserting the image '%s' in the list\n", image_path);
+
+		// Repare the terminal colors because of image loading
+		#ifdef _WIN32
+			system("powershell -command \"\"");
+		#endif
+
+		// For each image, split it into 128x128 images (number of neurons in the output layer)
+		img_list_t img_list_split = img_list_new();
+		code = img_list_split_by_size(&img_list, 128, &img_list_split);
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error splitting the images\n");
+
+		// Free the original image list & shuffle the splitted images
+		img_list_free(&img_list);
+		img_list_shuffle(&img_list_split);
+
+		// Print the number of splitted images
+		INFO_PRINT("main(): %d splitted images\n", img_list_split.size);
+
+		// For each splitted image, train the neural network
+		img_list_elt_t *current_elt = img_list_split.head;
+		int img_number = 0;
+		while (current_elt != NULL) {
+
+			// Print the current image
+			char buffer[1024];
+			char benchmark_name[512];
+			sprintf(benchmark_name, "NeuralNetworkDtrain (GPU) image %d/%d (%dx%d)", ++img_number, img_list_split.size, current_elt->image.width, current_elt->image.height);
+			ST_BENCHMARK_SOLO_COUNT(buffer,
+				{
+					// Get the image
+					image_t *image = &current_elt->image;
+
+					// Create a list of resized images (from 128x128 to 16x16 pixel per pixel (7 images))
+					img_list_t img_list_resized = img_list_new();
+					for (int size = image->width; size > 16; size -= 16) {
+						
+						// Resize the image & add it to the list
+						image_t resized_image;
+						int code = image_resize(*image, size, size, &resized_image);
+						ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error resizing the image %d/%d to size %dx%d\n", img_number, img_list_split.size, size, size);
+						code = img_list_insert(&img_list_resized, resized_image);
+						ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error inserting the resized image %d/%d to size %dx%d in the list\n", img_number, img_list_split.size, size, size);
+					}
+
+					// Prepare the excepted output array
+					double *excepted_output = (double*)malloc(network.output_layer->nb_neurons * sizeof(double));
+					ERROR_HANDLE_PTR_RETURN_INT(excepted_output, "main(): Error allocating the excepted output array\n");
+					for (int i = 0; i < network.output_layer->nb_neurons; i++)
+						excepted_output[i] = (double)image->flat_data[i] / 255.0;
+
+					// For each resized image, train the neural network
+					img_list_elt_t *current_elt_resized = img_list_resized.head;
+					while (current_elt_resized != NULL) {
+
+						// Prepare the input array
+						double *input = (double*)malloc(network.input_layer->nb_neurons * sizeof(double));
+						ERROR_HANDLE_PTR_RETURN_INT(input, "main(): Error allocating the input array\n");
+						memset(input, 0, network.input_layer->nb_neurons * sizeof(double));
+						input[0] = (double)current_elt_resized->image.width / (double)image->width;	// Ratio of the resized image
+						int img_size = current_elt_resized->image.width * current_elt_resized->image.height * current_elt_resized->image.channels;
+						for (int i = 0; i < img_size; i++)
+							input[i + 1] = (double)current_elt_resized->image.flat_data[i] / 255.0;
+
+						// Train the neural network
+						NeuralNetworkDtrainGPU(&network, input, excepted_output, 0);
+
+						// Free the input array & go next resized image
+						free(input);
+						current_elt_resized = current_elt_resized->next;
+					}
+
+					// Free the resized images list & the excepted output array & go next image
+					img_list_free(&img_list_resized);
+					free(excepted_output);
+					current_elt = current_elt->next;
+				},
+				benchmark_name, 1
+			);
+			PRINTER(buffer);
+		}
+
+		// Free the splitted images list
+		img_list_free(&img_list_split);
+
+		// Read all the buffers
+		code = NeuralNetworkDReadAllBuffersGPU(&network);
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error reading all the buffers\n");
+
+		// Save the neural network to a file and another human readable file
+		saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 0);
 	}
 	pclose(pipe);
 
-	// Repare the terminal colors because of image loading
-	#ifdef _WIN32
-		system("powershell -command \"\"");
-	#endif
-
-	// Print the number of images
-	INFO_PRINT("main(): %d images found in the folder '%s'\n", img_list.size, IMAGES_PATH);
-
-	// For each image, split it into 128x128 images (number of neurons in the output layer)
-	img_list_t img_list_split = img_list_new();
-	int code = img_list_split_by_size(&img_list, 128, &img_list_split);
-	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error splitting the images\n");
-
-	// Free the original image list & shuffle the splitted images
-	img_list_free(&img_list);
-	img_list_shuffle(&img_list_split);
-
-	// Print the number of splitted images
-	INFO_PRINT("main(): %d splitted images\n", img_list_split.size);
-
-	// For each splitted image, train the neural network
-	img_list_elt_t *current_elt = img_list_split.head;
-	int img_number = 0;
-	while (current_elt != NULL) {
-
-		// Print the current image
-		char buffer[1024];
-		char benchmark_name[512];
-		sprintf(benchmark_name, "NeuralNetworkDtrain (GPU) image %d/%d (%dx%d)", ++img_number, img_list_split.size, current_elt->image.width, current_elt->image.height);
-		ST_BENCHMARK_SOLO_COUNT(buffer,
-			{
-				// Get the image
-				image_t *image = &current_elt->image;
-
-				// Create a list of resized images (from 128x128 to 16x16 pixel per pixel (7 images))
-				img_list_t img_list_resized = img_list_new();
-				for (int size = image->width; size > 16; size -= 16) {
-					
-					// Resize the image & add it to the list
-					image_t resized_image;
-					int code = image_resize(*image, size, size, &resized_image);
-					ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error resizing the image %d/%d to size %dx%d\n", img_number, img_list_split.size, size, size);
-					code = img_list_insert(&img_list_resized, resized_image);
-					ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error inserting the resized image %d/%d to size %dx%d in the list\n", img_number, img_list_split.size, size, size);
-				}
-
-				// Prepare the excepted output array
-				double *excepted_output = (double*)malloc(network.output_layer->nb_neurons * sizeof(double));
-				ERROR_HANDLE_PTR_RETURN_INT(excepted_output, "main(): Error allocating the excepted output array\n");
-				for (int i = 0; i < network.output_layer->nb_neurons; i++)
-					excepted_output[i] = (double)image->flat_data[i] / 255.0;
-
-				// For each resized image, train the neural network
-				img_list_elt_t *current_elt_resized = img_list_resized.head;
-				while (current_elt_resized != NULL) {
-
-					// Prepare the input array
-					double *input = (double*)malloc(network.input_layer->nb_neurons * sizeof(double));
-					ERROR_HANDLE_PTR_RETURN_INT(input, "main(): Error allocating the input array\n");
-					memset(input, 0, network.input_layer->nb_neurons * sizeof(double));
-					input[0] = (double)current_elt_resized->image.width / (double)image->width;	// Ratio of the resized image
-					int img_size = current_elt_resized->image.width * current_elt_resized->image.height * current_elt_resized->image.channels;
-					for (int i = 0; i < img_size; i++)
-						input[i + 1] = (double)current_elt_resized->image.flat_data[i] / 255.0;
-
-					// Train the neural network
-					NeuralNetworkDtrainGPU(&network, input, excepted_output, 0);
-
-					// Free the input array & go next resized image
-					free(input);
-					current_elt_resized = current_elt_resized->next;
-				}
-
-				// Free the resized images list & the excepted output array & go next image
-				img_list_free(&img_list_resized);
-				free(excepted_output);
-				current_elt = current_elt->next;
-			},
-			benchmark_name, 1
-		);
-		PRINTER(buffer);
-	}
-
-	// Free the splitted images list
-	img_list_free(&img_list_split);
-
 	// Read all the buffers
-	code = NeuralNetworkDReadAllBuffersGPU(&network);
+	NeuralNetworkDReadAllBuffersGPU(&network);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error reading all the buffers\n");
-
-	// Save the neural network to a file and another human readable file
-	saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 0);
 
 	// Free the neural network & free private GPU buffers
 	freeNeuralNetworkD(&network);
