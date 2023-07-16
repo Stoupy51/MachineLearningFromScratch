@@ -101,6 +101,10 @@ int main() {
 		code = img_list_insert(&img_list, image);
 		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error inserting the image '%s' in the list\n", image_path);
 
+		// Delete the file
+		sprintf(command, "rm \"%s\"", image_path);
+		system(command);
+
 		// Repare the terminal colors because of image loading
 		#ifdef _WIN32
 			system("powershell -command \"\"");
@@ -153,10 +157,21 @@ int main() {
 				benchmark_name, 1
 			);
 			PRINTER(buffer);
+
+			// Save the neural network to a file every 25 images
+			if (img_number % 25 == 0) {
+				// Read all the buffers
+				code = NeuralNetworkDReadAllBuffersGPU(&network);
+				ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error reading all the buffers\n");
+
+				// Save the neural network to a file and another human readable file
+				saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 0);
+			}
 		}
 
-		// Free the splitted images list
+		// Free the splitted images list & the normal image 
 		img_list_free(&img_list_split);
+		img_list_free(&img_list);
 
 		// Read all the buffers
 		code = NeuralNetworkDReadAllBuffersGPU(&network);

@@ -12,30 +12,24 @@
 #ifdef _WIN32
 
 #include <windows.h>
-int st_gettimeofday(struct timeval * tp, struct timezone * tzp) {
-    static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL);
-	if (tzp != NULL) {
-		tzp = NULL; // No timezone for Windows
-	}
 
-    SYSTEMTIME  system_time;
-    FILETIME    file_time;
-    uint64_t    time;
-
-    GetSystemTime( &system_time );
-    SystemTimeToFileTime( &system_time, &file_time );
-    time =  ((uint64_t)file_time.dwLowDateTime )      ;
-    time += ((uint64_t)file_time.dwHighDateTime) << 32;
-
-    tp->tv_sec  = (long) ((time - EPOCH) / 10000000L);
-    tp->tv_usec = (long) (system_time.wMilliseconds * 1000);
-    return 0;
+#define st_gettimeofday(tp, tzp) { { \
+	static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL); \
+	SYSTEMTIME  system_time; \
+	FILETIME    file_time; \
+	uint64_t    time; \
+	GetSystemTime( &system_time ); \
+	SystemTimeToFileTime( &system_time, &file_time ); \
+	time =  ((uint64_t)file_time.dwLowDateTime )      ; \
+	time += ((uint64_t)file_time.dwHighDateTime) << 32; \
+	tp.tv_sec  = (long) ((time - EPOCH) / 10000000L); \
+	tp.tv_usec = (long) (system_time.wMilliseconds * 1000); }\
 }
 
 #else
 	#include <unistd.h>
 	#include <sys/time.h>
-	#define st_gettimeofday gettimeofday
+	#define st_gettimeofday(tp, tzp) gettimeofday(&tp, tzp)
 #endif
 
 #define ST_COLOR_RESET "\033[0m"
@@ -63,13 +57,13 @@ int st_gettimeofday(struct timeval * tp, struct timezone * tzp) {
 
 #define ST_BENCHMARK_SOLO_COUNT(ST_BENCH_buffer, ST_BENCH_f, ST_BENCH_f_name, ST_BENCH_count) { \
 	struct timeval ST_BENCH_timeval, ST_BENCH_timeval2; \
-	st_gettimeofday(&ST_BENCH_timeval, NULL); \
+	st_gettimeofday(ST_BENCH_timeval, NULL); \
 	unsigned long ST_BENCH_time = 1000000 * ST_BENCH_timeval.tv_sec + ST_BENCH_timeval.tv_usec; \
 	long ST_BENCH_i = 0; \
 	for (ST_BENCH_i = 0; ST_BENCH_i < ST_BENCH_count; ST_BENCH_i++) { \
 		ST_BENCH_f; \
 	} \
-	st_gettimeofday(&ST_BENCH_timeval2, NULL); \
+	st_gettimeofday(ST_BENCH_timeval2, NULL); \
 	ST_BENCH_time = 1000000 * ST_BENCH_timeval2.tv_sec + ST_BENCH_timeval2.tv_usec - ST_BENCH_time; \
 	if (ST_BENCH_count != 1) \
 		sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "%s executed " ST_COLOR_YELLOW "%d" ST_COLOR_RED " time%s in " ST_COLOR_YELLOW "%lf" ST_COLOR_RED "s\n" ST_COLOR_RESET, ST_BENCH_f_name, ST_BENCH_count, (ST_BENCH_count == 1 ? "" : "s"), (double)ST_BENCH_time / 1000000.0); \
