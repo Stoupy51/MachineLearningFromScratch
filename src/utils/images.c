@@ -292,13 +292,14 @@ int image_resize(image_t image, int new_width, int new_height, image_t* resized_
 double* image_to_double_array(image_t image, int malloc_size) {
 	
 	// Allocate the array
-	int array_size = (malloc_size < 1) ? (image.width * image.height * image.channels) : malloc_size;
+	int original_size = image.width * image.height * image.channels;
+	int array_size = (malloc_size < 1) ? original_size : malloc_size;
 	double* array = malloc(array_size * sizeof(double));
 	ERROR_HANDLE_PTR_RETURN_NULL(array, "image_to_double_array(): Error allocating the array\n");
 	memset(array, 0, array_size * sizeof(double));
 
 	// Fill the array
-	for (int i = 0; i < array_size; i++)
+	for (int i = 0; i < original_size; i++)
 		array[i] = (double)image.flat_data[i] / 255.0;
 
 	// Return
