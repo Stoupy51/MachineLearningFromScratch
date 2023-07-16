@@ -40,6 +40,8 @@ void stopNeuralNetworkGpuOpenCL() {
  */
 void stopNeuralNetworkGpuBuffersOpenCL() {
 	if (activation_values_buffers == NULL) return;
+
+	// Release the buffers
 	for (int i = 0; i < gpu_network_nb_layers; i++) {
 		gpu_code = clReleaseMemObject(activation_values_buffers[i]);
 		WARNING_HANDLE_INT(gpu_code, "stopNeuralNetworkGpuBuffersOpenCL(): Cannot release buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
@@ -61,6 +63,9 @@ void stopNeuralNetworkGpuBuffersOpenCL() {
 	weights_buffers = NULL;
 	biases_buffers = NULL;
 	deltas_buffers = NULL;
+
+	// Reset the network as the last network
+	gpu_network = NULL;
 }
 
 /**
@@ -76,7 +81,7 @@ int setupNeuralNetworkGpuBuffersOpenCL(NeuralNetworkD *network) {
 	if (activation_values_buffers != NULL) stopNeuralNetworkGpuBuffersOpenCL();
 
 	// Create the buffers & copy all the data to the GPU
-	activation_values_buffers = (cl_mem*)malloc((network->nb_layers + 1) * sizeof(cl_mem));
+	activation_values_buffers = (cl_mem*)malloc((network->nb_layers + 1) * sizeof(cl_mem)); // +1 for the output layer
 	weights_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
 	biases_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
 	deltas_buffers = (cl_mem*)malloc(network->nb_layers * sizeof(cl_mem));
@@ -699,14 +704,6 @@ int NeuralNetworkDtrainGPU(NeuralNetworkD *network, double *input, double *excep
 	return 0;
 }
 
-// Struct for the events
-typedef struct events_t {
-	cl_event *kernel_events;
-	cl_event *backpropagation_events;
-	cl_event wait_list[2];
-	cl_event done;
-} events_t;
-
 /**
  * @brief Train the neural network using an image list and the excepted output image
  * For a neural network using double as type and using GPU
@@ -723,133 +720,45 @@ int NeuralNetworkDtrainFromImageListGPU(NeuralNetworkD *network, img_list_t img_
 	// Setup the private variables if not already done
 	setupNeuralNetworkGpuOpenCL(network);
 
-	// Setup the events
+	// Copy the excepted output image into the output layer of the neural network
 	cl_event excepted_output_buffer_event;
-	cl_event *img_list_events = malloc(img_list.size * sizeof(cl_event));
-	events_t *events = malloc(sizeof(events_t));
-	for (int i = 0; i < img_list.size; i++) {
-		events[i].kernel_events = malloc(network->nb_layers * sizeof(cl_event));
-		events[i].backpropagation_events = malloc(network->nb_layers * sizeof(cl_event));
-	}
+	gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[network->nb_layers], CL_FALSE, 0, network->output_layer->nb_neurons * sizeof(double), excepted_output.flat_data, 0, NULL, &excepted_output_buffer_event);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainFromImageListGPU(): Cannot write buffer 'activation_values_buffers[%d]', reason: %d / %s\n", network->nb_layers, gpu_code, getOpenCLErrorString(gpu_code));
 
-	// Create a buffer for the excepted output image for the backpropagation later
-	double *excepted_output_flat = image_to_double_array(excepted_output);
-	clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[network->nb_layers], CL_FALSE, 0, network->output_layer->nb_neurons * sizeof(double), excepted_output_flat, 0, NULL, &excepted_output_buffer_event);
+	// Allocate memory for cl_event objects, so we need for each image of the image list:
+	// - x(2) cl_event for the input layer (write image ratio + image data)
+	// - x(nb_layers - 1) cl_event for the feed forward (1 per layer)
+	// - x(nb_layers - 1) cl_event for the backpropagation (1 per layer)
+	// - x(nb_layers - 1) cl_event for the update weights and biases (1 per layer)
+	int total_events = img_list.size * (2 + (network->nb_layers - 1) * 3);
+	cl_event *events = malloc(total_events * sizeof(cl_event));
 
 	// For each image of the image list,
-	double **img_list_flat = malloc(img_list.size * sizeof(double*));
-	img_list_elt_t *current_input = img_list.head;
-	int index = 0;
-	while (current_input != NULL) {
-		DEBUG_PRINT("NeuralNetworkDtrainFromImageListGPU(): Image %d\n", index);
+	int image_index = 0, event_index = 0;
+	img_list_elt_t *current_elt = img_list.head;
+	double **images_datas = malloc(img_list.size * sizeof(double*));
+	while (current_elt != NULL) {
 
-		// Convert the image to a flat array of double and write it to the GPU
-		int image_size = current_input->image.width * current_input->image.height * current_input->image.channels;
-		img_list_flat[index] = image_to_double_array(current_input->image);
-		if (index == 0)
-			clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_FALSE, 0, image_size * sizeof(double), img_list_flat[index], 0, NULL, &img_list_events[index]);
-		else
-			clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_FALSE, 0, image_size * sizeof(double), img_list_flat[index], 1, &events[index].done, &img_list_events[index]);
-DEBUG_PRINT("NeuralNetworkDtrainFromImageListGPU(): Image %d written\n", index);
-		///// Feed forward part /////
-		// For each layer of the neural network (except the input layer),
-		for (int i = 1; i < network->nb_layers; i++) {
+		// Write the image ratio into the input layer
+		double input_output_ratio = (double)(current_elt->image.width * current_elt->image.height) / (double)(network->input_layer->nb_neurons - 1);
+		event_index = image_index * (2 + (network->nb_layers - 1) * 3);
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_FALSE, 0, sizeof(double), &input_output_ratio, 0, NULL, &events[event_index]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainFromImageListGPU(): Cannot write buffer 'activation_values_buffers[0]', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
-			// For each neuron of the current layer, calculate the activation_value of the neuron
-			clSetKernelArg(gpu_kernels[0], 0, sizeof(cl_mem), &activation_values_buffers[i - 1]);
-			clSetKernelArg(gpu_kernels[0], 1, sizeof(cl_mem), &weights_buffers[i]);
-			clSetKernelArg(gpu_kernels[0], 2, sizeof(cl_mem), &biases_buffers[i]);
-			clSetKernelArg(gpu_kernels[0], 3, sizeof(cl_mem), &activation_values_buffers[i]);
-			clSetKernelArg(gpu_kernels[0], 4, sizeof(int), &network->layers[i].nb_neurons);
-			clSetKernelArg(gpu_kernels[0], 5, sizeof(int), &network->layers[i].nb_inputs_per_neuron);
-			size_t global_work_size[] = {network->layers[i].nb_neurons};
-			clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[0], 1, NULL, global_work_size, NULL, 1, &events[index].kernel_events[i - 1], &events[index].kernel_events[i]);
-		}
-DEBUG_PRINT("NeuralNetworkDtrainFromImageListGPU(): Feed forward done\n");
-		///// Backpropagation part /////
-		// Prepare wait list for the last kernel & output buffer
-		// wait_list[0] = kernel_events[network->nb_layers - 1];
-		// wait_list[1] = excepted_output_buffer_event;
-		events[index].wait_list[0] = events[index].kernel_events[network->nb_layers - 1];
-		events[index].wait_list[1] = excepted_output_buffer_event;
+		// Write the image data into the input layer
+		event_index++;
+		int image_size = network->input_layer->nb_neurons - 1;
+		images_datas[image_index] = image_to_double_array(current_elt->image, image_size);
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_FALSE, 1 * sizeof(double), image_size * sizeof(double), images_datas[image_index], 0, NULL, &events[event_index]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainFromImageListGPU(): Cannot write buffer 'activation_values_buffers[0]', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
-		// For each neuron of the output layer, calculate the delta of the neuron (excepted_output - activation_value) * derivative
-		clSetKernelArg(gpu_kernels[1], 0, sizeof(cl_mem), &activation_values_buffers[network->nb_layers - 1]);
-		clSetKernelArg(gpu_kernels[1], 1, sizeof(cl_mem), &activation_values_buffers[network->nb_layers - 1]);
-		clSetKernelArg(gpu_kernels[1], 2, sizeof(cl_mem), &deltas_buffers[network->nb_layers - 1]);
-		clSetKernelArg(gpu_kernels[1], 3, sizeof(int), &network->output_layer->nb_neurons);
-		size_t global_work_size[] = {network->output_layer->nb_neurons};
-		clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[1], 1, NULL, global_work_size, NULL, 2, events[index].wait_list, &events[index].backpropagation_events[network->nb_layers - 1]);
-DEBUG_PRINT("NeuralNetworkDtrainFromImageListGPU(): Backpropagation output layer done\n");
-		// For each layer of the neural network (except the output layer and the input layer) (order last to first),
-		for (int i = network->nb_layers - 2; i > 0; i--) {
-
-			// For each neuron of the current layer,
-			clSetKernelArg(gpu_kernels[2], 0, sizeof(cl_mem), &weights_buffers[i + 1]);
-			clSetKernelArg(gpu_kernels[2], 1, sizeof(cl_mem), &deltas_buffers[i + 1]);
-			clSetKernelArg(gpu_kernels[2], 2, sizeof(cl_mem), &activation_values_buffers[i]);
-			clSetKernelArg(gpu_kernels[2], 3, sizeof(cl_mem), &deltas_buffers[i]);
-			clSetKernelArg(gpu_kernels[2], 4, sizeof(int), &network->layers[i].nb_neurons);
-			clSetKernelArg(gpu_kernels[2], 5, sizeof(int), &network->layers[i + 1].nb_neurons);
-			size_t global_work_size[] = {network->layers[i].nb_neurons};
-			clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[2], 1, NULL, global_work_size, NULL, 1, &events[index].backpropagation_events[i + 1], &events[index].backpropagation_events[i]);
-		}
-DEBUG_PRINT("NeuralNetworkDtrainFromImageListGPU(): Backpropagation hidden layers done\n");
-		///// Update weights and biases part /////
-		// For each layer of the neural network (except the input layer) (order last to first),
-		for (int i = network->nb_layers - 1; i > 0; i--) {
-
-			// For each neuron of the current layer,
-			clSetKernelArg(gpu_kernels[3], 0, sizeof(cl_mem), &activation_values_buffers[i - 1]);
-			clSetKernelArg(gpu_kernels[3], 1, sizeof(cl_mem), &deltas_buffers[i]);
-			clSetKernelArg(gpu_kernels[3], 2, sizeof(cl_mem), &weights_buffers[i]);
-			clSetKernelArg(gpu_kernels[3], 3, sizeof(cl_mem), &biases_buffers[i]);
-			clSetKernelArg(gpu_kernels[3], 4, sizeof(int), &network->layers[i].nb_neurons);
-			clSetKernelArg(gpu_kernels[3], 5, sizeof(int), &network->layers[i].nb_inputs_per_neuron);
-			clSetKernelArg(gpu_kernels[3], 6, sizeof(double), &network->learning_rate);
-			size_t global_work_size[] = {network->layers[i].nb_neurons};
-			if (i == 1)
-				clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[3], 1, NULL, global_work_size, NULL, 1, &events[index].backpropagation_events[i], &events[index].done);
-			else
-				clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[3], 1, NULL, global_work_size, NULL, 1, &events[index].backpropagation_events[i], NULL);
-		}
-
-		// Increment the index and the current_input
-		index++;
-		current_input = current_input->next;
-		DEBUG_PRINT("NeuralNetworkDtrainFromImageListGPU(): %d / %d\n", index, img_list.size);
+		// Feed forward
+		event_index++;
+		
 	}
 
-	// Wait for everything to finish
-	clFinish(gpu_oc.command_queue);
 
-	// Read all the buffers if needed
-	if (read_all_buffers) {
-		NeuralNetworkDReadAllBuffersGPU(network);
-	}
 
-	// Release the events
-	clReleaseEvent(excepted_output_buffer_event);
-	for (int i = 0; i < img_list.size; i++) {
-		clReleaseEvent(img_list_events[i]);
-		for (int j = 0; j < network->nb_layers; j++) {
-			clReleaseEvent(events[i].kernel_events[j]);
-			if (j == 0)
-				continue;
-			clReleaseEvent(events[i].backpropagation_events[j]);
-		}
-		free(events[i].kernel_events);
-		free(events[i].backpropagation_events);
-	}
-	free(img_list_events);
-	free(events);
-
-	// Free the flat arrays
-	free(excepted_output_flat);
-	for (int i = 0; i < img_list.size; i++)
-		free(img_list_flat[i]);
-	free(img_list_flat);
-DEBUG_PRINT("NeuralNetworkDtrainFromImageListGPU(): End\n");
 	// Return
 	return 0;
 }

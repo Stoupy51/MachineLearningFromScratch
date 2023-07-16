@@ -285,15 +285,17 @@ int image_resize(image_t image, int new_width, int new_height, image_t* resized_
  * @brief Convert an image to a double array.
  * 
  * @param image			Image to convert
+ * @param malloc_size	Size of the array to allocate (-1 to allocate the exact size)
  * 
  * @return double*		Pointer to the double array
  */
-double* image_to_double_array(image_t image) {
+double* image_to_double_array(image_t image, int malloc_size) {
 	
 	// Allocate the array
-	int array_size = image.width * image.height * image.channels;
+	int array_size = (malloc_size < 1) ? (image.width * image.height * image.channels) : malloc_size;
 	double* array = malloc(array_size * sizeof(double));
 	ERROR_HANDLE_PTR_RETURN_NULL(array, "image_to_double_array(): Error allocating the array\n");
+	memset(array, 0, array_size * sizeof(double));
 
 	// Fill the array
 	for (int i = 0; i < array_size; i++)
