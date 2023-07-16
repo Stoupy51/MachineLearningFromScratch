@@ -720,28 +720,21 @@ int NeuralNetworkDtrainGPU(NeuralNetworkD *network, double *input, double *excep
  */
 int NeuralNetworkDtrainFromImageListPVImgGPU(NeuralNetworkD *network, cl_event *events, int *event_index, image_t image, int image_index, double **images_datas, cl_event excepted_output_buffer_event) {
 
-	// Write the image ratio into the input layer
+	// Write the image data into the input layer with the image ratio
 	double input_output_ratio = (double)(image.width * image.height) / (double)(network->output_layer->nb_neurons);
+	int image_size = network->input_layer->nb_neurons;
+	images_datas[image_index] = image_to_double_array(image, image_size, 1);
+	images_datas[image_index][0] = input_output_ratio;
 	if (*event_index == 0)
-		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_FALSE, 0, sizeof(double), &input_output_ratio, 0, NULL, &events[*event_index]);
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_FALSE, 0, image_size * sizeof(double), images_datas[image_index], 0, NULL, &events[*event_index]);
 	else
-		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_FALSE, 0, sizeof(double), &input_output_ratio, 1, &events[*event_index - 1], &events[*event_index]);
+		gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_FALSE, 0, image_size * sizeof(double), images_datas[image_index], 1, &events[*event_index - 1], &events[*event_index]);
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainFromImageListGPU(): Cannot write buffer 'activation_values_buffers[0]', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
-
-	// Write the image data into the input layer
-	(*event_index)++;
-	int image_size = network->output_layer->nb_neurons;
-	images_datas[image_index] = image_to_double_array(image, image_size);
-	gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_FALSE, 1 * sizeof(double), image_size * sizeof(double), images_datas[image_index], 0, NULL, &events[*event_index]);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainFromImageListGPU(): Cannot write buffer 'activation_values_buffers[0]', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
-
-	// Prepare a wait list for the first feed forward
-	cl_event wait_list[2] = {events[*event_index - 1], events[*event_index]};
 
 	///// Feed forward
 	// For each layer of the neural network (except the input layer),
 	for (int i = 1; i < network->nb_layers; i++) {
-		
+
 		// Next event index
 		(*event_index)++;
 
@@ -759,17 +752,13 @@ int NeuralNetworkDtrainFromImageListPVImgGPU(NeuralNetworkD *network, cl_event *
 		gpu_code = clSetKernelArg(gpu_kernels[0], 5, sizeof(int), &network->layers[i].nb_inputs_per_neuron);
 		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainFromImageListGPU(): Cannot set kernel argument 5 of kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		size_t global_work_size[] = {network->layers[i].nb_neurons};
-		if (i == 1)
-			gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[0], 1, NULL, global_work_size, NULL, 2, wait_list, &events[*event_index]);
-		else
-			gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[0], 1, NULL, global_work_size, NULL, 1, &events[*event_index - 1], &events[*event_index]);
+		gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[0], 1, NULL, global_work_size, NULL, 1, &events[*event_index - 1], &events[*event_index]);
 		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainFromImageListGPU(): Cannot enqueue kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 	}
 
 	///// Backpropagation
 	// Prepare wait list for the last feed forward & output buffer
-	wait_list[0] = events[*event_index];
-	wait_list[1] = excepted_output_buffer_event;
+	cl_event wait_list[2] = {events[*event_index], excepted_output_buffer_event};
 	(*event_index)++;
 
 	// For each neuron of the output layer, calculate the delta of the neuron (excepted_output - activation_value) * derivative
@@ -859,16 +848,16 @@ int NeuralNetworkDtrainFromImageListGPU(NeuralNetworkD *network, img_list_t img_
 
 	// Copy the excepted output image into the output layer of the neural network
 	cl_event excepted_output_buffer_event;
-	double *excepted_output_array = image_to_double_array(excepted_output, network->output_layer->nb_neurons);
+	double *excepted_output_array = image_to_double_array(excepted_output, network->output_layer->nb_neurons, 0);
 	gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[network->nb_layers], CL_FALSE, 0, network->output_layer->nb_neurons * sizeof(double), excepted_output_array, 0, NULL, &excepted_output_buffer_event);
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainFromImageListGPU(): Cannot write buffer 'activation_values_buffers[%d]', reason: %d / %s\n", network->nb_layers, gpu_code, getOpenCLErrorString(gpu_code));
 
 	// Allocate memory for cl_event objects, so we need for each image of the image list:
-	// - x(2) cl_event for the input layer (write image ratio + image data)
+	// - x(1) cl_event for the input layer (write image ratio + image data)
 	// - x(nb_layers - 1) cl_event for the feed forward (1 per layer)
 	// - x(nb_layers - 1) cl_event for the backpropagation (1 per layer)
 	// - x(nb_layers - 1) cl_event for the update weights and biases (1 per layer)
-	int total_events = img_list.size * (2 + (network->nb_layers - 1) * 3);
+	int total_events = img_list.size * (1 + (network->nb_layers - 1) * 3);
 	cl_event *events = malloc(total_events * sizeof(cl_event));
 
 	// For each image of the image list,

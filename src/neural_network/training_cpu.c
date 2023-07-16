@@ -220,7 +220,7 @@ void NeuralNetworkDtrainCPU(NeuralNetworkD *network, double *input, double *exce
 int NeuralNetworkDtrainFromImageListCPU(NeuralNetworkD *network, img_list_t img_list, image_t excepted_output) {
 
 	// Get output double array from image
-	double *excepted_output_array = image_to_double_array(excepted_output, network->output_layer->nb_neurons);
+	double *excepted_output_array = image_to_double_array(excepted_output, network->output_layer->nb_neurons, 0);
 	ERROR_HANDLE_PTR_RETURN_INT(excepted_output_array, "NeuralNetworkDtrainFromImageListCPU(): Error converting the output image to a double array\n");
 
 	// For each image in the list,
@@ -228,9 +228,8 @@ int NeuralNetworkDtrainFromImageListCPU(NeuralNetworkD *network, img_list_t img_
 	while (elt != NULL) {
 
 		// Get input double array from image
-		double *input_array = image_to_double_array(elt->image, network->input_layer->nb_neurons);
+		double *input_array = image_to_double_array(elt->image, network->input_layer->nb_neurons, 1);
 		ERROR_HANDLE_PTR_RETURN_INT(input_array, "NeuralNetworkDtrainFromImageListCPU(): Error converting the input image to a double array\n");
-		memcpy(input_array, &input_array[1], (network->input_layer->nb_neurons - 1) * sizeof(double));
 
 		// Calculate the ratio
 		double ratio = (double)(elt->image.width * elt->image.height) / (double)(excepted_output.width * excepted_output.height);

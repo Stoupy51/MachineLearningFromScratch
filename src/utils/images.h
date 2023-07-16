@@ -19,7 +19,7 @@ int image_save_jpg(const char* file_name, image_t image, int quality);
 int image_split_by_size(image_t image, int split_size, image_t** images, int* nb_images);
 int image_merge(image_t* images_array, int nb_images, image_t* image);
 int image_resize(image_t image, int new_width, int new_height, image_t* resized_image);
-double* image_to_double_array(image_t image, int malloc_size);
+double* image_to_double_array(image_t image, int size, int offset);
 
 
 #endif
