@@ -281,3 +281,25 @@ int image_resize(image_t image, int new_width, int new_height, image_t* resized_
 	return 0;
 }
 
+/**
+ * @brief Convert an image to a double array.
+ * 
+ * @param image			Image to convert
+ * 
+ * @return double*		Pointer to the double array
+ */
+double* image_to_double_array(image_t image) {
+	
+	// Allocate the array
+	int array_size = image.width * image.height * image.channels;
+	double* array = malloc(array_size * sizeof(double));
+	ERROR_HANDLE_PTR_RETURN_NULL(array, "image_to_double_array(): Error allocating the array\n");
+
+	// Fill the array
+	for (int i = 0; i < array_size; i++)
+		array[i] = (double)image.flat_data[i] / 255.0;
+
+	// Return
+	return array;
+}
+
