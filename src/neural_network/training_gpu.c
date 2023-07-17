@@ -304,6 +304,8 @@ int NeuralNetworkDfeedForwardGPU(NeuralNetworkD *network, double *input, int rea
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot setup GPU, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
 	// Set the input layer (copy the input array into the input layer of the neural network)
+	if (read_buffer == 1)	// Copy the input array into the input layer of the neural network
+		memcpy(network->input_layer->activations_values, input, network->input_layer->nb_neurons * sizeof(double));
 	gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_TRUE, 0, network->input_layer->nb_neurons * sizeof(double), input, 0, NULL, NULL);
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot write buffer 'activation_values_buffers[0]', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
@@ -591,6 +593,8 @@ int NeuralNetworkDtrainGPU(NeuralNetworkD *network, double *input, double *excep
 
 	///// Feed forward part /////
 	// Set the input layer (copy the input array into the input layer of the neural network)
+	if (read_all_buffers == 1)
+		memcpy(network->input_layer->activations_values, input, network->input_layer->nb_neurons * sizeof(double));
 	gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_FALSE, 0, network->input_layer->nb_neurons * sizeof(double), input, 0, NULL, &kernel_events[0]);
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot write buffer 'activation_values_buffers[0]', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 

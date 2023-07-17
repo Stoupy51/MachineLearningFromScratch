@@ -173,6 +173,30 @@ void printNeuralNetworkD(NeuralNetworkD network) {
 }
 
 /**
+ * @brief Function that prints the activations_values of a neural network using double as type
+ * 
+ * @param network	Neural network to print the activations_values of
+ * 
+ * @return void
+ */
+void printActivationValues(NeuralNetworkD network) {
+	INFO_PRINT("printActivationValues():\n");
+	int max_neurons = 0;
+	for (int i = 0; i < network.nb_layers; i++)
+		if (network.layers[i].nb_neurons > max_neurons) max_neurons = network.layers[i].nb_neurons;
+	for (int i = 0; i < max_neurons; i++) {
+		for (int j = 0; j < network.nb_layers; j++) {
+			if (i < network.layers[j].nb_neurons)
+				{ PRINTER("%.2f\t", network.layers[j].activations_values[i]); }
+			else
+				{ PRINTER("\t"); }
+		}
+		PRINTER("\n");
+	}
+	PRINTER("\n");
+}
+
+/**
  * @brief Function that frees a neural network using double as type
  * and sets all the bytes of the neural network to 0.
  * 
