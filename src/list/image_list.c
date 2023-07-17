@@ -129,3 +129,33 @@ int img_list_split_by_size(img_list_t *list, int split_size, img_list_t *splitte
 	return 0;
 }
 
+/**
+ * @brief Merges an image list into a single image
+ * 
+ * @param list_to_merge		Pointer to the image list to merge
+ * @param merged_image		Pointer to the merged image to fill
+ * 
+ * @return int				0 if success, -1 if error
+ */
+int img_list_merge(img_list_t *list_to_merge, image_t *merged_image) {
+
+	// Create a single list of images
+	image_t *images = malloc(list_to_merge->size * sizeof(image_t));
+	ERROR_HANDLE_PTR_RETURN_INT(images, "img_list_merge(): Error allocating the images array\n");
+	img_list_elt_t *current_elt = list_to_merge->head;
+	for (int i = 0; i < list_to_merge->size; i++) {
+		images[i] = current_elt->image;
+		current_elt = current_elt->next;
+	}
+
+	// Merge the images
+	int code = image_merge(images, list_to_merge->size, merged_image);
+	ERROR_HANDLE_INT_RETURN_INT(code, "img_list_merge(): Error merging the images\n");
+
+	// Free the images array
+	free(images);
+
+	// Return
+	return 0;
+}
+

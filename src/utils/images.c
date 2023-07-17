@@ -88,20 +88,6 @@ void image_free(image_t* image) {
 }
 
 /**
- * @brief Function used by stbi_write_png_to_func() & stbi_write_jpg_to_func()
- * to write data to a file.
- * 
- * @param context		Pointer to the file
- * @param data			Pointer to the data to write
- * @param size			Size of the data to write
- * 
- * @return void
- */
-void img_write_func(void* context, void* data, int size) {
-	fwrite(data, 1, size, (FILE*)context);
-}
-
-/**
  * @brief Save an image to a PNG file.
  * 
  * @param file_name		Name of the file
@@ -111,16 +97,11 @@ void img_write_func(void* context, void* data, int size) {
  */
 int image_save_png(const char* file_name, image_t image) {
 	
-	// Open the file for writing in binary mode
-	FILE* file = fopen(file_name, "wb");
-	ERROR_HANDLE_PTR_RETURN_INT(file, "image_save_png(): Error opening the file '%s'\n", file_name);
-
 	// Save the image
-	int code = stbi_write_png_to_func(img_write_func, file, image.width, image.height, image.channels, image.flat_data, 0);
+	int code = stbi_write_png(file_name, image.width, image.height, image.channels, image.flat_data, 0);
 	ERROR_HANDLE_INT_RETURN_INT(code, "image_save_png(): Error saving the image\n");
 
-	// Close the file & return
-	fclose(file);
+	// Return
 	return 0;
 }
 
@@ -137,17 +118,12 @@ int image_save_png(const char* file_name, image_t image) {
  * @return int			0 if no error occurred, -1 otherwise
  */
 int image_save_jpg(const char* file_name, image_t image, int quality) {
-	
-	// Open the file for writing in binary mode
-	FILE* file = fopen(file_name, "wb");
-	ERROR_HANDLE_PTR_RETURN_INT(file, "image_save_jpg(): Error opening the file '%s'\n", file_name);
 
 	// Save the image
-	int code = stbi_write_jpg_to_func(img_write_func, file, image.width, image.height, image.channels, image.flat_data, quality);
+	int code = stbi_write_jpg(file_name, image.width, image.height, image.channels, image.flat_data, quality);
 	ERROR_HANDLE_INT_RETURN_INT(code, "image_save_jpg(): Error saving the image\n");
 
-	// Close the file & return
-	fclose(file);
+	// Return
 	return 0;
 }
 
@@ -218,12 +194,14 @@ int image_merge(image_t* images_array, int nb_images, image_t* image) {
 	// Check the parameters
 	ERROR_HANDLE_PTR_RETURN_INT(images_array, "image_merge(): Parameter images is NULL\n");
 	ERROR_HANDLE_PTR_RETURN_INT(image, "image_merge(): Parameter image is NULL\n");
+	DEBUG_PRINT("image_merge(): %d images to merge into a %dx%d image\n", nb_images, image->width, image->height);
 
 	// Initialize the image structure
 	image->channels = images_array[0].channels;
 	image->flat_data = malloc(image->width * image->height * image->channels * sizeof(unsigned char));
 	ERROR_HANDLE_PTR_RETURN_INT(image->flat_data, "image_merge(): Error allocating the image data\n");
 	memset(image->flat_data, 0, image->width * image->height * image->channels * sizeof(unsigned char));
+	DEBUG_PRINT("image_merge(): Image data allocated\n");
 
 	// Allocate the memory for the image structure
 	int code = image_structure_allocations(image);
@@ -231,14 +209,15 @@ int image_merge(image_t* images_array, int nb_images, image_t* image) {
 
 	// Merge the images
 	for (int image_index = 0; image_index < nb_images; image_index++) {
+		DEBUG_PRINT("image_merge(): Merging image %d/%d\n", image_index + 1, nb_images);
 
-		// Copy the image data to the new image without going out of bounds
-		int x = (image_index % (image->width / images_array[image_index].width)) * images_array[image_index].width;
-		int y = (image_index / (image->width / images_array[image_index].width)) * images_array[image_index].height;
-		for (int i = 0; i < images_array[image_index].height; i++)
-			for (int j = 0; j < images_array[image_index].width; j++)
-				for (int k = 0; k < image->channels; k++)
-					image->data[y + i][x + j][k] = images_array[image_index].data[i][j][k];
+		// Copy the image data
+		int start_x, start_y, end_x, end_y;
+		start_x = (images_array[image_index].width * image_index);
+		// TODO
+
+		
+		DEBUG_PRINT("image_merge(): Image %d/%d merged\n", image_index + 1, nb_images);
 	}
 
 	// Return

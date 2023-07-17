@@ -11,7 +11,7 @@
 #include "../src/st_benchmark.h"
 
 #define NEURAL_NETWORK_PATH "bin/image_upscaler_network.bin"
-#define IMAGES_PATH "images/"
+#define IMAGES_PATH "images/dataset/"
 
 NeuralNetworkD network;
 int code;
@@ -63,7 +63,7 @@ int main() {
 
 		// Create a neural network using double as type
 		WARNING_PRINT("main(): No neural network found, creating a new one.\n");
-		int nb_neurons_per_layer[] = {128*128*3 + 1, 8192, 8192, 8192, 128*128*3};
+		int nb_neurons_per_layer[] = {128*128*3 + 1, 128*128*3, 128*128*3};
 		int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 		network = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 0.1, sigmoid);
 	} else {
