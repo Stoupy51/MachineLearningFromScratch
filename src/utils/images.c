@@ -71,6 +71,28 @@ int image_load(const char* file_name, image_t* image) {
 }
 
 /**
+ * @brief Load an empty image.
+ * 
+ * @param image			Pointer to the image structure
+ * @param width			Width of the image
+ * @param height		Height of the image
+ * @param channels		Channels of the image (1 for grayscale, 3 for RGB)
+ * 
+ * @return int			0 if no error occurred, -1 otherwise
+ */
+int image_load_empty(image_t* image, int width, int height, int channels) {
+	image->width = width;
+	image->height = height;
+	image->channels = channels;
+	image->flat_data = malloc(width * height * channels * sizeof(unsigned char));
+	ERROR_HANDLE_PTR_RETURN_INT(image->flat_data, "image_load_empty(): Error allocating the image data\n");
+	memset(image->flat_data, 0, width * height * channels * sizeof(unsigned char));
+	int code = image_structure_allocations(image);
+	ERROR_HANDLE_INT_RETURN_INT(code, "image_load_empty(): Error allocating the image structure\n");
+	return 0;
+}
+
+/**
  * @brief Free the memory allocated by the image structure.
  * 
  * @param image			Pointer to the image structure
@@ -207,18 +229,30 @@ int image_merge(image_t* images_array, int nb_images, image_t* image) {
 	int code = image_structure_allocations(image);
 	ERROR_HANDLE_INT_RETURN_INT(code, "image_merge(): Error allocating the image structure\n");
 
-	// Merge the images
+	// Merge the images (ex 6 images of 256x256 => 910x512)
+	DEBUG_PRINT("image_merge(): (%dx%d) * %d => %dx%d\n", images_array[0].width, images_array[0].height, nb_images, image->width, image->height);
+	int number_of_images_per_row = image->width / images_array[0].width;		// 910 / 256 = 3
+	int number_of_images_per_column = image->height / images_array[0].height;	// 512 / 256 = 2
 	for (int image_index = 0; image_index < nb_images; image_index++) {
-		DEBUG_PRINT("image_merge(): Merging image %d/%d\n", image_index + 1, nb_images);
 
-		// Copy the image data
-		int start_x, start_y, end_x, end_y;
-		start_x = (images_array[image_index].width * image_index);
-		// TODO
+		// Calculate starting coordinates
+		int start_x = (image_index % number_of_images_per_row) * images_array[0].width;		// 0 % 3 = 0 * 256 = 0
+		int start_y = (image_index % number_of_images_per_column) * images_array[0].height;	// 0 % 2 = 0 * 256 = 0
 
-		
-		DEBUG_PRINT("image_merge(): Image %d/%d merged\n", image_index + 1, nb_images);
+		// Calculate ending coordinates (without going out of bounds)
+		int end_x = start_x + images_array[0].width;		// 0 + 256 = 256
+		int end_y = start_y + images_array[0].height;		// 0 + 256 = 256
+		if (end_x > image->width) end_x = image->width;		// 256 > 910 => 256
+		if (end_y > image->height) end_y = image->height;	// 256 > 512 => 256
+
+		// Copy the image data to the new image without going out of bounds
+		DEBUG_PRINT("image_merge(): Copying image %d to (%d, %d) => (%d, %d)\n", image_index, start_x, start_y, end_x, end_y);
+		for (int i = start_y; i < end_y; i++)
+			for (int j = start_x; j < end_x; j++)
+				for (int k = 0; k < image->channels; k++)
+					image->data[i][j][k] = images_array[image_index].data[i - start_y][j - start_x][k];
 	}
+	DEBUG_PRINT("image_merge(): Images merged\n");
 
 	// Return
 	return 0;

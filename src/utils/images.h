@@ -12,6 +12,7 @@ typedef struct image_t {
 
 int image_structure_allocations(image_t* image);
 int image_load(const char* file_name, image_t* image);
+int image_load_empty(image_t* image, int width, int height, int channels);
 void image_free(image_t* image);
 int image_save_png(const char* file_name, image_t image);
 int image_save_jpg(const char* file_name, image_t image, int quality);

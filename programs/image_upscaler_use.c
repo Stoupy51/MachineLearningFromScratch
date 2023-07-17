@@ -121,29 +121,25 @@ int main() {
 
 			char benchmark_buffer[1024];
 			char benchmark_name[512];
-			sprintf(benchmark_name, "NeuralNetworkDfeedForwardCPU : %d / %d", ++i, img_list_split.size);
+			sprintf(benchmark_name, "NeuralNetworkDfeedForward : %d / %d", ++i, img_list_split.size);
 			ST_BENCHMARK_SOLO_COUNT(benchmark_buffer,
 			{
 
 			// Feed forward the neural network
-			// code = NeuralNetworkDfeedForwardGPU(&network, input, 1);
-			// ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error feeding forward the neural network\n");
-			NeuralNetworkDfeedForwardCPU(&network, input);
+			code = NeuralNetworkDfeedForwardGPU(&network, input, 1);
+			ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error feeding forward the neural network\n");
+			// NeuralNetworkDfeedForwardCPU(&network, input);
 			},
 			benchmark_name, 1);
 			PRINTER(benchmark_buffer);
 
 			// Get the output of the neural network
 			image_t output;
-			output.width = current_elt->image.width * multiplier;
-			output.height = current_elt->image.height * multiplier;
-			output.channels = current_elt->image.channels;
+			code = image_load_empty(&output, current_elt->image.width * multiplier, current_elt->image.height * multiplier, current_elt->image.channels);
+			ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error loading the output image\n");
 			int total_size = output.width * output.height * output.channels;
-			output.flat_data = malloc(total_size * sizeof(unsigned char));
-			ERROR_HANDLE_PTR_RETURN_INT(output.flat_data, "main(): Error allocating the output image\n");
-			for (int i = 0; i < total_size; i++) {
+			for (int i = 0; i < total_size; i++)
 				output.flat_data[i] = (unsigned char)(network.output_layer->activations_values[i] * 255.0);
-			}
 
 			// Add the output image to the new list
 			code = img_list_insert(&img_list_new_size, output);
