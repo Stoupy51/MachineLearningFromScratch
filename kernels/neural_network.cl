@@ -30,6 +30,7 @@ kernel void feedForwardActivationValuesSigmoid(global double* previous_layer_act
 
 		// Apply the activation function to the weighted sum (often sigmoid)
 		activation_values[index] = 1 / (1 + exp(-(weighted_sum + biases[index])));
+		//printf("- id: %d, activation_value: %f\n", index, activation_values[index]);
 	}
 }
 
@@ -52,6 +53,7 @@ kernel void backpropagationOutputLayerDeltas(global double* excepted_output, glo
 	// If the index is smaller than the output layer size
 	if (index < output_layer_size) {
 		output_deltas[index] = (excepted_output[index] - activation_values[index]) * activation_values[index] * (1 - activation_values[index]);
+		//printf("- id: %d, output_delta: %f\n", index, output_deltas[index]);
 	}
 }
 
@@ -83,6 +85,7 @@ kernel void backpropagationHiddenLayersDeltas(global double* next_layer_weights,
 		
 		// Calculate the delta of the neuron (error * derivative)
 		deltas[index] = error * (activation_values[index] * (1 - activation_values[index]));
+		//printf("- id: %d, delta: %f\n", index, deltas[index]);
 	}
 }
 
@@ -120,6 +123,7 @@ kernel void updateWeightsAndBiases(global double* previous_layer_activation_valu
 
 		// Update the bias (bias + (learning_rate * delta of the current neuron))
 		biases[index] += learning_rate * deltas[index];
+		//printf("- id: %d, bias: %f\n", index, biases[index]);
 	}
 }
 

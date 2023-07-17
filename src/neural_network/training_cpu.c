@@ -51,6 +51,7 @@ void NeuralNetworkDfeedForwardCPU(NeuralNetworkD *network, double *input) {
 
 			// Apply the activation function to the weighted sum (often sigmoid)
 			network->layers[i].activations_values[j] = network->activation_function(weighted_sum);
+			//DEBUG_PRINT("NeuralNetworkDfeedForwardCPU(): Layer %d, Neuron %d, Activation value: %f\n", i, j, network->layers[i].activations_values[j]);
 		}
 	}
 }
@@ -100,6 +101,7 @@ void NeuralNetworkDbackpropagationCPU(NeuralNetworkD *network, double *excepted_
 
 		// Calculate the delta of the neuron (error * derivative)
 		network->output_layer->deltas[neuron] = error * derivative;
+		//DEBUG_PRINT("NeuralNetworkDbackpropagationCPU(): Output layer, Neuron %d, Delta: %f\n", neuron, network->output_layer->deltas[neuron]);
 	}
 
 	// For each layer of the neural network (except the output layer and the input layer) (order last to first),
@@ -129,6 +131,7 @@ void NeuralNetworkDbackpropagationCPU(NeuralNetworkD *network, double *excepted_
 
 			// Calculate the delta of the neuron (error * derivative)
 			network->layers[i].deltas[j] = error * derivative;
+			//DEBUG_PRINT("NeuralNetworkDbackpropagationCPU(): Layer %d, Neuron %d, Delta: %f\n", i, j, network->layers[i].deltas[j]);
 		}
 	}
 }
@@ -178,9 +181,9 @@ void NeuralNetworkDupdateWeightsAndBiasesCPU(NeuralNetworkD *network) {
 				// Update the weight (weight + (learning_rate * delta of the current neuron * activation_value of the previous layer))
 				network->layers[i].weights[j][k] += learning_rate * delta * activation_value;
 			}
-
 			// Update the bias (bias + (learning_rate * delta of the current neuron))
 			network->layers[i].biases[j] += learning_rate * delta;
+			//DEBUG_PRINT("NeuralNetworkDupdateWeightsAndBiasesCPU(): Layer %d, Neuron %d, Bias: %f\n", i, j, network->layers[i].biases[j]);
 		}
 	}
 }

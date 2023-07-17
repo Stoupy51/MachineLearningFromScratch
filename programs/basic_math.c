@@ -51,7 +51,7 @@ int main() {
 	int nb_training_data = sizeof(inputs) / sizeof(inputs[0]);
 	double error = 1.0;
 	int tries = 0;
-	while (error > 0.0001) {
+	while (error > 0.000001) {
 		tries++;
 		error = 0.0;
 		for (int i = 0; i < nb_training_data; i++) {
@@ -67,7 +67,7 @@ int main() {
 			error += local_error;
 		}
 		error /= nb_training_data;
-		if (tries % 10 == 0)
+		if (tries < 10)
 			INFO_PRINT("Error: %f (%f)\n", error, error * nb_training_data);
 	}
 	INFO_PRINT("main(): Training done in %d tries.\n", tries);
