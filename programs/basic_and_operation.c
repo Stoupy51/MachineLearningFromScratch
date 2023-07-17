@@ -24,7 +24,7 @@ void exitProgram() {
 }
 
 /**
- * This program is an introduction to basic math operations using a neural network.
+ * This program is an introduction to basic 'and' operation using a neural network.
  * 
  * @author Stoupy51 (COLLIGNON Alexandre)
  */
@@ -51,13 +51,13 @@ int main() {
 	int nb_training_data = sizeof(inputs) / sizeof(inputs[0]);
 	double error = 1.0;
 	int tries = 0;
-	while (error > 0.000001) {
+	while (error > 0.001) {
 		tries++;
 		error = 0.0;
 		for (int i = 0; i < nb_training_data; i++) {
-			//NeuralNetworkDtrainCPU(&network_and, inputs[i], outputs[i]);
+			NeuralNetworkDtrainCPU(&network_and, inputs[i], outputs[i]);
 			//NeuralNetworkDtrainStepByStepGPU(&network_and, inputs[i], outputs[i], 1);
-			NeuralNetworkDtrainGPU(&network_and, inputs[i], outputs[i], 1); // TODO: fix this function
+			//NeuralNetworkDtrainGPU(&network_and, inputs[i], outputs[i], 1);
 
 			double local_error = 0.0;
 			for (int j = 0; j < network_and.output_layer->nb_neurons; j++) {
@@ -67,15 +67,16 @@ int main() {
 			error += local_error;
 		}
 		error /= nb_training_data;
-		if (tries < 10)
-			INFO_PRINT("Error: %f (%f)\n", error, error * nb_training_data);
+		if (tries < 4 || tries % 2500 == 0)
+			INFO_PRINT("Trie nb %d, error: %f (%f)\n", tries, error, error * nb_training_data);
 	}
 	INFO_PRINT("main(): Training done in %d tries.\n", tries);
 
 	// Test the neural network
 	WARNING_PRINT("main(): Testing the neural network.\n");
 	for (int i = 0; i < nb_training_data; i++) {
-		NeuralNetworkDfeedForwardGPU(&network_and, inputs[i], 1);
+		NeuralNetworkDfeedForwardCPU(&network_and, inputs[i]);
+		//NeuralNetworkDfeedForwardGPU(&network_and, inputs[i], 1);
 		printActivationValues(network_and);
 	}
 
