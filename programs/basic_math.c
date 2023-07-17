@@ -56,8 +56,8 @@ int main() {
 		error = 0.0;
 		for (int i = 0; i < nb_training_data; i++) {
 			//NeuralNetworkDtrainCPU(&network_and, inputs[i], outputs[i]);
-			NeuralNetworkDtrainStepByStepGPU(&network_and, inputs[i], outputs[i], 1);
-			//NeuralNetworkDtrainGPU(&network_and, inputs[i], outputs[i], 1); // TODO: fix this function
+			//NeuralNetworkDtrainStepByStepGPU(&network_and, inputs[i], outputs[i], 1);
+			NeuralNetworkDtrainGPU(&network_and, inputs[i], outputs[i], 1); // TODO: fix this function
 
 			double local_error = 0.0;
 			for (int j = 0; j < network_and.output_layer->nb_neurons; j++) {

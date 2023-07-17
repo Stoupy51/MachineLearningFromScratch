@@ -230,41 +230,46 @@ int setupNeuralNetworkGpuOpenCL(NeuralNetworkD *network) {
  */
 int NeuralNetworkDReadAllBuffersGPU(NeuralNetworkD *network) {
 
+	// Wait for everything to finish
+	gpu_code = clFinish(gpu_oc.command_queue);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDReadAllBuffersGPU(): Cannot wait for command queue, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+
 	// Allocate the events
-	cl_event *read_events_act_val = (cl_event*)malloc(network->nb_layers * sizeof(cl_event));
-	cl_event *read_events_others = (cl_event*)malloc((network->nb_layers - 1) * sizeof(cl_event) * 3);
+	// - (nb_layers + 1) for the activation_values_buffers
+	// - (nb_layers - 1) for the weights_buffers
+	// - (nb_layers - 1) for the biases_buffers
+	// - (nb_layers - 1) for the deltas_buffers
+	int total_nb_events = network->nb_layers + (network->nb_layers - 1) * 3;
+	cl_event *events = (cl_event*)malloc(total_nb_events * sizeof(cl_event));
+	ERROR_HANDLE_PTR_RETURN_INT(events, "NeuralNetworkDReadAllBuffersGPU(): Cannot allocate events");
+	int event_index = 0;
 
-	// Read all the buffers
+	// Read the activation_values buffers
 	for (int i = 0; i < network->nb_layers; i++) {
-		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, activation_values_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].activations_values, 0, NULL, &read_events_act_val[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot read buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, activation_values_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].activations_values, 0, NULL, &events[event_index++]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDReadAllBuffersGPU(): Cannot read buffer 'activation_values_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
 	}
+
+	// Read the weights, biases & deltas buffers
 	for (int i = 1; i < network->nb_layers; i++) {
-		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, weights_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), network->layers[i].weights_flat, 0, NULL, &read_events_others[(i - 1) * 3]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot read buffer 'weights_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, biases_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].biases, 0, NULL, &read_events_others[(i - 1) * 3 + 1]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot read buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, deltas_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].deltas, 0, NULL, &read_events_others[(i - 1) * 3 + 2]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot read buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, weights_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(double), network->layers[i].weights_flat, 0, NULL, &events[event_index++]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDReadAllBuffersGPU(): Cannot read buffer 'weights_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, biases_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].biases, 0, NULL, &events[event_index++]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDReadAllBuffersGPU(): Cannot read buffer 'biases_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clEnqueueReadBuffer(gpu_oc.command_queue, deltas_buffers[i], CL_FALSE, 0, network->layers[i].nb_neurons * sizeof(double), network->layers[i].deltas, 0, NULL, &events[event_index++]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDReadAllBuffersGPU(): Cannot read buffer 'deltas_buffers[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
 	}
 
-	// Wait for all the events
-	gpu_code = clWaitForEvents(network->nb_layers, read_events_act_val);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot wait for events 'read_events_act_val[0:%d]', reason: %d / %s\n", network->nb_layers - 1, gpu_code, getOpenCLErrorString(gpu_code));
-	gpu_code = clWaitForEvents((network->nb_layers - 1) * 3, read_events_others);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot wait for events 'read_events_others[0:%d]', reason: %d / %s\n", (network->nb_layers - 1) * 3 - 1, gpu_code, getOpenCLErrorString(gpu_code));
+	// Wait for the events to finish
+	gpu_code = clWaitForEvents(total_nb_events, events);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDReadAllBuffersGPU(): Cannot wait for events, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
-	// Release the events
-	for (int i = 0; i < network->nb_layers; i++) {
-		gpu_code = clReleaseEvent(read_events_act_val[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot release event 'read_events_act_val[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+	// Free the events
+	for (int i = 0; i < total_nb_events; i++) {
+		gpu_code = clReleaseEvent(events[i]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDReadAllBuffersGPU(): Cannot release event %d, reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
 	}
-	for (int i = 0; i < (network->nb_layers - 1) * 3; i++) {
-		gpu_code = clReleaseEvent(read_events_others[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot release event 'read_events_others[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-	}
-	free(read_events_act_val);
-	free(read_events_others);
+	free(events);
 
 	// Return
 	return 0;
@@ -567,113 +572,130 @@ int NeuralNetworkDtrainStepByStepGPU(NeuralNetworkD *network, double *input, dou
  * @return void
  */
 int NeuralNetworkDtrainGPU(NeuralNetworkD *network, double *input, double *excepted_output, int read_all_buffers) {
-	cl_event excepted_output_buffer_event;
-	cl_event *kernel_events = malloc(network->nb_layers * sizeof(cl_event));
-	cl_event *backpropagation_events = malloc(network->nb_layers * sizeof(cl_event));
-	cl_event wait_list[2];
 
 	// Setup the private variables if not already done
 	gpu_code = setupNeuralNetworkGpuOpenCL(network);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot setup GPU, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot setup GPU, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
-	// Create a buffer for the excepted output array for the backpropagation later
-	gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[network->nb_layers], CL_FALSE, 0, network->output_layer->nb_neurons * sizeof(double), excepted_output, 0, NULL, &excepted_output_buffer_event);
+	// Allocate memory for cl_event objects, so we need:
+	// - x(1) cl_event for the excepted output buffer
+	// - x(1) cl_event for the input layer
+	// - x(nb_layers - 1) cl_event for the feed forward (1 per layer)
+	// - x(nb_layers - 1) cl_event for the backpropagation (1 per layer)
+	// - x(nb_layers - 1) cl_event for the update weights and biases (1 per layer)
+	int total_events = 2 + (network->nb_layers - 1) * 3;
+	cl_event *events = malloc(total_events * sizeof(cl_event));
+	ERROR_HANDLE_PTR_RETURN_INT(events, "NeuralNetworkDtrainGPU(): Cannot allocate memory for 'events'\n");
+
+	// Write in the buffer for the excepted output array for the backpropagation later
+	int event_index = 0;
+	gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[network->nb_layers], CL_FALSE, 0, network->output_layer->nb_neurons * sizeof(double), excepted_output, 0, NULL, &events[event_index]);
 	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot write buffer 'activation_values_buffers[%d]', reason: %d / %s\n", network->nb_layers, gpu_code, getOpenCLErrorString(gpu_code));
 
 	///// Feed forward part /////
 	// Set the input layer (copy the input array into the input layer of the neural network)
-	if (read_all_buffers == 1)
-		memcpy(network->input_layer->activations_values, input, network->input_layer->nb_neurons * sizeof(double));
-	gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_FALSE, 0, network->input_layer->nb_neurons * sizeof(double), input, 0, NULL, &kernel_events[0]);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot write buffer 'activation_values_buffers[0]', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	event_index++;
+	gpu_code = clEnqueueWriteBuffer(gpu_oc.command_queue, activation_values_buffers[0], CL_FALSE, 0, network->input_layer->nb_neurons * sizeof(double), input, 0, NULL, &events[event_index]);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot write buffer 'activation_values_buffers[0]', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
 	// For each layer of the neural network (except the input layer),
 	for (int i = 1; i < network->nb_layers; i++) {
 
+		// Increment the event index
+		event_index++;
+
 		// For each neuron of the current layer, calculate the activation_value of the neuron
 		gpu_code = clSetKernelArg(gpu_kernels[0], 0, sizeof(cl_mem), &activation_values_buffers[i - 1]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot set kernel argument 0 of kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 0 of kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[0], 1, sizeof(cl_mem), &weights_buffers[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot set kernel argument 1 of kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 1 of kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[0], 2, sizeof(cl_mem), &biases_buffers[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot set kernel argument 2 of kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 2 of kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[0], 3, sizeof(cl_mem), &activation_values_buffers[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot set kernel argument 3 of kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 3 of kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[0], 4, sizeof(int), &network->layers[i].nb_neurons);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot set kernel argument 4 of kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 4 of kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[0], 5, sizeof(int), &network->layers[i].nb_inputs_per_neuron);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot set kernel argument 5 of kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 5 of kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		size_t global_work_size[] = {network->layers[i].nb_neurons};
-		gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[0], 1, NULL, global_work_size, NULL, 1, &kernel_events[i - 1], &kernel_events[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDfeedForwardGPU(): Cannot enqueue kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[0], 1, NULL, global_work_size, NULL, 1, &events[event_index - 1], &events[event_index]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot enqueue kernel 'feedForwardActivationValuesSigmoid', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 	}
 
 	///// Backpropagation part /////
-	// Prepare wait list for the last kernel & output buffer
-	wait_list[0] = kernel_events[network->nb_layers - 1];
-	wait_list[1] = excepted_output_buffer_event;
+	// Prepare wait list for the last event & output buffer
+	cl_event wait_list[2] = {events[event_index], events[0]};
 
 	// For each neuron of the output layer, calculate the delta of the neuron (excepted_output - activation_value) * derivative
-	gpu_code = clSetKernelArg(gpu_kernels[1], 0, sizeof(cl_mem), &activation_values_buffers[network->nb_layers - 1]);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 0 of kernel 'backpropagationOutputLayerDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	event_index++;
+	gpu_code = clSetKernelArg(gpu_kernels[1], 0, sizeof(cl_mem), &activation_values_buffers[network->nb_layers]);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 0 of kernel 'backpropagationOutputLayerDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 	gpu_code = clSetKernelArg(gpu_kernels[1], 1, sizeof(cl_mem), &activation_values_buffers[network->nb_layers - 1]);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 1 of kernel 'backpropagationOutputLayerDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 1 of kernel 'backpropagationOutputLayerDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 	gpu_code = clSetKernelArg(gpu_kernels[1], 2, sizeof(cl_mem), &deltas_buffers[network->nb_layers - 1]);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 2 of kernel 'backpropagationOutputLayerDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 2 of kernel 'backpropagationOutputLayerDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 	gpu_code = clSetKernelArg(gpu_kernels[1], 3, sizeof(int), &network->output_layer->nb_neurons);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 3 of kernel 'backpropagationOutputLayerDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 3 of kernel 'backpropagationOutputLayerDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 	size_t global_work_size[] = {network->output_layer->nb_neurons};
-	gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[1], 1, NULL, global_work_size, NULL, 2, wait_list, &backpropagation_events[network->nb_layers - 1]);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot enqueue kernel 'backpropagationOutputLayerDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[1], 1, NULL, global_work_size, NULL, 2, wait_list, &events[event_index]);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot enqueue kernel 'backpropagationOutputLayerDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 
 	// For each layer of the neural network (except the output layer and the input layer) (order last to first),
 	for (int i = network->nb_layers - 2; i > 0; i--) {
 
+		// Increment the event index
+		event_index++;
+
 		// For each neuron of the current layer,
 		gpu_code = clSetKernelArg(gpu_kernels[2], 0, sizeof(cl_mem), &weights_buffers[i + 1]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 0 of kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 0 of kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[2], 1, sizeof(cl_mem), &deltas_buffers[i + 1]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 1 of kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 1 of kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[2], 2, sizeof(cl_mem), &activation_values_buffers[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 2 of kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 2 of kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[2], 3, sizeof(cl_mem), &deltas_buffers[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 3 of kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 3 of kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[2], 4, sizeof(int), &network->layers[i].nb_neurons);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 4 of kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 4 of kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[2], 5, sizeof(int), &network->layers[i + 1].nb_neurons);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot set kernel argument 5 of kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 5 of kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		size_t global_work_size[] = {network->layers[i].nb_neurons};
-		gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[2], 1, NULL, global_work_size, NULL, 1, &backpropagation_events[i + 1], &backpropagation_events[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDbackpropagationGPU(): Cannot enqueue kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[2], 1, NULL, global_work_size, NULL, 1, &events[event_index - 1], &events[event_index]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot enqueue kernel 'backpropagationHiddenLayersDeltas', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 	}
 
 	///// Update weights and biases part /////
 	// For each layer of the neural network (except the input layer) (order last to first),
 	for (int i = network->nb_layers - 1; i > 0; i--) {
 
+		// Increment the event index
+		event_index++;
+
 		// For each neuron of the current layer,
 		gpu_code = clSetKernelArg(gpu_kernels[3], 0, sizeof(cl_mem), &activation_values_buffers[i - 1]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 0 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 0 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[3], 1, sizeof(cl_mem), &deltas_buffers[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 1 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 1 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[3], 2, sizeof(cl_mem), &weights_buffers[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 2 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 2 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[3], 3, sizeof(cl_mem), &biases_buffers[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 3 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 3 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[3], 4, sizeof(int), &network->layers[i].nb_neurons);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 4 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 4 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[3], 5, sizeof(int), &network->layers[i].nb_inputs_per_neuron);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 5 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 5 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		gpu_code = clSetKernelArg(gpu_kernels[3], 6, sizeof(double), &network->learning_rate);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot set kernel argument 6 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot set kernel argument 6 of kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 		size_t global_work_size[] = {network->layers[i].nb_neurons};
-		gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[3], 1, NULL, global_work_size, NULL, 1, &backpropagation_events[i], NULL);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDupdateWeightsAndBiasesGPU(): Cannot enqueue kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+		int backpropa_index = event_index - network->nb_layers;
+		gpu_code = clEnqueueNDRangeKernel(gpu_oc.command_queue, gpu_kernels[3], 1, NULL, global_work_size, NULL, 1, &events[backpropa_index], &events[event_index]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot enqueue kernel 'updateWeightsAndBiases', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
 	}
 
-	// Wait for everything to finish
-	gpu_code = clFinish(gpu_oc.command_queue);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot finish command queue, reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
+	// Wait for the last events to finish
+	int index_start = event_index - network->nb_layers + 1;
+	gpu_code = clWaitForEvents(network->nb_layers - 1, &events[index_start]);
+	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot wait for events 'events[%d:%d]', reason: %d / %s\n", index_start, event_index, gpu_code, getOpenCLErrorString(gpu_code));
 
 	// Read all the buffers if needed
 	if (read_all_buffers) {
@@ -682,18 +704,11 @@ int NeuralNetworkDtrainGPU(NeuralNetworkD *network, double *input, double *excep
 	}
 
 	// Release the events
-	gpu_code = clReleaseEvent(excepted_output_buffer_event);
-	ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot release event 'excepted_output_buffer_event', reason: %d / %s\n", gpu_code, getOpenCLErrorString(gpu_code));
-	for (int i = 0; i < network->nb_layers; i++) {
-		gpu_code = clReleaseEvent(kernel_events[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot release event 'kernel_events[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
-		if (i == 0)
-			continue;
-		gpu_code = clReleaseEvent(backpropagation_events[i]);
-		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot release event 'backpropagation_events[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
+	for (int i = 0; i < total_events; i++) {
+		gpu_code = clReleaseEvent(events[i]);
+		ERROR_HANDLE_INT_RETURN_INT(gpu_code, "NeuralNetworkDtrainGPU(): Cannot release event 'events[%d]', reason: %d / %s\n", i, gpu_code, getOpenCLErrorString(gpu_code));
 	}
-	free(kernel_events);
-	free(backpropagation_events);
+	free(events);
 
 	// Return
 	return 0;

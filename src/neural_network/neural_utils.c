@@ -193,7 +193,6 @@ void printActivationValues(NeuralNetworkD network) {
 		}
 		PRINTER("\n");
 	}
-	PRINTER("\n");
 }
 
 /**
