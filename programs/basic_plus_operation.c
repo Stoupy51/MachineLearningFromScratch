@@ -125,7 +125,7 @@ int main() {
 			error += local_error;
 		}
 		error /= nb_training_data;
-		if (tries < 4 || tries % 250 == 0)
+		if (tries < 4 || tries % 5 == 0)
 			INFO_PRINT("Trie nb %d, error: %.16f (%.16f)\n", tries, error, error * nb_training_data);
 	}
 	INFO_PRINT("main(): Training done in %d tries\n", tries);
