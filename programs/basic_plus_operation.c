@@ -70,7 +70,7 @@ int main() {
 
 	// Create a neural network to learn the '+' function
 	WARNING_PRINT("main(): No neural network found, creating a new one\n");
-	int nb_neurons_per_layer[] = {64, 32, 32};
+	int nb_neurons_per_layer[] = {64, 48, 32};
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 	NeuralNetworkD network_plus = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 1.0, sigmoid);
 
@@ -79,10 +79,12 @@ int main() {
 	printActivationValues(network_plus);
 
 	// Training dataset (input pairs and corresponding outputs)
-	#define nb_training_data 1000
-	double inputs[nb_training_data][64];
-	double outputs[nb_training_data][32];
+	#define nb_training_data 10000
+	double** inputs = (double**)malloc(nb_training_data * sizeof(double*));
+	double** outputs = (double**)malloc(nb_training_data * sizeof(double*));
 	for (int i = 0; i < nb_training_data; i++) {
+		inputs[i] = (double*)malloc(64 * sizeof(double));
+		outputs[i] = (double*)malloc(32 * sizeof(double));
 
 		// Generate random inputs
 		int a = rand() % 100;
@@ -110,7 +112,7 @@ int main() {
 	// Train the neural network
 	double error = 1.0;
 	int tries = 0;
-	while (error > 0.00001) {
+	while (error > 0.000001) {
 		tries++;
 		error = 0.0;
 		for (int i = 0; i < nb_training_data; i++) {
@@ -123,7 +125,7 @@ int main() {
 			error += local_error;
 		}
 		error /= nb_training_data;
-		if (tries < 4 || tries % 2500 == 0)
+		if (tries < 4 || tries % 250 == 0)
 			INFO_PRINT("Trie nb %d, error: %.16f (%.16f)\n", tries, error, error * nb_training_data);
 	}
 	INFO_PRINT("main(): Training done in %d tries\n", tries);
@@ -132,12 +134,14 @@ int main() {
 
 	///// Testing part
 	// Test the neural network
-	WARNING_PRINT("main(): Testing the trained neural network\n");
+	WARNING_PRINT("main(): Testing the trained neural network with new inputs\n");
 	int nb_errors = 0;
 	for (int i = 0; i < nb_training_data; i++) {
+		int a = rand() % 100;
+		int b = rand() % 100;
+		convertIntToBinaryDoubleArray(a, inputs[i], 0);
+		convertIntToBinaryDoubleArray(b, inputs[i], 32);
 		NeuralNetworkDfeedForwardCPU(&network_plus, inputs[i]);
-		int a = convertBinaryDoubleArrayToInt(inputs[i], 0);
-		int b = convertBinaryDoubleArrayToInt(inputs[i], 32);
 		int c = convertBinaryDoubleArrayToInt(network_plus.output_layer->activations_values, 0);
 		if ((a + b) != c) {
 			ERROR_PRINT("main(): %d + %d = %d\n", a, b, c);
