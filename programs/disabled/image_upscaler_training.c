@@ -34,7 +34,7 @@ void exitProgram() {
 	stopNeuralNetworkGpuBuffersOpenCL();
 
 	// Print end of program
-	INFO_PRINT("exitProgram(): End of program, press enter to exit.\n");
+	INFO_PRINT("exitProgram(): End of program, press enter to exit\n");
 	getchar();
 	exit(0);
 }
@@ -54,7 +54,7 @@ void exitProgram() {
 int main() {
 
 	// Print program header and register exitProgram() with atexit()
-	mainInit("main(): Launching 'image_upscaler_training' program.\n");
+	mainInit("main(): Launching 'image_upscaler_training' program\n");
 	atexit(exitProgram);
 
 	// Try to load a neural network
@@ -62,12 +62,12 @@ int main() {
 	if (loaded_network == NULL) {
 
 		// Create a neural network using double as type
-		WARNING_PRINT("main(): No neural network found, creating a new one.\n");
+		WARNING_PRINT("main(): No neural network found, creating a new one\n");
 		int nb_neurons_per_layer[] = {128*128*3 + 1, 128*128*3, 128*128*3};
 		int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 		network = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 0.1, sigmoid);
 	} else {
-		INFO_PRINT("main(): Neural network found, using it.\n");
+		INFO_PRINT("main(): Neural network found, using it\n");
 		network = *loaded_network;
 		free(loaded_network);
 	}
@@ -192,7 +192,7 @@ int main() {
 	stopNeuralNetworkGpuBuffersOpenCL();
 
 	// Final print and return
-	INFO_PRINT("main(): End of program.\n");
+	INFO_PRINT("main(): End of program\n");
 	return 0;
 }
 

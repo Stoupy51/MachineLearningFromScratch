@@ -17,7 +17,7 @@ int* create_random_vector(int min, int max, int size, size_t vector_size_bytes) 
 	
 	// Allocate memory for the vector
 	int* vector = malloc(vector_size_bytes);
-	ERROR_HANDLE_PTR_RETURN_NULL(vector, "create_random_vector(): Error allocating memory for the vector.\n");
+	ERROR_HANDLE_PTR_RETURN_NULL(vector, "create_random_vector(): Error allocating memory for the vector\n");
 
 	// Fill the vector with random integers
 	for (size--; size >= 0; size--)

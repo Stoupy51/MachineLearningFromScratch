@@ -20,7 +20,7 @@
 void exitProgram() {
 
 	// Print end of program
-	INFO_PRINT("exitProgram(): End of program, press enter to exit.\n");
+	INFO_PRINT("exitProgram(): End of program, press enter to exit\n");
 	getchar();
 	exit(0);
 }
@@ -33,21 +33,21 @@ void exitProgram() {
 int main() {
 
 	// Print program header and register exitProgram() with atexit()
-	mainInit("main(): Launching 'neural_network_test' program.\n");
+	mainInit("main(): Launching 'neural_network_test' program\n");
 	atexit(exitProgram);
 
 	// Try to load a neural network
 	NeuralNetworkD *loaded_network = loadNeuralNetworkD(NEURAL_NETWORK_PATH, sigmoid);
 	NeuralNetworkD network;
 	if (loaded_network == NULL) {
-		WARNING_PRINT("main(): No neural network found, creating a new one.\n");
+		WARNING_PRINT("main(): No neural network found, creating a new one\n");
 
 		// Create a neural network using double as type
 		int nb_neurons_per_layer[] = {16*16, 4096, 4096, 4096, 32*32};
 		int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 		network = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 0.1, sigmoid);
 	} else {
-		INFO_PRINT("main(): Neural network found, using it.\n");
+		INFO_PRINT("main(): Neural network found, using it\n");
 		network = *loaded_network;
 		free(loaded_network);
 	}
@@ -86,7 +86,7 @@ int main() {
 	stopNeuralNetworkGpuBuffersOpenCL();
 
 	// Final print and return
-	INFO_PRINT("main(): End of program.\n");
+	INFO_PRINT("main(): End of program\n");
 	return 0;
 }
 

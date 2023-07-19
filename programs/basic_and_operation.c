@@ -18,7 +18,7 @@ void exitProgram() {
 	stopNeuralNetworkGpuBuffersOpenCL();
 
 	// Print end of program
-	INFO_PRINT("exitProgram(): End of program, press enter to exit.\n");
+	INFO_PRINT("exitProgram(): End of program, press enter to exit\n");
 	getchar();
 	exit(0);
 }
@@ -31,11 +31,11 @@ void exitProgram() {
 int main() {
 
 	// Print program header and register exitProgram() with atexit()
-	mainInit("main(): Launching 'image_upscaler_training' program.\n");
+	mainInit("main(): Launching 'image_upscaler_training' program\n");
 	atexit(exitProgram);
 
 	// Create a neural network to learn the AND function
-	WARNING_PRINT("main(): No neural network found, creating a new one.\n");
+	WARNING_PRINT("main(): No neural network found, creating a new one\n");
 	int nb_neurons_per_layer[] = {2, 1};
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 	NeuralNetworkD network_and = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 1.0, sigmoid);
@@ -45,13 +45,13 @@ int main() {
 	printActivationValues(network_and);
 
 	// Train the neural network while the error is not low enough
-	WARNING_PRINT("main(): Training the neural network.\n");
+	WARNING_PRINT("main(): Training the neural network\n");
 	double inputs[4][2] = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
 	double outputs[4][1] = {{0}, {0}, {0}, {1}};
 	int nb_training_data = sizeof(inputs) / sizeof(inputs[0]);
 	double error = 1.0;
 	int tries = 0;
-	while (error > 0.001) {
+	while (error > 0.0001) {
 		tries++;
 		error = 0.0;
 		for (int i = 0; i < nb_training_data; i++) {
@@ -70,10 +70,10 @@ int main() {
 		if (tries < 4 || tries % 2500 == 0)
 			INFO_PRINT("Trie nb %d, error: %f (%f)\n", tries, error, error * nb_training_data);
 	}
-	INFO_PRINT("main(): Training done in %d tries.\n", tries);
+	INFO_PRINT("main(): Training done in %d tries\n", tries);
 
 	// Test the neural network
-	WARNING_PRINT("main(): Testing the neural network.\n");
+	WARNING_PRINT("main(): Testing the neural network\n");
 	for (int i = 0; i < nb_training_data; i++) {
 		NeuralNetworkDfeedForwardCPU(&network_and, inputs[i]);
 		//NeuralNetworkDfeedForwardGPU(&network_and, inputs[i], 1);
@@ -86,7 +86,7 @@ int main() {
 	stopNeuralNetworkGpuBuffersOpenCL();
 
 	// Final print and return
-	INFO_PRINT("main(): End of program.\n");
+	INFO_PRINT("main(): End of program\n");
 	return 0;
 }
 

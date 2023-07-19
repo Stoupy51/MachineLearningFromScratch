@@ -31,7 +31,7 @@ void exitProgram() {
 	stopNeuralNetworkGpuBuffersOpenCL();
 
 	// Print end of program
-	INFO_PRINT("exitProgram(): End of program, press enter to exit.\n");
+	INFO_PRINT("exitProgram(): End of program, press enter to exit\n");
 	getchar();
 	exit(0);
 }
@@ -51,7 +51,7 @@ void exitProgram() {
 int main() {
 
 	// Print program header and register exitProgram() with atexit()
-	mainInit("main(): Launching 'image_upscaler_training' program.\n");
+	mainInit("main(): Launching 'image_upscaler_training' program\n");
 	atexit(exitProgram);
 
 	// Try to load a neural network
@@ -175,7 +175,7 @@ int main() {
 	pclose(pipe);
 
 	// Final print and return
-	INFO_PRINT("main(): End of program.\n");
+	INFO_PRINT("main(): End of program\n");
 	return 0;
 }
 

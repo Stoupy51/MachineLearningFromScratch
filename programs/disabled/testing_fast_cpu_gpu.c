@@ -18,7 +18,7 @@
 void exitProgram() {
 
 	// Print end of program
-	INFO_PRINT("exitProgram(): End of program, press enter to exit.\n");
+	INFO_PRINT("exitProgram(): End of program, press enter to exit\n");
 	getchar();
 	exit(0);
 }
@@ -32,7 +32,7 @@ void exitProgram() {
 int main() {
 
 	// Print program header and register exitProgram() with atexit()
-	mainInit("main(): Launching 'testing_random_array_values' program.\n");
+	mainInit("main(): Launching 'testing_random_array_values' program\n");
 	atexit(exitProgram);
 
 	// Create an array of double
@@ -90,7 +90,7 @@ int main() {
 	free(array);
 
 	// Final print and return
-	INFO_PRINT("main(): End of program.\n");
+	INFO_PRINT("main(): End of program\n");
 	return 0;
 }
 

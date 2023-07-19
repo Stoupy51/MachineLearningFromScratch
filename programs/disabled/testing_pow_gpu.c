@@ -69,7 +69,7 @@ void exitProgram() {
 	if (oc.context != NULL) clReleaseContext(oc.context);
 
 	// Print end of program
-	INFO_PRINT("exitProgram(): End of program, press enter to exit.\n");
+	INFO_PRINT("exitProgram(): End of program, press enter to exit\n");
 	getchar();
 	exit(0);
 }
@@ -98,7 +98,7 @@ void exitProgram() {
 int main() {
 
 	// Print program header and register exitProgram() with atexit()
-	mainInit("main(): Launching GPU test program.\n");
+	mainInit("main(): Launching GPU test program\n");
 	atexit(exitProgram);
 
 	// Create two vectors of random integers
@@ -108,12 +108,12 @@ int main() {
 	int* a_v = _v; int* b_v = _v + vec_size;
 	fill_random_vector(a_v, 1, 10, vec_size);
 	fill_random_vector(b_v, 1, 100000, vec_size);
-	INFO_PRINT("main(): Vectors created.\n");
+	INFO_PRINT("main(): Vectors created\n");
 
 	// Initialize OpenCL and print device info
 	oc = setupOpenCL(CL_DEVICE_TYPE_GPU);
 	printDeviceInfo(oc.device_id);
-	ERROR_HANDLE_PTR_RETURN_INT(oc.context, "main(): Cannot initialize OpenCL.\n");
+	ERROR_HANDLE_PTR_RETURN_INT(oc.context, "main(): Cannot initialize OpenCL\n");
 
 	// Create the memory buffers
 	cl_mem v_buffers[2] = { NULL, NULL };
@@ -132,7 +132,7 @@ int main() {
 	{
 		// Create the kernel
 		createKernelFromSource("kernels/pow.cl", "computePowerNaiveExponentiation", &program, &kernel, &oc);
-		ERROR_HANDLE_PTR_RETURN_INT(kernel, "main(): Cannot create kernel from source.\n");
+		ERROR_HANDLE_PTR_RETURN_INT(kernel, "main(): Cannot create kernel from source\n");
 
 		// Set the arguments of the kernel
 		code = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&v_buffers[0]);
@@ -162,7 +162,7 @@ int main() {
 	{
 		// Create the kernel
 		createKernelFromSource("kernels/pow.cl", "computePowerFastExponentiation", &program, &kernel, &oc);
-		ERROR_HANDLE_PTR_RETURN_INT(kernel, "main(): Cannot create kernel from source.\n");
+		ERROR_HANDLE_PTR_RETURN_INT(kernel, "main(): Cannot create kernel from source\n");
 
 		// Set the arguments of the kernel
 		code = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&v_buffers[0]);
@@ -192,7 +192,7 @@ int main() {
 	{
 		// Create the kernel
 		createKernelFromSource("kernels/pow.cl", "computePowerBuiltInExponentiation", &program, &kernel, &oc);
-		ERROR_HANDLE_PTR_RETURN_INT(kernel, "main(): Cannot create kernel from source.\n");
+		ERROR_HANDLE_PTR_RETURN_INT(kernel, "main(): Cannot create kernel from source\n");
 
 		// Set the arguments of the kernel
 		code = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&v_buffers[0]);
@@ -233,12 +233,12 @@ int main() {
 
 
 	// Clean up
-	INFO_PRINT("main(): Cleaning up...\n");
+	INFO_PRINT("main(): Cleaning up..\n");
 	clReleaseMemObjects(2, v_buffers);
 	free(_v);
 
 	// Final print and return
-	INFO_PRINT("main(): End of program.\n");
+	INFO_PRINT("main(): End of program\n");
 	return 0;
 }
 
