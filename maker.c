@@ -605,8 +605,10 @@ thread_return_type compile_thread(thread_param_type param) {
 
 	// Compile the file
 	if (system(param) != 0) {
-		perror("Error while compiling a file\n");
-		return -1;
+		char error[256];
+		sprintf(error, "Error while compiling file '%s'", command);
+		perror(error);
+		exit(-1);
 	}
 
 	// Print the command
