@@ -48,12 +48,8 @@ void* mallocBlocking(size_t size, const char* prefix) {
 		// Print a warning
 		WARNING_PRINT("%s: Cannot allocate memory for %zu bytes, waiting 1000ms\n", prefix == NULL ? "mallocBlocking()" : prefix, size);
 
-		// Wait 1000ms
-		#ifdef _WIN32
-			Sleep(1000);
-		#else
-			usleep(1000000);
-		#endif
+		// Wait 1000ms and try again
+		sleep(1);
 		ptr = malloc(size);
 	}
 
