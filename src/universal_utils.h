@@ -105,6 +105,7 @@ typedef struct simple_string_t {
 
 // Function prototypes
 void mainInit(char* header);
+void* mallocBlocking(size_t size);
 int writeEntireFile(char* path, char* content, int size, int mode);
 char* readEntireFile(char* path);
 int get_line_from_file(char **lineptr, int fd);

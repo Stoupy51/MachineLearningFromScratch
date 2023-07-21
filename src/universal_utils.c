@@ -27,6 +27,40 @@ void mainInit(char* header) {
 	INFO_PRINT("%s", header);
 }
 
+/**
+ * @brief This function allocates memory and returns a pointer to it.
+ * This function is blocking, it will wait until the memory is allocated.
+ * It will try to allocate the memory every 1000ms.
+ * 
+ * @param size		Size of the memory to allocate
+ * @param prefix	Prefix to print in the warning message, ex: "mallocBlocking()"
+ * 
+ * @return void*	Pointer to the allocated memory
+ */
+void* mallocBlocking(size_t size, const char* prefix) {
+	
+	// Allocate the memory
+	void* ptr = malloc(size);
+
+	// If the memory is not allocated, wait 1000ms and try again
+	while (ptr == NULL) {
+
+		// Print a warning
+		WARNING_PRINT("%s: Cannot allocate memory for %zu bytes, waiting 1000ms\n", prefix == NULL ? "mallocBlocking()" : prefix, size);
+
+		// Wait 1000ms
+		#ifdef _WIN32
+			Sleep(1000);
+		#else
+			usleep(1000000);
+		#endif
+		ptr = malloc(size);
+	}
+
+	// Return the pointer
+	return ptr;
+}
+
 
 /**
  * @brief This function write a string to a file

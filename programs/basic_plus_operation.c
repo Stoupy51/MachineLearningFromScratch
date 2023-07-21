@@ -98,7 +98,7 @@ int main() {
 		// Convert the outputs to binary
 		convertIntToBinaryDoubleArray(c, outputs[i], 0);
 	}
-		
+
 
 
 	///// Training part
@@ -153,11 +153,6 @@ int main() {
 
 
 	///// Final part
-	// Save the neural network
-	WARNING_PRINT("main(): Saving the neural network\n");
-	int code = saveNeuralNetworkD(network_plus, "bin/plus.nn", 1);
-	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while saving the neural network\n");
-
 	// Free the neural network & free private GPU buffers
 	freeNeuralNetworkD(&network_plus);
 	stopNeuralNetworkGpuOpenCL();
