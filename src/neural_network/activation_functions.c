@@ -25,12 +25,11 @@ nn_type sigmoid_f(nn_type x) {
  * @brief Derivative of the sigmoid function
  * Returns sigmoid(x) * (1 - sigmoid(x)) : a value between 0 and 1
  * 
- * @param x		Value to apply the derivative of the sigmoid function to
+ * @param sigmoid_x		Value from sigmoid_f() result
  * 
  * @return The value of the derivative of the sigmoid function applied to x
  */
-nn_type sigmoid_derivative_f(nn_type x) {
-	nn_type sigmoid_x = sigmoid_f(x);
+nn_type sigmoid_derivative_f(nn_type sigmoid_x) {
 	return sigmoid_x * (1 - sigmoid_x);
 }
 
@@ -50,12 +49,12 @@ nn_type relu_f(nn_type x) {
  * @brief Derivative of the Rectified Linear Unit function
  * Returns 1 if x > 0, 0 otherwise
  * 
- * @param x		Value to apply the derivative of the ReLU function to
+ * @param relu_x		Value from relu_f() result
  * 
  * @return The value of the derivative of the ReLU function applied to x
  */
-nn_type relu_derivative_f(nn_type x) {
-	return x > 0 ? 1 : 0;
+nn_type relu_derivative_f(nn_type relu_x) {
+	return relu_x > 0 ? 1 : 0;
 }
 
 /**
@@ -80,12 +79,11 @@ nn_type tanh_f(nn_type x) {
  * @brief Derivative of the hyperbolic tangent function
  * Returns 1 - tanh(x)^2 : a value between 0 and 1
  * 
- * @param x		Value to apply the derivative of the tanh function to
+ * @param tanh_x		Value from tanh_f() result
  * 
  * @return The value of the derivative of the tanh function applied to x
  */
-nn_type tanh_derivative_f(nn_type x) {
-	nn_type tanh_x = tanh_f(x);
+nn_type tanh_derivative_f(nn_type tanh_x) {
 	return 1 - (tanh_x * tanh_x);
 }
 
@@ -105,12 +103,12 @@ nn_type identity_f(nn_type x) {
  * @brief Derivative of the identity function
  * Returns 1
  * 
- * @param x		Value to apply the derivative of the identity function to
+ * @param x		Useless parameter
  * 
  * @return 1
  */
 nn_type identity_derivative_f(nn_type x) {
-	x = x; // Avoid unused parameter warning
+	(void)x;	// Avoid unused parameter warning
 	return 1;
 }
 
