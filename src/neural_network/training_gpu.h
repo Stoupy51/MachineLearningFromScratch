@@ -3,17 +3,6 @@
 #define __NEURAL_TRAINING_GPU_H__
 
 #include "neural_utils.h"
-#include "../list/image_list.h"
-
-void stopNeuralNetworkGpuOpenCL();
-void stopNeuralNetworkGpuBuffersOpenCL();
-int NeuralNetworkDReadAllBuffersGPU(NeuralNetworkD *network);
-int NeuralNetworkDfeedForwardGPU(NeuralNetworkD *network, double *input, int read_buffer);
-int NeuralNetworkDbackpropagationGPU(NeuralNetworkD *network, double *excepted_output, int read_buffer);
-int NeuralNetworkDupdateWeightsAndBiasesGPU(NeuralNetworkD *network, int read_buffer);
-int NeuralNetworkDtrainStepByStepGPU(NeuralNetworkD *network, double *input, double *excepted_output, int read_all_buffers);
-int NeuralNetworkDtrainGPU(NeuralNetworkD *network, double *input, double *excepted_output, int read_all_buffers);
-int NeuralNetworkDtrainFromImageListGPU(NeuralNetworkD *network, img_list_t img_list, image_t excepted_output, int read_all_buffers);
 
 #endif
 
