@@ -38,10 +38,10 @@ int main() {
 	WARNING_PRINT("main(): No neural network found, creating a new one\n");
 	int nb_neurons_per_layer[] = {2, 1};
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
-	NeuralNetworkD network_and = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 1.0, sigmoid);
+	NeuralNetwork network_and = initNeuralNetwork(nb_layers, nb_neurons_per_layer, 1.0, sigmoid);
 
 	// Print the neural network information
-	printNeuralNetworkD(network_and);
+	printNeuralNetwork(network_and);
 	printActivationValues(network_and);
 
 	// Train the neural network while the error is not low enough
@@ -55,9 +55,9 @@ int main() {
 		tries++;
 		error = 0.0;
 		for (int i = 0; i < nb_training_data; i++) {
-			NeuralNetworkDtrainCPU(&network_and, inputs[i], outputs[i]);
-			//NeuralNetworkDtrainStepByStepGPU(&network_and, inputs[i], outputs[i], 1);
-			//NeuralNetworkDtrainGPU(&network_and, inputs[i], outputs[i], 1);
+			NeuralNetworktrainCPU(&network_and, inputs[i], outputs[i]);
+			//NeuralNetworktrainStepByStepGPU(&network_and, inputs[i], outputs[i], 1);
+			//NeuralNetworktrainGPU(&network_and, inputs[i], outputs[i], 1);
 
 			double local_error = 0.0;
 			for (int j = 0; j < network_and.output_layer->nb_neurons; j++) {
@@ -75,13 +75,13 @@ int main() {
 	// Test the neural network
 	WARNING_PRINT("main(): Testing the neural network\n");
 	for (int i = 0; i < nb_training_data; i++) {
-		NeuralNetworkDfeedForwardCPU(&network_and, inputs[i]);
-		//NeuralNetworkDfeedForwardGPU(&network_and, inputs[i], 1);
+		NeuralNetworkfeedForwardCPU(&network_and, inputs[i]);
+		//NeuralNetworkfeedForwardGPU(&network_and, inputs[i], 1);
 		printActivationValues(network_and);
 	}
 
 	// Free the neural network & free private GPU buffers
-	freeNeuralNetworkD(&network_and);
+	freeNeuralNetwork(&network_and);
 	stopNeuralNetworkGpuOpenCL();
 	stopNeuralNetworkGpuBuffersOpenCL();
 

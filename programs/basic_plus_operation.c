@@ -1,9 +1,7 @@
 
 #include "../src/universal_utils.h"
-#include "../src/math/sigmoid.h"
 #include "../src/neural_network/neural_utils.h"
 #include "../src/neural_network/training_cpu.h"
-#include "../src/neural_network/training_gpu.h"
 
 /**
  * @brief Function run at the end of the program
@@ -12,10 +10,6 @@
  * @return void
 */
 void exitProgram() {
-
-	// Free private GPU buffers
-	stopNeuralNetworkGpuOpenCL();
-	stopNeuralNetworkGpuBuffersOpenCL();
 
 	// Print end of program
 	INFO_PRINT("exitProgram(): End of program, press enter to exit\n");
@@ -65,98 +59,26 @@ int convertBinaryDoubleArrayToInt(double* array, int array_offset) {
 int main() {
 
 	// Print program header and register exitProgram() with atexit()
-	mainInit("main(): Launching 'image_upscaler_training' program\n");
+	mainInit("main(): Launching 'basic_plus_operation' program\n");
 	atexit(exitProgram);
 
 	// Create a neural network to learn the '+' function
-	WARNING_PRINT("main(): No neural network found, creating a new one\n");
 	int nb_neurons_per_layer[] = {64, 48, 32};
+	char *activation_functions[] = {NULL, "sigmoid", "sigmoid"};
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
-	NeuralNetworkD network_plus = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 1.0, sigmoid);
+	NeuralNetwork network_plus;
+	int code = initNeuralNetwork(&network_plus, nb_layers, nb_neurons_per_layer, activation_functions, 0.1);
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while initializing the neural network\n");
 
 	// Print the neural network information
-	printNeuralNetworkD(network_plus);
+	printNeuralNetwork(network_plus);
 	printActivationValues(network_plus);
 
-	// Training dataset (input pairs and corresponding outputs)
-	#define nb_training_data 10000
-	double** inputs = (double**)malloc(nb_training_data * sizeof(double*));
-	double** outputs = (double**)malloc(nb_training_data * sizeof(double*));
-	for (int i = 0; i < nb_training_data; i++) {
-		inputs[i] = (double*)malloc(64 * sizeof(double));
-		outputs[i] = (double*)malloc(32 * sizeof(double));
-
-		// Generate random inputs
-		int a = rand() % 100;
-		int b = rand() % 100;
-		int c = a + b;
-
-		// Convert the inputs to binary
-		convertIntToBinaryDoubleArray(a, inputs[i], 0);
-		convertIntToBinaryDoubleArray(b, inputs[i], 32);
-
-		// Convert the outputs to binary
-		convertIntToBinaryDoubleArray(c, outputs[i], 0);
-	}
-
-
-
-	///// Training part
-	// First training
-	INFO_PRINT("main(): First training\n");
-	for (int i = 0; i < nb_training_data; i++) {
-		NeuralNetworkDtrainCPU(&network_plus, inputs[i], outputs[i]);
-	}
-	INFO_PRINT("main(): First training done\n");
-
-	// Train the neural network
-	double error = 1.0;
-	int tries = 0;
-	while (error > 0.000001) {
-		tries++;
-		error = 0.0;
-		for (int i = 0; i < nb_training_data; i++) {
-			NeuralNetworkDtrainCPU(&network_plus, inputs[i], outputs[i]);
-			double local_error = 0.0;
-			for (int j = 0; j < network_plus.output_layer->nb_neurons; j++) {
-				double delta = network_plus.output_layer->deltas[j];
-				local_error += delta * delta;
-			}
-			error += local_error;
-		}
-		error /= nb_training_data;
-		if (tries < 4 || tries % 5 == 0)
-			INFO_PRINT("Trie nb %d, error: %.16f (%.16f)\n", tries, error, error * nb_training_data);
-	}
-	INFO_PRINT("main(): Training done in %d tries\n", tries);
-
-
-
-	///// Testing part
-	// Test the neural network
-	WARNING_PRINT("main(): Testing the trained neural network with new inputs\n");
-	int nb_errors = 0;
-	for (int i = 0; i < nb_training_data; i++) {
-		int a = rand() % 100;
-		int b = rand() % 100;
-		convertIntToBinaryDoubleArray(a, inputs[i], 0);
-		convertIntToBinaryDoubleArray(b, inputs[i], 32);
-		NeuralNetworkDfeedForwardCPU(&network_plus, inputs[i]);
-		int c = convertBinaryDoubleArrayToInt(network_plus.output_layer->activations_values, 0);
-		if ((a + b) != c) {
-			ERROR_PRINT("main(): %d + %d = %d\n", a, b, c);
-			nb_errors++;
-		}
-	}
-	INFO_PRINT("main(): %d errors on %d tests (ratio: %.2f%%)\n", nb_errors, nb_training_data, 100.0 - ((double)nb_errors / (double)nb_training_data * 100.0));
-
-
+	// TODO
 
 	///// Final part
-	// Free the neural network & free private GPU buffers
-	freeNeuralNetworkD(&network_plus);
-	stopNeuralNetworkGpuOpenCL();
-	stopNeuralNetworkGpuBuffersOpenCL();
+	// Free the neural network
+	freeNeuralNetwork(&network_plus);
 
 	// Final print and return
 	INFO_PRINT("main(): End of program\n");

@@ -14,7 +14,7 @@
 #define IMAGES_INPUT_PATH "images/input/"
 #define IMAGES_OUTPUT_PATH "images/output/"
 
-NeuralNetworkD network;
+NeuralNetwork network;
 int code;
 
 /**
@@ -26,7 +26,7 @@ int code;
 void exitProgram() {
 
 	// Free the neural network & free private GPU buffers
-	freeNeuralNetworkD(&network);
+	freeNeuralNetwork(&network);
 	stopNeuralNetworkGpuOpenCL();
 	stopNeuralNetworkGpuBuffersOpenCL();
 
@@ -55,14 +55,14 @@ int main() {
 	atexit(exitProgram);
 
 	// Try to load a neural network
-	NeuralNetworkD *loaded_network = loadNeuralNetworkD(NEURAL_NETWORK_PATH, sigmoid);
+	NeuralNetwork *loaded_network = loadNeuralNetwork(NEURAL_NETWORK_PATH, sigmoid);
 	ERROR_HANDLE_PTR_RETURN_INT(loaded_network, "main(): Error loading the neural network\n");
 
 	// If the neural network is loaded, use it
 	network = *loaded_network;
 
 	// Print the neural network information
-	printNeuralNetworkD(network);
+	printNeuralNetwork(network);
 
 	// List all the images in the folder using a pipe
 	char command[512];
@@ -121,14 +121,14 @@ int main() {
 
 			char benchmark_buffer[1024];
 			char benchmark_name[512];
-			sprintf(benchmark_name, "NeuralNetworkDfeedForward : %d / %d", ++i, img_list_split.size);
+			sprintf(benchmark_name, "NeuralNetworkfeedForward : %d / %d", ++i, img_list_split.size);
 			ST_BENCHMARK_SOLO_COUNT(benchmark_buffer,
 			{
 
 			// Feed forward the neural network
-			code = NeuralNetworkDfeedForwardGPU(&network, input, 1);
+			code = NeuralNetworkfeedForwardGPU(&network, input, 1);
 			ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error feeding forward the neural network\n");
-			// NeuralNetworkDfeedForwardCPU(&network, input);
+			// NeuralNetworkfeedForwardCPU(&network, input);
 			},
 			benchmark_name, 1);
 			PRINTER(benchmark_buffer);

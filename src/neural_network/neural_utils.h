@@ -2,7 +2,7 @@
 #ifndef __NEURAL_UTILS_H__
 #define __NEURAL_UTILS_H__
 
-#include "../universal_utils.h"
+#include "neural_config.h"
 
 /**
  * @file Utils for neural networks
@@ -45,58 +45,70 @@
 **/
 
 
-
 /**
- * @brief Structure representing a layer of neurons using double as type
+ * @brief Structure representing a layer of neurons
  * 
- * @param nb_neurons			Number of neurons in the layer
- * @param nb_inputs_per_neuron	Number of inputs per neuron
+ * @param nb_neurons						Number of neurons in the layer
+ * @param nb_inputs_per_neuron				Number of inputs per neuron
  * 
- * @param weights				Weights of the neurons ( [nb_neurons][nb_inputs_per_neuron] )
- * @param activations_values	Outputs of the neurons when activated ( [nb_neurons] )
- * @param biases				Biases of the neurons ( [nb_neurons] )
- * @param deltas				Deltas of the neurons ( [nb_neurons] ) : used for backpropagation
+ * @param activation_function_name			Name of the activation function of the neural network
+ * @param activation_function				Activation function of the neural network: how the network will activate the neurons
+ * @param activation_function_derivative	Derivative of the activation function of the neural network
+ * 
+ * @param weights							Weights of the neurons ( [nb_neurons][nb_inputs_per_neuron] )
+ * @param activations_values				Outputs of the neurons when activated ( [nb_neurons] )
+ * @param biases							Biases of the neurons ( [nb_neurons] )
+ * 
+ * @param deltas							Deltas of the neurons ( [nb_neurons] ) : used for backpropagation
+ * @param errors							Errors of the neurons ( [nb_neurons] ) : used for backpropagation
  */
-typedef struct NeuronLayerD {
+typedef struct NeuronLayer {
 	int nb_neurons;				// Arbitrary
 	int nb_inputs_per_neuron;	// Depends on the previous layer
 
-	double *weights_flat;		// Single array of weights for better memory management
-	double **weights;
-	double *activations_values;
-	double *biases;
-	double *deltas;				// Used for backpropagation
-} NeuronLayerD;
+	// Activation function variables
+	char *activation_function_name;						// Arbitrary, ex: "sigmoid", "tanh", "relu", ...
+	nn_type (*activation_function)(nn_type);			// Arbitrary, ex: sigmoid, tanh, relu, ...
+	nn_type (*activation_function_derivative)(nn_type);	// Arbitrary, ex: sigmoid_derivative, tanh_derivative, relu_derivative, ...
+
+	// Feed forward variables
+	nn_type *weights_flat;		// Single array of weights for better memory management
+	nn_type **weights;
+	nn_type *activations_values;
+	nn_type *biases;
+
+	// Backpropagation variables
+	nn_type *deltas;
+	nn_type *errors;
+} NeuronLayer;
 
 
 /**
- * @brief Structure representing a neural network using double as type
+ * @brief Structure representing a neural network
  * 
  * @param nb_layers				Number of layers in the neural network
- * @param layers				Array of NeuronLayerD representing the layers of the neural network
+ * @param layers				Array of NeuronLayer representing the layers of the neural network
  * @param input_layer			Pointer to the input layer (For easier access and readability)
  * @param output_layer			Pointer to the output layer (For easier access and readability)
  * @param learning_rate			Learning rate of the neural network: how fast the network learns by adjusting the weights
  * 								(0.0 = no learning, 1.0 = full learning)
- * @param activation_function	Activation function of the neural network: how the network will activate the neurons
  */
-typedef struct NeuralNetworkD {
-	int nb_layers;							// Arbitrary
-	NeuronLayerD *layers;					// [nb_layers] (containing the input layer, the hidden layers and the output layer)
-	NeuronLayerD *input_layer;				// Pointer to the input layer (For easier access and readability)
-	NeuronLayerD *output_layer;				// Pointer to the output layer (For easier access and readability)
-	double learning_rate;					// Arbitrary
-	double (*activation_function)(double);	// Arbitrary
+typedef struct NeuralNetwork {
+	int nb_layers;								// Arbitrary
+	NeuronLayer *layers;						// [nb_layers] (containing the input layer, the hidden layers and the output layer)
+	NeuronLayer *input_layer;					// Pointer to the input layer (For easier access and readability)
+	NeuronLayer *output_layer;					// Pointer to the output layer (For easier access and readability)
+	double learning_rate;						// Arbitrary, ex: 1.0, 0.5, 0.1, 0.01, 0.001, ...
 
-	long long memory_size;					// Memory size of the neural network (in bytes)
-} NeuralNetworkD;
+	long long memory_size;						// Memory size of the neural network (in bytes)
+} NeuralNetwork;
 
-NeuralNetworkD createNeuralNetworkD(int nb_layers, int nb_neurons_per_layer[], double learning_rate, double (*activation_function)(double));
-void printNeuralNetworkD(NeuralNetworkD network);
-void printActivationValues(NeuralNetworkD network);
-void freeNeuralNetworkD(NeuralNetworkD *network);
-int saveNeuralNetworkD(NeuralNetworkD network, char *filename, int generate_human_readable_file);
-NeuralNetworkD* loadNeuralNetworkD(char *filename, double (*activation_function)(double));
+int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_layer[], char **activation_function_names, double learning_rate);
+void printNeuralNetwork(NeuralNetwork network);
+void printActivationValues(NeuralNetwork network);
+void freeNeuralNetwork(NeuralNetwork *network);
+int saveNeuralNetwork(NeuralNetwork network, char *filename, int generate_human_readable_file);
+int loadNeuralNetwork(NeuralNetwork *network, char *filename);
 
 #endif
 

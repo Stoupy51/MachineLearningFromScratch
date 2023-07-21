@@ -13,7 +13,7 @@
 #define NEURAL_NETWORK_PATH "bin/image_upscaler_network.bin"
 #define IMAGES_PATH "images/dataset/"
 
-NeuralNetworkD network;
+NeuralNetwork network;
 int code;
 
 /**
@@ -25,11 +25,11 @@ int code;
 void exitProgram() {
 
 	// Read all the buffers & Save the neural network to a file
-	WARNING_HANDLE_INT(NeuralNetworkDReadAllBuffersGPU(&network), "exitProgram(): Error reading all the buffers\n");
-	WARNING_HANDLE_INT(saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 0), "exitProgram(): Error saving the neural network\n");
+	WARNING_HANDLE_INT(NeuralNetworkReadAllBuffersGPU(&network), "exitProgram(): Error reading all the buffers\n");
+	WARNING_HANDLE_INT(saveNeuralNetwork(network, NEURAL_NETWORK_PATH, 0), "exitProgram(): Error saving the neural network\n");
 
 	// Free the neural network & free private GPU buffers
-	freeNeuralNetworkD(&network);
+	freeNeuralNetwork(&network);
 	stopNeuralNetworkGpuOpenCL();
 	stopNeuralNetworkGpuBuffersOpenCL();
 
@@ -58,14 +58,14 @@ int main() {
 	atexit(exitProgram);
 
 	// Try to load a neural network
-	NeuralNetworkD *loaded_network = loadNeuralNetworkD(NEURAL_NETWORK_PATH, sigmoid);
+	NeuralNetwork *loaded_network = loadNeuralNetwork(NEURAL_NETWORK_PATH, sigmoid);
 	if (loaded_network == NULL) {
 
-		// Create a neural network using double as type
+		// Create a neural network
 		WARNING_PRINT("main(): No neural network found, creating a new one\n");
 		int nb_neurons_per_layer[] = {128*128*3 + 1, 128*128*3, 128*128*3};
 		int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
-		network = createNeuralNetworkD(nb_layers, nb_neurons_per_layer, 0.1, sigmoid);
+		network = initNeuralNetwork(nb_layers, nb_neurons_per_layer, 0.1, sigmoid);
 	} else {
 		INFO_PRINT("main(): Neural network found, using it\n");
 		network = *loaded_network;
@@ -73,7 +73,7 @@ int main() {
 	}
 
 	// Print the neural network information
-	printNeuralNetworkD(network);
+	printNeuralNetwork(network);
 
 	// List all the images in the folder using a pipe
 	char command[512];
@@ -130,7 +130,7 @@ int main() {
 			// Print the current image
 			char buffer[1024];
 			char benchmark_name[512];
-			sprintf(benchmark_name, "NeuralNetworkDtrain (GPU) image %d/%d (%dx%d)", ++img_number, img_list_split.size, current_elt->image.width, current_elt->image.height);
+			sprintf(benchmark_name, "NeuralNetworktrain (GPU) image %d/%d (%dx%d)", ++img_number, img_list_split.size, current_elt->image.width, current_elt->image.height);
 			ST_BENCHMARK_SOLO_COUNT(buffer,
 				{
 
@@ -147,7 +147,7 @@ int main() {
 					}
 
 					// Train the neural network with the resized images
-					int code = NeuralNetworkDtrainFromImageListGPU(&network, img_list_resized, current_elt->image, 0);
+					int code = NeuralNetworktrainFromImageListGPU(&network, img_list_resized, current_elt->image, 0);
 					ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error training the neural network with the image %d/%d\n", img_number, img_list_split.size);
 
 					// Free the resized images list & the excepted output array & go next image
@@ -161,11 +161,11 @@ int main() {
 			// Save the neural network to a file every 25 images
 			if (img_number % 25 == 0) {
 				// Read all the buffers
-				code = NeuralNetworkDReadAllBuffersGPU(&network);
+				code = NeuralNetworkReadAllBuffersGPU(&network);
 				ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error reading all the buffers\n");
 
 				// Save the neural network to a file and another human readable file
-				saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 0);
+				saveNeuralNetwork(network, NEURAL_NETWORK_PATH, 0);
 			}
 		}
 
@@ -174,20 +174,20 @@ int main() {
 		img_list_free(&img_list);
 
 		// Read all the buffers
-		code = NeuralNetworkDReadAllBuffersGPU(&network);
+		code = NeuralNetworkReadAllBuffersGPU(&network);
 		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error reading all the buffers\n");
 
 		// Save the neural network to a file and another human readable file
-		saveNeuralNetworkD(network, NEURAL_NETWORK_PATH, 0);
+		saveNeuralNetwork(network, NEURAL_NETWORK_PATH, 0);
 	}
 	pclose(pipe);
 
 	// Read all the buffers
-	NeuralNetworkDReadAllBuffersGPU(&network);
+	NeuralNetworkReadAllBuffersGPU(&network);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error reading all the buffers\n");
 
 	// Free the neural network & free private GPU buffers
-	freeNeuralNetworkD(&network);
+	freeNeuralNetwork(&network);
 	stopNeuralNetworkGpuOpenCL();
 	stopNeuralNetworkGpuBuffersOpenCL();
 
