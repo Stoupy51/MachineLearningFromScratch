@@ -35,7 +35,7 @@
  * 
  * The backpropagation algorithm is the algorithm that will adjust the weights of the neural network depending on the error of the neural network.
  * It requires an excepted output array with the same size as the output layer of the neural network.
- * The error of the neural network is the difference between the excepted output and the actual output of the neural network.
+ * The error of the neural network is the difference between the excepted output and the actual output of the neural network using a loss function.
  * The backpropagation algorithm will calculate the deltas of the neurons of the neural network and adjust the weights of the neural network.
  * 
  * The learning rate is a value between 0 and 1 that will be used to adjust the weights of the neural network.
@@ -60,7 +60,6 @@
  * @param biases							Biases of the neurons ( [nb_neurons] )
  * 
  * @param deltas							Deltas of the neurons ( [nb_neurons] ) : used for backpropagation
- * @param errors							Errors of the neurons ( [nb_neurons] ) : used for backpropagation
  */
 typedef struct NeuronLayer {
 	int nb_neurons;				// Arbitrary
@@ -79,7 +78,6 @@ typedef struct NeuronLayer {
 
 	// Backpropagation variables
 	nn_type *deltas;
-	nn_type *errors;
 } NeuronLayer;
 
 
@@ -92,15 +90,17 @@ typedef struct NeuronLayer {
  * @param output_layer			Pointer to the output layer (For easier access and readability)
  * @param learning_rate			Learning rate of the neural network: how fast the network learns by adjusting the weights
  * 								(0.0 = no learning, 1.0 = full learning)
+ * @param loss_function			Loss function of the neural network: how the network will calculate the error
  */
 typedef struct NeuralNetwork {
-	int nb_layers;								// Arbitrary
-	NeuronLayer *layers;						// [nb_layers] (containing the input layer, the hidden layers and the output layer)
-	NeuronLayer *input_layer;					// Pointer to the input layer (For easier access and readability)
-	NeuronLayer *output_layer;					// Pointer to the output layer (For easier access and readability)
-	double learning_rate;						// Arbitrary, ex: 1.0, 0.5, 0.1, 0.01, 0.001, ...
+	int nb_layers;												// Arbitrary
+	NeuronLayer *layers;										// Containing the input layer, the hidden layers and the output layer
+	NeuronLayer *input_layer;									// Pointer to the input layer (For easier access and readability)
+	NeuronLayer *output_layer;									// Pointer to the output layer (For easier access and readability)
+	double learning_rate;										// Arbitrary, ex: 1.0, 0.5, 0.1, 0.01, 0.001, ...
+	nn_type (*loss_function)(nn_type**, nn_type**, int, int);	// Arbitrary, ex: mean_squared_error, cross_entropy, ...
 
-	long long memory_size;						// Memory size of the neural network (in bytes)
+	long long memory_size;									// Memory size of the neural network (in bytes)
 } NeuralNetwork;
 
 int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_layer[], char **activation_function_names, double learning_rate);
