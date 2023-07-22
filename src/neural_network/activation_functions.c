@@ -122,7 +122,9 @@ nn_type identity_derivative_f(nn_type x) {
  * @return The activation function corresponding to the name
  */
 nn_type (*get_activation_function(char *activation_function_name))(nn_type) {
-	if (strcmp(activation_function_name, "sigmoid") == 0)
+	if (activation_function_name == NULL)
+		return NULL;
+	else if (strcmp(activation_function_name, "sigmoid") == 0)
 		return sigmoid_f;
 	else if (strcmp(activation_function_name, "relu") == 0)
 		return relu_f;
@@ -144,7 +146,9 @@ nn_type (*get_activation_function(char *activation_function_name))(nn_type) {
  * @return The derivative of the activation function corresponding to the name
  */
 nn_type (*get_activation_function_derivative(char *activation_function_name))(nn_type) {
-	if (strcmp(activation_function_name, "sigmoid") == 0)
+	if (activation_function_name == NULL)
+		return NULL;
+	else if (strcmp(activation_function_name, "sigmoid") == 0)
 		return sigmoid_derivative_f;
 	else if (strcmp(activation_function_name, "relu") == 0)
 		return relu_derivative_f;
