@@ -86,9 +86,9 @@ nn_type squared_hinge_f(nn_type *predictions, nn_type *excepted_values, int size
  * @return The loss function corresponding to the name
  */
 nn_type (*get_loss_function(char *loss_function_name))(nn_type*, nn_type*, int) {
-	if (strcmp(loss_function_name, "MAE") || strcmp(loss_function_name, "mean_absolute_error") == 0)
+	if (strcmp(loss_function_name, "MAE") == 0 || strcmp(loss_function_name, "mean_absolute_error") == 0)
 		return mean_absolute_error_f;
-	else if (strcmp(loss_function_name, "MSE") || strcmp(loss_function_name, "mean_squared_error") == 0)
+	else if (strcmp(loss_function_name, "MSE") == 0 || strcmp(loss_function_name, "mean_squared_error") == 0)
 		return mean_squared_error_f;
 	else if (strcmp(loss_function_name, "huber_loss") == 0)
 		return huber_loss_f;

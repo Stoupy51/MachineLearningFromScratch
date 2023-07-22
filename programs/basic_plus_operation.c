@@ -67,19 +67,19 @@ int main() {
 	char *activation_functions[] = {NULL, "sigmoid", "sigmoid"};
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 	NeuralNetwork network_plus;
-	int code = initNeuralNetwork(&network_plus, nb_layers, nb_neurons_per_layer, activation_functions, "MSE", 0.1);
+	int code = initNeuralNetwork(&network_plus, nb_layers, nb_neurons_per_layer, activation_functions, "MSE", 0.5);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while initializing the neural network\n");
 
 	// Print the neural network information
 	printNeuralNetwork(network_plus);
 
 	///// Create the training data
-	#define NB_TOTAL_DATA 10000
+	#define NB_TOTAL_DATA 1000
 	#define NB_TEST_DATA_PERCENTAGE 10
-	#define BATCH_SIZE 32
+	#define BATCH_SIZE 1
 	#define NB_EPOCHS 1000
-	#define ERROR_TARGET 0.000001
-	#define VERBOSE 2
+	#define ERROR_TARGET 0.00001
+	#define VERBOSE 3
 	double **inputs = mallocBlocking(NB_TOTAL_DATA * sizeof(double*), "main()");
 	double **expected = mallocBlocking(NB_TOTAL_DATA * sizeof(double*), "main()");
 	for (int i = 0; i < NB_TOTAL_DATA; i++) {
@@ -88,7 +88,7 @@ int main() {
 	}
 
 	// Fill the training data
-	#define MAX_VALUE (2000 / 2)	// 1000 + 1000 = 2000
+	#define MAX_VALUE (200 / 2)	// 100 + 100 = 200
 	for (int i = 0; i < NB_TOTAL_DATA; i++) {
 		int a = rand() % MAX_VALUE;
 		int b = rand() % MAX_VALUE;
@@ -130,6 +130,7 @@ int main() {
 			ERROR_PRINT("main(): Error for %d + %d = %d (expected %d)\n", a, b, c, d);
 		}
 	}
+	INFO_PRINT("main(): %d errors on %d test data\n", nb_errors, nb_test_data);
 
 	///// Final part
 	// Free the neural network
