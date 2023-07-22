@@ -121,7 +121,7 @@ void printNeuralNetwork(NeuralNetwork network) {
 	// Print Layers information
 	PRINTER(CYAN"- Number of layers: "YELLOW"%d"CYAN"\n", network.nb_layers);
 	for (int i = 0; i < network.nb_layers; i++) {
-		PRINTER("  - Layer "YELLOW"%d"CYAN":\t"YELLOW"%d"CYAN" neurons\t[Parameters: "YELLOW"%d"CYAN" weights, "YELLOW"%d"CYAN" biases] (Activation function: %s)\n",
+		PRINTER("  - Layer "YELLOW"%d"CYAN":\t"YELLOW"%d"CYAN" neurons\t[Parameters: "YELLOW"%d"CYAN" weights, "YELLOW"%d"CYAN" biases]\t(Activation function: %s)\n",
 			i,
 			network.layers[i].nb_neurons,
 			network.layers[i].nb_neurons * network.layers[i].nb_inputs_per_neuron,

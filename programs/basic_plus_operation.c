@@ -73,11 +73,80 @@ int main() {
 	// Print the neural network information
 	printNeuralNetwork(network_plus);
 
-	// TODO
+	///// Create the training data
+	#define NB_TOTAL_DATA 10000
+	#define NB_TEST_DATA_PERCENTAGE 10
+	#define BATCH_SIZE 32
+	#define NB_EPOCHS 1000
+	#define ERROR_TARGET 0.000001
+	#define VERBOSE 2
+	double **inputs = mallocBlocking(NB_TOTAL_DATA * sizeof(double*), "main()");
+	double **expected = mallocBlocking(NB_TOTAL_DATA * sizeof(double*), "main()");
+	for (int i = 0; i < NB_TOTAL_DATA; i++) {
+		inputs[i] = mallocBlocking(network_plus.input_layer->nb_neurons * sizeof(double), "main()");
+		expected[i] = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(double), "main()");
+	}
+
+	// Fill the training data
+	#define MAX_VALUE (2000 / 2)	// 1000 + 1000 = 2000
+	for (int i = 0; i < NB_TOTAL_DATA; i++) {
+		int a = rand() % MAX_VALUE;
+		int b = rand() % MAX_VALUE;
+		int c = a + b;
+		convertIntToBinaryDoubleArray(a, inputs[i], 0);
+		convertIntToBinaryDoubleArray(b, inputs[i], 32);
+		convertIntToBinaryDoubleArray(c, expected[i], 0);
+	}
+
+	// Train the neural network
+	code = NeuralNetworkTrainCPUSingleCore(&network_plus, inputs, expected,
+		NB_TOTAL_DATA,
+		NB_TEST_DATA_PERCENTAGE,
+		BATCH_SIZE,
+		NB_EPOCHS,
+		ERROR_TARGET,
+		VERBOSE
+	);
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
+
+	///// Test the neural network
+	int nb_test_data = NB_TOTAL_DATA * NB_TEST_DATA_PERCENTAGE / 100;
+	double **test_inputs = &inputs[NB_TOTAL_DATA - nb_test_data];
+	double **test_expected = &expected[NB_TOTAL_DATA - nb_test_data];
+	double **test_outputs = mallocBlocking(nb_test_data * sizeof(double*), "main()");
+	for (int i = 0; i < nb_test_data; i++)
+		test_outputs[i] = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(double), "main()");
+	NeuralNetworkFeedForwardCPUSingleCore(&network_plus, test_inputs, test_outputs, nb_test_data);
+
+	// Print the test results
+	int nb_errors = 0;
+	for (int i = 0; i < nb_test_data; i++) {
+		int a = convertBinaryDoubleArrayToInt(test_inputs[i], 0);
+		int b = convertBinaryDoubleArrayToInt(test_inputs[i], 32);
+		int c = convertBinaryDoubleArrayToInt(test_outputs[i], 0);
+		int d = convertBinaryDoubleArrayToInt(test_expected[i], 0);
+		if (c != d) {
+			nb_errors++;
+			ERROR_PRINT("main(): Error for %d + %d = %d (expected %d)\n", a, b, c, d);
+		}
+	}
 
 	///// Final part
 	// Free the neural network
 	freeNeuralNetwork(&network_plus);
+
+	// Free the training data
+	for (int i = 0; i < NB_TOTAL_DATA; i++) {
+		free(inputs[i]);
+		free(expected[i]);
+	}
+	free(inputs);
+	free(expected);
+
+	// Free the test data
+	for (int i = 0; i < nb_test_data; i++)
+		free(test_outputs[i]);
+	free(test_outputs);
 
 	// Final print and return
 	INFO_PRINT("main(): End of program\n");
