@@ -59,6 +59,22 @@ void* mallocBlocking(size_t size, const char* prefix) {
 
 
 /**
+ * @brief This function duplicates a memory block and returns a pointer to it.
+ * 
+ * @param ptr		Pointer to the memory block to duplicate
+ * @param size		Size of the memory block to duplicate
+ * @param prefix	Prefix to print in the warning message, ex: "duplicateMemory()"
+ * 
+ * @return void*	Pointer to the duplicated memory block
+*/
+void* duplicateMemory(void* ptr, size_t size, const char* prefix) {
+	void* new_ptr = mallocBlocking(size, prefix == NULL ? "duplicateMemory()" : prefix);
+	memcpy(new_ptr, ptr, size);
+	return new_ptr;
+}
+
+
+/**
  * @brief This function write a string to a file
  * depending on the mode (append or overwrite).
  * 

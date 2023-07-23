@@ -110,6 +110,7 @@ void printActivationValues(NeuralNetwork network);
 void freeNeuralNetwork(NeuralNetwork *network);
 int saveNeuralNetwork(NeuralNetwork network, char *filename, int generate_human_readable_file);
 int loadNeuralNetwork(NeuralNetwork *network, char *filename);
+void deepCloneNeuralNetwork(NeuralNetwork *network_to_clone, NeuralNetwork *cloned_network);
 
 #endif
 

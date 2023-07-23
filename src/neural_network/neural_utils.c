@@ -398,3 +398,49 @@ int loadNeuralNetwork(NeuralNetwork *network, char *filename) {
 	return 0;
 }
 
+/**
+ * @brief Function that clones a neural network (deep copy)
+ * 
+ * @param network_to_clone		Neural network to clone
+ * @param cloned_network		Pointer to the cloned neural network
+ * 
+ * @return void
+ */
+void deepCloneNeuralNetwork(NeuralNetwork *network_to_clone, NeuralNetwork *cloned_network) {
+
+	// Clone the easy values
+	*cloned_network = *network_to_clone;
+
+	// Duplicate the layers array
+	long long this_malloc_size = cloned_network->nb_layers * sizeof(NeuronLayer);
+	cloned_network->layers = duplicateMemory(network_to_clone->layers, this_malloc_size, "deepCloneNeuralNetwork()");
+
+	// For each layer of the neural network,
+	for (int i = 0; i < network_to_clone->nb_layers; i++) {
+
+		// Clone the activation function name
+		int activation_function_name_length = strlen(network_to_clone->layers[i].activation_function_name);
+		cloned_network->layers[i].activation_function_name = duplicateMemory(network_to_clone->layers[i].activation_function_name, sizeof(char) * (activation_function_name_length + 1), "deepCloneNeuralNetwork()");
+
+		// Stop here if it's the first layer (no weights, biases, etc.)
+		if (i == 0) continue;
+
+		// Duplicate the weights_flat, the weights, the biases, the deltas and the errors
+		this_malloc_size = (long long)network_to_clone->layers[i].nb_neurons * (long long)network_to_clone->layers[i].nb_inputs_per_neuron * sizeof(nn_type);
+		cloned_network->layers[i].weights_flat = duplicateMemory(network_to_clone->layers[i].weights_flat, this_malloc_size, "deepCloneNeuralNetwork()");
+		this_malloc_size = network_to_clone->layers[i].nb_neurons * sizeof(nn_type);
+		cloned_network->layers[i].weights = duplicateMemory(network_to_clone->layers[i].weights, this_malloc_size, "deepCloneNeuralNetwork()");
+		cloned_network->layers[i].activations_values = duplicateMemory(network_to_clone->layers[i].activations_values, this_malloc_size, "deepCloneNeuralNetwork()");
+		cloned_network->layers[i].biases = duplicateMemory(network_to_clone->layers[i].biases, this_malloc_size, "deepCloneNeuralNetwork()");
+		cloned_network->layers[i].deltas = duplicateMemory(network_to_clone->layers[i].deltas, this_malloc_size, "deepCloneNeuralNetwork()");
+
+		// Assign the weights_flat addresses to the weights
+		for (int j = 0; j < network_to_clone->layers[i].nb_neurons; j++)
+			cloned_network->layers[i].weights[j] = &(cloned_network->layers[i].weights_flat[j * cloned_network->layers[i].nb_inputs_per_neuron]);
+	}
+
+	// Assign the input and output layers pointers
+	cloned_network->input_layer = &(cloned_network->layers[0]);
+	cloned_network->output_layer = &(cloned_network->layers[cloned_network->nb_layers - 1]);
+}
+
