@@ -77,12 +77,12 @@ void NeuralNetworkBackPropagationCPUSingleCore(NeuralNetwork *network, nn_type *
 	for (int batch = 0; batch < batch_size; batch++) {
 
 		// For each neuron of the output layer,
-		for (int j = 0; j < network->output_layer->nb_neurons; j++) {
+		for (int neuron = 0; neuron < network->output_layer->nb_neurons; neuron++) {
 
 			// Calculate the delta of the neuron
-			nn_type error = predicted[batch][j] - expected[batch][j];
-			nn_type derivative = network->output_layer->activation_function_derivative(predicted[batch][j]);
-			network->output_layer->deltas[j] += error * derivative;
+			nn_type error = expected[batch][neuron] - predicted[batch][neuron];
+			nn_type derivative = network->output_layer->activation_function_derivative(predicted[batch][neuron]);
+			network->output_layer->deltas[neuron] += error * derivative;
 		}
 	}
 
@@ -92,50 +92,52 @@ void NeuralNetworkBackPropagationCPUSingleCore(NeuralNetwork *network, nn_type *
 		// For each neuron of the layer,
 		for (int j = 0; j < network->layers[i].nb_neurons; j++) {
 
-			// Calculate derivative
-			nn_type input = network->layers[i].activations_values[j];
-			nn_type derivative = network->layers[i].activation_function_derivative(input);
-
-			// Calculate the sum of the deltas multiplied by the weights
-			nn_type delta_sum = 0.0;
+			// Calculate the error of the neuron (sum( weight * delta of the next layer ))
+			double error = 0;
 			for (int k = 0; k < network->layers[i + 1].nb_neurons; k++) {
-				nn_type delta = network->layers[i + 1].deltas[k];
-				nn_type weight = network->layers[i + 1].weights[k][j];
-				delta_sum += delta * weight;
+
+				// Get the weight of the next layer neuron linked to the current neuron
+				// (Not [j][k] because it's reversed compared to the feed forward algorithm (checking next layer instead of previous layer))
+				double weight = network->layers[i + 1].weights[k][j];
+
+				// Get the delta of the next layer neuron
+				double delta = network->layers[i + 1].deltas[k];
+
+				// Add the weight * delta to the error
+				error += weight * delta;
 			}
 
-			// Calculate the delta of the neuron
-			network->layers[i].deltas[j] += delta_sum * derivative;
+			// Calculate the derivative of the activation function of the neuron
+			double input = network->layers[i].activations_values[j];
+			double derivative = network->layers[i].activation_function_derivative(input);
+
+			// Calculate the delta of the neuron (error * derivative)
+			network->layers[i].deltas[j] += error * derivative;
 		}
 	}
 
 	///// Update the weights and the biases of the neural network
-	// For each layer of the neural network (except the input layer) (from the end),
-	for (int i = network->nb_layers - 1; i > 0; i--) {
+	// For each layer of the neural network (except the input layer),
+	for (int i = 1; i < network->nb_layers; i++) {
 
-		// For each neuron of the layer,
+		// For each neuron of the current layer,
 		for (int j = 0; j < network->layers[i].nb_neurons; j++) {
 
-			// For each input of the neuron,
+			// Variables for easier reading
+			double learning_rate = network->learning_rate;
+			double delta = network->layers[i].deltas[j];
+
+			// For each weight of the current neuron,
 			for (int k = 0; k < network->layers[i].nb_inputs_per_neuron; k++) {
 
-				// Calculate the new weight
-				nn_type input = network->layers[i - 1].activations_values[k];
-				nn_type delta = network->layers[i].deltas[j];
-				nn_type weight = network->layers[i].weights[j][k];
-				nn_type new_weight = weight - network->learning_rate * input * delta;
+				// Variable for easier reading
+				double activation_value = network->layers[i - 1].activations_values[k];
 
-				// Update the weight
-				network->layers[i].weights[j][k] = new_weight;
+				// Update the weight (weight + (learning_rate * delta of the current neuron * activation_value of the previous layer))
+				network->layers[i].weights[j][k] += learning_rate * delta * activation_value;
 			}
-
-			// Calculate the new bias
-			nn_type delta = network->layers[i].deltas[j];
-			nn_type bias = network->layers[i].biases[j];
-			nn_type new_bias = bias - network->learning_rate * delta;
-
-			// Update the bias
-			network->layers[i].biases[j] = new_bias;
+			// Update the bias (bias + (learning_rate * delta of the current neuron))
+			network->layers[i].biases[j] += learning_rate * delta;
 		}
 	}
 }
@@ -158,7 +160,7 @@ void NeuralNetworkBackPropagationCPUSingleCore(NeuralNetwork *network, nn_type *
  * @param error_target				Target error value to stop the training (optional, 0 to disable)
  * At least one of the two must be specified. If both are specified, the training will stop when one of the two conditions is met.
  * 
- * @param verbose					Verbose level (0: no verbose, 1: verbose, 2: very verbose, 3: normal verbose + benchmark)
+ * @param verbose					Verbose level (0: no verbose, 1: verbose, 2: very verbose, 3: normal verbose + benchmark, 4: all)
  * 
  * @return int						Number of epochs done, -1 if there is an error
 */
@@ -201,7 +203,7 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 			int nb_samples = last_sample - first_sample + 1;
 
 			// Verbose
-			if (verbose == 2)
+			if (verbose == 2 || verbose > 3)
 				DEBUG_PRINT("NeuralNetworkTrainCPU(1 core): Epoch %d/%d,\tBatch %d/%d,\tSamples %d-%d/%d\n", current_epoch, nb_epochs, current_batch + 1, nb_batches, first_sample + 1, last_sample + 1, nb_inputs);
 			
 			// Prepare predicted outputs array for the current batch
@@ -246,8 +248,8 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 
 		// Verbose
 		current_error /= nb_inputs;
-		if (verbose > 0)
-			DEBUG_PRINT("NeuralNetworkTrainCPU(1 core): Epoch %d/%d, Error: %f\n", current_epoch, nb_epochs, current_error);
+		if ((verbose > 0 && (current_epoch < 6 || current_epoch == nb_epochs || current_epoch % 10 == 0)) || verbose == 2)
+			DEBUG_PRINT("NeuralNetworkTrainCPU(1 core): Epoch %d/%d, Error: %.12f\n", current_epoch, nb_epochs, current_error);
 	}
 
 	// Verbose
