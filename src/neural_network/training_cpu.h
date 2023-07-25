@@ -4,19 +4,12 @@
 
 #include "neural_utils.h"
 
-void NeuralNetworkFeedForwardCPUSingleCore(
-	NeuralNetwork *network,
-	nn_type **inputs,
-	nn_type **outputs,
-	int batch_size
-);
+void NeuralNetworkFeedForwardCPUSingleCore(NeuralNetwork *network, nn_type *input, nn_type *output);
+void NeuralNetworkStartBackPropagationCPUSingleCore(NeuralNetwork *network, nn_type **predicted, nn_type **expected, int batch_size);
+void NeuralNetworkFinishBackPropagationCPUSingleCore(NeuralNetwork *network);
+void NeuralNetworkUpdateWeightsCPUSingleCore(NeuralNetwork *network);
 
-void NeuralNetworkBackPropagationCPUSingleCore(
-	NeuralNetwork *network,
-	nn_type **predicted,
-	nn_type **expected,
-	int batch_size
-);
+// Single-core version
 
 int NeuralNetworkTrainCPUSingleCore(
 	NeuralNetwork *network,
@@ -29,6 +22,21 @@ int NeuralNetworkTrainCPUSingleCore(
 	nn_type error_target,
 	int verbose
 );
+
+// Multi-core version
+
+int NeuralNetworkTrainCPUMultiCores(
+	NeuralNetwork *network,
+	nn_type **inputs,
+	nn_type **expected,
+	int nb_inputs,
+	int test_inputs_percentage,
+	int batch_size,
+	int nb_epochs,
+	nn_type error_target,
+	int verbose
+);
+
 
 #endif
 

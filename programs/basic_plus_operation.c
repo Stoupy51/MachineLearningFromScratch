@@ -77,7 +77,7 @@ int main() {
 
 	///// Create the training data
 	#define NB_TOTAL_DATA 10000
-	#define NB_TEST_DATA_PERCENTAGE 10
+	#define NB_TEST_DATA_PERCENTAGE 20
 	#define BATCH_SIZE 1
 	#define NB_EPOCHS 200
 	#define ERROR_TARGET 0.000001

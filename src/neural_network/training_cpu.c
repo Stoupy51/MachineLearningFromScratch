@@ -5,60 +5,53 @@
 
 /**
  * @brief Feed forward algorithm of the neural network
- * takes a batch of inputs and calculates the outputs of the neural network
  * 
- * @details batch = Index of the selected batch
  * @details i = Index of the selected layer
  * @details j = Index of the selected neuron
  * @details k = Index of the selected input
  * 
  * @param network		Pointer to the neural network
- * @param inputs		Pointer to the inputs array (nn_type), must be the same size as the input layer
- * @param outputs		Pointer to the outputs outputs array (nn_type), must be the same size as the output layer
- * @param batch_size	Number of samples in the batch
+ * @param input			Pointer to the input array (nn_type), must be the same size as the input layer
+ * @param output		Pointer to the output array (nn_type), must be the same size as the output layer
  * 
  * @return void
  */
-void NeuralNetworkFeedForwardCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, int batch_size) {
+void NeuralNetworkFeedForwardCPUSingleCore(NeuralNetwork *network, nn_type *input, nn_type *output) {
 
-	// For each batch, calculate the outputs of the neural network
-	for (int batch = 0; batch < batch_size; batch++) {
+	// Copy the inputs to the input layer of the neural network
+	size_t input_layer_size = network->input_layer->nb_neurons * sizeof(nn_type);
+	memcpy(network->input_layer->activations_values, input, input_layer_size);
 
-		// Copy the inputs to the input layer of the neural network
-		size_t input_layer_size = network->input_layer->nb_neurons * sizeof(nn_type);
-		memcpy(network->input_layer->activations_values, inputs[batch], input_layer_size);
+	// For each layer of the neural network (except the input layer),
+	for (int i = 1; i < network->nb_layers; i++) {
 
-		// For each layer of the neural network (except the input layer),
-		for (int i = 1; i < network->nb_layers; i++) {
+		// For each neuron of the layer,
+		for (int j = 0; j < network->layers[i].nb_neurons; j++) {
 
-			// For each neuron of the layer,
-			for (int j = 0; j < network->layers[i].nb_neurons; j++) {
-
-				// Calculate the sum of the inputs multiplied by the weights
-				nn_type input_sum = 0.0;
-				for (int k = 0; k < network->layers[i].nb_inputs_per_neuron; k++) {
-					nn_type input_value = network->layers[i - 1].activations_values[k];
-					nn_type weight = network->layers[i].weights[j][k];
-					input_sum += input_value * weight;
-				}
-
-				// Add the bias to the sum
-				input_sum += network->layers[i].biases[j];
-
-				// Activate the neuron with the activation function
-				network->layers[i].activations_values[j] = network->layers[i].activation_function(input_sum);
+			// Calculate the sum of the inputs multiplied by the weights
+			nn_type input_sum = 0.0;
+			for (int k = 0; k < network->layers[i].nb_inputs_per_neuron; k++) {
+				nn_type input_value = network->layers[i - 1].activations_values[k];
+				nn_type weight = network->layers[i].weights[j][k];
+				input_sum += input_value * weight;
 			}
-		}
 
-		// Copy the outputs of the output layer to the outputs array
-		size_t output_layer_size = network->output_layer->nb_neurons * sizeof(nn_type);
-		memcpy(outputs[batch], network->output_layer->activations_values, output_layer_size);
+			// Add the bias to the sum
+			input_sum += network->layers[i].biases[j];
+
+			// Activate the neuron with the activation function
+			network->layers[i].activations_values[j] = network->layers[i].activation_function(input_sum);
+		}
 	}
+
+	// Copy the outputs of the output layer to the outputs array
+	size_t output_layer_size = network->output_layer->nb_neurons * sizeof(nn_type);
+	memcpy(output, network->output_layer->activations_values, output_layer_size);
 }
 
 /**
- * @brief Backpropagation algorithm of the neural network
- * takes a batch of expected outputs and adjusts the weights of the neural network
+ * @brief Start backpropagation algorithm of the neural network
+ * takes a batch of expected outputs and adjusts the deltas of the output layer
  * 
  * @param network		Pointer to the neural network
  * @param predicted		Pointer to the predicted outputs array (nn_type), must be the same size as the output layer
@@ -67,24 +60,32 @@ void NeuralNetworkFeedForwardCPUSingleCore(NeuralNetwork *network, nn_type **inp
  * 
  * @return void
  */
-void NeuralNetworkBackPropagationCPUSingleCore(NeuralNetwork *network, nn_type **predicted, nn_type **expected, int batch_size) {
+void NeuralNetworkStartBackPropagationCPUSingleCore(NeuralNetwork *network, nn_type **predicted, nn_type **expected, int batch_size) {
 
-	// Reset deltas of all the layers (except the input layer)
-	for (int i = 1; i < network->nb_layers; i++)
-		memset(network->layers[i].deltas, 0.0, network->layers[i].nb_neurons * sizeof(nn_type));
+	// For each neuron of the output layer,
+	for (int i = 0; i < network->output_layer->nb_neurons; i++) {
 
-	// For each batch, add the deltas of the output layer
-	for (int batch = 0; batch < batch_size; batch++) {
+		// Calculate the error of the neuron (expected - predicted)
+		double error = 0;
+		for (int j = 0; j < batch_size; j++)
+			error += expected[j][i] - predicted[j][i];
+		error /= batch_size;
+		double derivative = network->output_layer->activation_function_derivative(predicted[0][i]);
 
-		// For each neuron of the output layer,
-		for (int neuron = 0; neuron < network->output_layer->nb_neurons; neuron++) {
-
-			// Calculate the delta of the neuron
-			nn_type error = expected[batch][neuron] - predicted[batch][neuron];
-			nn_type derivative = network->output_layer->activation_function_derivative(predicted[batch][neuron]);
-			network->output_layer->deltas[neuron] += error * derivative;
-		}
+		// Calculate the delta of the neuron (error * derivative)
+		network->output_layer->deltas[i] = error * derivative;
 	}
+}
+
+/**
+ * @brief Finish backpropagation algorithm of the neural network
+ * by adjusting the deltas of the hidden layers
+ * 
+ * @param network		Pointer to the neural network
+ * 
+ * @return void
+ */
+void NeuralNetworkFinishBackPropagationCPUSingleCore(NeuralNetwork *network) {
 
 	// For each hidden layer of the neural network, starting from the last hidden layer, add the deltas of the layer
 	for (int i = network->nb_layers - 2; i > 0; i--) {
@@ -115,8 +116,17 @@ void NeuralNetworkBackPropagationCPUSingleCore(NeuralNetwork *network, nn_type *
 			network->layers[i].deltas[j] += error * derivative;
 		}
 	}
+}
 
-	///// Update the weights and the biases of the neural network
+/**
+ * @brief Update the weights of the neural network
+ * 
+ * @param network		Pointer to the neural network
+ * 
+ * @return void
+ */
+void NeuralNetworkUpdateWeightsCPUSingleCore(NeuralNetwork *network) {
+
 	// For each layer of the neural network (except the input layer),
 	for (int i = 1; i < network->nb_layers; i++) {
 
@@ -211,16 +221,28 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 			for (int i = 0; i < nb_samples; i++)
 				predicted[i] = mallocBlocking(network->output_layer->nb_neurons * sizeof(nn_type), "NeuralNetworkTrainCPU(1 core)");
 
-			// Feed forward the current batch
-			NeuralNetworkFeedForwardCPUSingleCore(network, inputs + first_sample, predicted, nb_samples);
+			// Feed forward the current batches
+			for (int i = 0; i < nb_samples; i++)
+				NeuralNetworkFeedForwardCPUSingleCore(network, inputs[first_sample + i], predicted[i]);
 			
-			// Backpropagate the current batch
-			NeuralNetworkBackPropagationCPUSingleCore(network, predicted, expected + first_sample, nb_samples);
+			// Reset deltas of all the layers (except the input layer)
+			for (int i = 1; i < network->nb_layers; i++)
+				memset(network->layers[i].deltas, 0.0, network->layers[i].nb_neurons * sizeof(nn_type));
+			
+			// Backpropagation
+			NeuralNetworkStartBackPropagationCPUSingleCore(network, predicted, expected, nb_samples);
+
+			// Finish backpropagation
+			for (int i = 0; i < nb_samples; i++)
+				NeuralNetworkFinishBackPropagationCPUSingleCore(network, predicted[i], expected[first_sample + i]);
 			
 			// Free the predicted outputs array for the current batch
 			for (int i = 0; i < nb_samples; i++)
 				free(predicted[i]);
 			free(predicted);
+
+			// Update the weights of the neural network
+			NeuralNetworkUpdateWeightsCPUSingleCore(network, nb_samples);
 		}
 
 		// Use the test inputs to calculate the current error
@@ -232,7 +254,8 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 				predicted[i] = mallocBlocking(network->output_layer->nb_neurons * sizeof(nn_type), "NeuralNetworkTrainCPU(1 core)");
 
 			// Feed forward the test inputs
-			NeuralNetworkFeedForwardCPUSingleCore(network, test_inputs, predicted, nb_test_inputs);
+			for (int i = 0; i < nb_test_inputs; i++)
+				NeuralNetworkFeedForwardCPUSingleCore(network, test_inputs[i], predicted[i]);
 			
 			// Calculate the error of the test inputs using the loss function
 			for (int i = 0; i < nb_test_inputs; i++) {
@@ -257,4 +280,14 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 		DEBUG_PRINT("NeuralNetworkTrainCPU(1 core): Training done!\n");
 	return current_epoch;
 }
+
+
+
+
+
+
+#include "../universal_pthread.h"
+
+
+
 
