@@ -72,7 +72,7 @@ int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_
 
 		///// Allocate memory for the activations_values (nb_neurons * sizeof(nn_type))
 		network->layers[i].activations_values = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "initNeuralNetwork()");
-		fillRandomDoubleArray(network->layers[i].activations_values, network->layers[i].nb_neurons, -1.0, 1.0);
+		fillRandomFloatArray(network->layers[i].activations_values, network->layers[i].nb_neurons, -1.0, 1.0);
 		network->layers[i].activation_function_name = activation_function_names[i] == NULL ? "NULL" : strdup(activation_function_names[i]);
 
 		// Stop here if it's the first layer (no weights, biases, etc.)
@@ -86,7 +86,7 @@ int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_
 		this_malloc_size = (long long)network->layers[i].nb_neurons * (long long)network->layers[i].nb_inputs_per_neuron * sizeof(nn_type);
 		network->layers[i].weights_flat = mallocBlocking(this_malloc_size, "initNeuralNetwork()");
 		network->layers[i].weights = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type*), "initNeuralNetwork()");
-		fillRandomDoubleArray(network->layers[i].weights_flat, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron, -1.0, 1.0);
+		fillRandomFloatArray(network->layers[i].weights_flat, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron, -1.0, 1.0);
 
 		// Assign the weights_flat addresses to the weights
 		for (int j = 0; j < network->layers[i].nb_neurons; j++)
@@ -95,7 +95,7 @@ int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_
 		///// Allocate memory for the biases, and the deltas (nb_neurons * sizeof(nn_type))
 		this_malloc_size = network->layers[i].nb_neurons * sizeof(nn_type);
 		network->layers[i].biases = mallocBlocking(this_malloc_size, "initNeuralNetwork()");
-		fillRandomDoubleArray(network->layers[i].biases, network->layers[i].nb_neurons, -1.0, 1.0);
+		fillRandomFloatArray(network->layers[i].biases, network->layers[i].nb_neurons, -1.0, 1.0);
 		network->layers[i].deltas = mallocBlocking(this_malloc_size, "initNeuralNetwork()");
 	}
 

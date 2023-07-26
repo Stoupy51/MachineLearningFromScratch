@@ -70,7 +70,7 @@ int main() {
 		// Benchmark multiple CPU threads
 		ST_BENCHMARK_SOLO_TIME(buffer,
 			{
-				fillRandomDoubleArrayCPUThreads(array, sizes[i], min, max);
+				fillRandomFloatArrayCPUThreads(array, sizes[i], min, max);
 			},
 			"multipleCpuThreads", 5	// 5 seconds at least
 		);
@@ -79,7 +79,7 @@ int main() {
 		// Benchmark the GPU
 		ST_BENCHMARK_SOLO_TIME(buffer,
 			{
-				fillRandomDoubleArrayGPU(array, sizes[i], min, max);
+				fillRandomFloatArrayGPU(array, sizes[i], min, max);
 			},
 			"GPU", 5	// 5 seconds at least
 		);

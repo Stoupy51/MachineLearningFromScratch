@@ -544,62 +544,62 @@ int setupOneCallFunctionsOpenCL() {
  * 
  * @return int			0 if success, -1 otherwise (no GPU device found, or error while filling the array)
  */
-int fillRandomDoubleArrayGPU(double* array, unsigned long long size, double min, double max) {
+int fillRandomFloatArrayGPU(double* array, unsigned long long size, double min, double max) {
 	if (setupOneCallFunctionsOpenCL() != 0) return -1;
 
 	// Create the kernel if needed
 	int this_kernel_id = 1;
 	if (ocfe_current_kernel != this_kernel_id) {
-		ocfe_kernel = clCreateKernel(ocfe_program, "fillRandomDoubleArrayGPU", &ocfe_code);
-		ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot create kernel, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+		ocfe_kernel = clCreateKernel(ocfe_program, "fillRandomFloatArrayGPU", &ocfe_code);
+		ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot create kernel, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 		ocfe_current_kernel = this_kernel_id;
 	}
 
 	// Create the buffer & copy the array
 	cl_mem buffer = clCreateBuffer(ocfe_oc.context, CL_MEM_READ_WRITE, sizeof(double) * size, NULL, &ocfe_code);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot create buffer, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot create buffer, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 	cl_event write_event;
 	ocfe_code = clEnqueueWriteBuffer(ocfe_oc.command_queue, buffer, CL_FALSE, 0, size * sizeof(double), array, 0, NULL, &write_event);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot copy array to buffer (%lld = %lld * %zu), reason: %d / %s\n", size * sizeof(double), size, sizeof(double), ocfe_code, getOpenCLErrorString(ocfe_code));
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot copy array to buffer (%lld = %lld * %zu), reason: %d / %s\n", size * sizeof(double), size, sizeof(double), ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Set the kernel arguments
 	ocfe_code = clSetKernelArg(ocfe_kernel, 0, sizeof(cl_mem), &buffer);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 0, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot set kernel argument 0, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 	ocfe_code = clSetKernelArg(ocfe_kernel, 1, sizeof(unsigned long long), &size);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 1, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot set kernel argument 1, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 	ocfe_code = clSetKernelArg(ocfe_kernel, 2, sizeof(double), &min);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 2, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot set kernel argument 2, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 	double max_minus_min = max - min;
 	ocfe_code = clSetKernelArg(ocfe_kernel, 3, sizeof(double), &max_minus_min);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot set kernel argument 3, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot set kernel argument 3, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Execute the kernel
 	size_t global_item_size = size;
 	size_t local_item_size = 1;
 	cl_event kernel_event;
 	ocfe_code = clEnqueueNDRangeKernel(ocfe_oc.command_queue, ocfe_kernel, 1, NULL, &global_item_size, &local_item_size, 1, &write_event, &kernel_event);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot execute kernel, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot execute kernel, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Copy the buffer to the array
 	cl_event read_event;
 	ocfe_code = clEnqueueReadBuffer(ocfe_oc.command_queue, buffer, CL_FALSE, 0, sizeof(double) * size, array, 1, &kernel_event, &read_event);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot copy buffer to array, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot copy buffer to array, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Wait for the read event to finish
 	ocfe_code = clWaitForEvents(1, &read_event);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot wait for read event, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot wait for read event, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Release the buffer
 	ocfe_code = clReleaseMemObject(buffer);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot release buffer, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot release buffer, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Release the events
 	ocfe_code = clReleaseEvent(write_event);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot release write event, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot release write event, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 	ocfe_code = clReleaseEvent(kernel_event);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot release kernel event, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot release kernel event, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 	ocfe_code = clReleaseEvent(read_event);
-	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomDoubleArrayGPU(): Cannot release read event, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
+	ERROR_HANDLE_INT_RETURN_INT(ocfe_code, "fillRandomFloatArrayGPU(): Cannot release read event, reason: %d / %s\n", ocfe_code, getOpenCLErrorString(ocfe_code));
 
 	// Return success
 	return 0;

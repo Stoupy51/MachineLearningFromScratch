@@ -30,7 +30,7 @@ int createKernelFromSource(char* kernel_source, char* kernel_name, cl_program* p
 
 // One call functions
 
-int fillRandomDoubleArrayGPU(double* array, unsigned long long size, double min, double max);
+int fillRandomFloatArrayGPU(double* array, unsigned long long size, double min, double max);
 
 
 

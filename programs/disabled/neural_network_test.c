@@ -60,8 +60,8 @@ int main() {
 	double *excepted_output = (double*)malloc(network.output_layer->nb_neurons * sizeof(double));
 
 	// Make random input and excepted output
-	fillRandomDoubleArray(input, network.input_layer->nb_neurons, 0.0, 1.0);
-	fillRandomDoubleArray(excepted_output, network.output_layer->nb_neurons, 0.0, 1.0);
+	fillRandomFloatArray(input, network.input_layer->nb_neurons, 0.0, 1.0);
+	fillRandomFloatArray(excepted_output, network.output_layer->nb_neurons, 0.0, 1.0);
 	
 	// Benchmark the GPU training
 	char buffer[1024];

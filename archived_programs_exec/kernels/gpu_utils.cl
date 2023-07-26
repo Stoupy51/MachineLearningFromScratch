@@ -1,9 +1,9 @@
 
 /**
  * @brief Fills an array with random double values.
- * Function called in gpu_utils.c by fillRandomDoubleArrayGPU().
+ * Function called in gpu_utils.c by fillRandomFloatArrayGPU().
  * 
- * @details Should be prohibited because slower than fillRandomDoubleArrayCPUThreads().
+ * @details Should be prohibited because slower than fillRandomFloatArrayCPUThreads().
  * 
  * @param array				The array to fill
  * @param size				The size of the array
@@ -12,7 +12,7 @@
  * 
  * @return void
  */
-kernel void fillRandomDoubleArrayGPU(global double* array, ulong size, double min, double max_minus_min) {
+kernel void fillRandomFloatArrayGPU(global double* array, ulong size, double min, double max_minus_min) {
 
 	// Get the index of the current element
 	int i = get_global_id(0);

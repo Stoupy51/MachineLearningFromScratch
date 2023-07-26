@@ -11,23 +11,23 @@
 #define MIN_SIZE_FOR_CPU_THREADS 500000
 
 struct frdacptt_args_t {
-	double* array;
+	nn_type* array;
 	unsigned long long size;
-	double min;
-	double max_minus_min;
+	nn_type min;
+	nn_type max_minus_min;
 	int nb_cores;
 };
 struct frdacptt_args_t frdacptt_args;
 
 /**
- * @brief Thread function to fill an array of double with random values
+ * @brief Thread function to fill an array of nn_type with random values
  * between min and max, using all the cores of the CPU.
  * 
  * @param args			The arguments of the thread
  * 
  * @return 0
  */
-thread_return_type fillRandomDoubleArrayCPUThreadsThread(thread_param_type args) {
+thread_return_type fillRandomFloatArrayCPUThreadsThread(thread_param_type args) {
 
 	// Get the argument
 	int thread_id = *(int*)args;
@@ -39,14 +39,14 @@ thread_return_type fillRandomDoubleArrayCPUThreadsThread(thread_param_type args)
 
 	// Fill the array
 	for (unsigned long long i = start; i < end; i++)
-		frdacptt_args.array[i] = (double)rand() / RAND_MAX * frdacptt_args.max_minus_min + frdacptt_args.min;
+		frdacptt_args.array[i] = (nn_type)rand() / RAND_MAX * frdacptt_args.max_minus_min + frdacptt_args.min;
 
 	// Return
 	return 0;
 }
 
 /**
- * @brief This function fills an array of double with random values
+ * @brief This function fills an array of nn_type with random values
  * between min and max, using all the cores of the CPU.
  * 
  * @param array			The array to fill
@@ -56,7 +56,7 @@ thread_return_type fillRandomDoubleArrayCPUThreadsThread(thread_param_type args)
  * 
  * @return int			0 if everything went well, -1 otherwise
  */
-int fillRandomDoubleArrayCPUThreads(double* array, unsigned long long size, double min, double max) {
+int fillRandomFloatArrayCPUThreads(nn_type* array, unsigned long long size, nn_type min, nn_type max) {
 	
 	// Get the number of cores
 	int nb_cores;
@@ -77,13 +77,13 @@ int fillRandomDoubleArrayCPUThreads(double* array, unsigned long long size, doub
 	frdacptt_args.max_minus_min = max - min;
 	frdacptt_args.nb_cores = nb_cores;
 	int *threads_ids = malloc(nb_cores * sizeof(int));
-	ERROR_HANDLE_PTR_RETURN_INT(threads_ids, "fillRandomDoubleArrayCPUThreads(): Failed to allocate memory for the threads_ids\n");
+	ERROR_HANDLE_PTR_RETURN_INT(threads_ids, "fillRandomFloatArrayCPUThreads(): Failed to allocate memory for the threads_ids\n");
 
 	// Create the threads
 	pthread_t* threads = malloc(nb_cores * sizeof(pthread_t));
 	for (int i = 0; i < nb_cores; i++) {
 		threads_ids[i] = i;
-		pthread_create(&threads[i], NULL, fillRandomDoubleArrayCPUThreadsThread, &threads_ids[i]);
+		pthread_create(&threads[i], NULL, fillRandomFloatArrayCPUThreadsThread, &threads_ids[i]);
 	}
 
 	// Wait for the threads to finish
@@ -99,7 +99,7 @@ int fillRandomDoubleArrayCPUThreads(double* array, unsigned long long size, doub
 }
 
 /**
- * @brief This function fills an array of double with random values
+ * @brief This function fills an array of nn_type with random values
  * between min and max, using CPU or GPU depending on the
  * size of the array to maximize performances.
  * 
@@ -110,15 +110,15 @@ int fillRandomDoubleArrayCPUThreads(double* array, unsigned long long size, doub
  * 
  * @return void
  */
-void fillRandomDoubleArray(double* array, unsigned long long size, double min, double max) {
+void fillRandomFloatArray(nn_type* array, unsigned long long size, nn_type min, nn_type max) {
 
 	// If the array is big enough, try to use the CPU with threads
-	if (size > MIN_SIZE_FOR_CPU_THREADS && fillRandomDoubleArrayCPUThreads(array, size, min, max) == 0)
+	if (size > MIN_SIZE_FOR_CPU_THREADS && fillRandomFloatArrayCPUThreads(array, size, min, max) == 0)
 		return;
 
 	// Otherwise, use 1 core CPU
 	int max_minus_min = max - min;
 	for (unsigned long long i = 0; i < size; i++)
-		array[i] = (double)rand() / RAND_MAX * (max_minus_min) + min;
+		array[i] = (nn_type)rand() / RAND_MAX * (max_minus_min) + min;
 }
 

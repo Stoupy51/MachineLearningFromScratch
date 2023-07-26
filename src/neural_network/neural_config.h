@@ -3,7 +3,7 @@
 #define __NEURAL_CONFIG_H__
 
 // Type of values used in the neural network
-#define NN_TYPE 1
+#define NN_TYPE 0
 #if NN_TYPE == 0
 typedef float nn_type;
 #elif NN_TYPE == 1

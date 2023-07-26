@@ -17,13 +17,13 @@ void exitProgram() {
 	exit(0);
 }
 
-int doubleToInt(double d) {
+int doubleToInt(nn_type d) {
 	return (int)(d + 0.5);
 }
 
 /**
  * @brief Convert an integer to a binary array of
- * double values (0.0 or 1.0) for the neural network.
+ * nn_type values (0.0 or 1.0) for the neural network.
  * 
  * @param value The integer to convert
  * @param array The array to fill
@@ -31,20 +31,20 @@ int doubleToInt(double d) {
  * 
  * @return void
  */
-void convertIntToBinaryDoubleArray(int value, double* array, int array_offset) {
+void convertIntToBinaryDoubleArray(int value, nn_type* array, int array_offset) {
 	for (int i = 0; i < 32; i++)
 		array[array_offset + i] = (value & (1 << i)) ? 1.0 : 0.0;
 }
 
 /**
- * @brief Convert a binary array of double values (0.0 or 1.0) to an integer.
+ * @brief Convert a binary array of nn_type values (0.0 or 1.0) to an integer.
  * 
  * @param array The array to convert
  * @param offset The offset in the array
  * 
  * @return The converted integer
  */
-int convertBinaryDoubleArrayToInt(double* array, int array_offset) {
+int convertBinaryDoubleArrayToInt(nn_type* array, int array_offset) {
 	int value = 0;
 	for (int i = 0; i < 32; i++)
 		value |= doubleToInt(array[array_offset + i]) << i;
