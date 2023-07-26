@@ -101,7 +101,7 @@ int main() {
 	}
 
 	// Train the neural network
-	code = NeuralNetworkTrainCPUSingleCore(&network_plus, inputs, expected,
+	code = NeuralNetworkTrainCPUMultiCores(&network_plus, inputs, expected,
 		NB_TOTAL_DATA,
 		NB_TEST_DATA_PERCENTAGE,
 		BATCH_SIZE,

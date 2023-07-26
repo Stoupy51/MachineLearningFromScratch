@@ -3,6 +3,7 @@
 #define __NEURAL_UTILS_H__
 
 #include "neural_config.h"
+#include "../universal_pthread.h"
 
 /**
  * @file Utils for neural networks
@@ -97,7 +98,7 @@ typedef struct NeuralNetwork {
 	NeuronLayer *layers;								// Containing the input layer, the hidden layers and the output layer
 	NeuronLayer *input_layer;							// Pointer to the input layer (For easier access and readability)
 	NeuronLayer *output_layer;							// Pointer to the output layer (For easier access and readability)
-	double learning_rate;								// Arbitrary, ex: 1.0, 0.5, 0.1, 0.01, 0.001, ...
+	nn_type learning_rate;								// Arbitrary, ex: 1.0, 0.5, 0.1, 0.01, 0.001, ...
 	char *loss_function_name;							// Arbitrary, ex: "MSE", "MAE", "cross_entropy", ...
 	nn_type (*loss_function)(nn_type*, nn_type*, int);	// Arbitrary, ex: mean_squared_error, mean_absolute_error, cross_entropy, ...
 
