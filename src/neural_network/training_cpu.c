@@ -64,10 +64,14 @@ void NeuralNetworkStartBackPropagationCPUSingleCore(NeuralNetwork *network, nn_t
 
 		// Calculate the error of the neuron (expected - predicted)
 		double error = 0;
-		for (int j = 0; j < batch_size; j++)
-			error += expected[j][i] - predicted[j][i];
+		for (int batch = 0; batch < batch_size; batch++)
+			error += expected[batch][i] - predicted[batch][i];
 		error /= batch_size;
-		double derivative = network->output_layer->activation_function_derivative(predicted[0][i]);
+
+		// Calculate the derivative of the activation function of the neuron
+		double derivative = 0;
+		for (int batch = 0; batch < batch_size; batch++)
+			derivative += network->output_layer->activation_function_derivative(predicted[batch][i]);
 
 		// Calculate the delta of the neuron (error * derivative)
 		network->output_layer->deltas[i] = error * derivative;
@@ -285,6 +289,14 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 
 #include "../universal_pthread.h"
 
+/**
+ * @brief Structure used to pass the data to the FeedForwardThread function
+ * 
+ * @param current_layer					Pointer to the current layer
+ * @param previous_activations_values	Pointer to the activations values of the previous layer
+ * @param start_neuron					Index of the first neuron to process
+ * @param end_neuron					Index of the last neuron to process
+ */
 struct FeedForwardThreadData {
 	NeuronLayer *current_layer;
 	nn_type *previous_activations_values;
@@ -382,6 +394,24 @@ void NeuralNetworkFeedForwardCPUMultiCores(NeuralNetwork *network, nn_type *inpu
 	memcpy(output, network->output_layer->activations_values, output_layer_size);
 }
 
+/**
+ * @brief Structure used to pass the data to the StartBackPropagationThread function
+ * 
+ * @param output_layer					Pointer to the output layer
+ * @param predicted						Pointer to the predicted outputs array
+ * @param expected						Pointer to the expected outputs array
+ * @param batch_size					Number of samples in the batch
+ * @param start_neuron					Index of the first neuron to process
+ * @param end_neuron					Index of the last neuron to process
+ */
+struct StartBackPropagationThreadData {
+	NeuronLayer *output_layer;
+	nn_type **predicted;
+	nn_type **expected;
+	int batch_size;
+	int start_neuron;
+	int end_neuron;
+};
 
 
 
