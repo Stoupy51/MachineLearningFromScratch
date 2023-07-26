@@ -639,8 +639,8 @@ void NeuralNetworkUpdateWeightsCPUMultiThreads(NeuralNetwork *network) {
 	int nb_threads = getNumberOfThreads();
 
 	// Create the threads data and the threads array
-	struct UpdateWeightsThreadData *threads_data = mallocBlocking(network->nb_layers * sizeof(struct UpdateWeightsThreadData), "NeuralNetworkUpdateWeightsCPUMultiCores");
-	pthread_t *threads = mallocBlocking(network->nb_layers * sizeof(pthread_t), "NeuralNetworkUpdateWeightsCPUMultiCores");
+	struct UpdateWeightsThreadData *threads_data = mallocBlocking(nb_threads * sizeof(struct UpdateWeightsThreadData), "NeuralNetworkUpdateWeightsCPUMultiCores");
+	pthread_t *threads = mallocBlocking(nb_threads * sizeof(pthread_t), "NeuralNetworkUpdateWeightsCPUMultiCores");
 
 	// For each layer of the neural network (except the input layer),
 	for (int i = 1; i < network->nb_layers; i++) {
