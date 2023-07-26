@@ -107,6 +107,8 @@ typedef struct simple_string_t {
 void mainInit(char* header);
 void* mallocBlocking(size_t size, const char* prefix);
 void* duplicateMemory(void* ptr, size_t size, const char* prefix);
+void* tryFlatMatrixAllocation(void ***matrix, int nb_rows, int nb_columns, size_t size, const char* prefix);
+void freeFlatMatrix(void **matrix, void *flat_matrix, int nb_rows);
 int writeEntireFile(char* path, char* content, int size, int mode);
 char* readEntireFile(char* path);
 int get_line_from_file(char **lineptr, int fd);

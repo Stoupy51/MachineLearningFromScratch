@@ -82,12 +82,16 @@ int main() {
 	#define NB_EPOCHS 200
 	#define ERROR_TARGET 0.000001
 	#define VERBOSE 3
-	nn_type **inputs = mallocBlocking(NB_TOTAL_DATA * sizeof(nn_type*), "main()");
-	nn_type **expected = mallocBlocking(NB_TOTAL_DATA * sizeof(nn_type*), "main()");
-	for (int i = 0; i < NB_TOTAL_DATA; i++) {
-		inputs[i] = mallocBlocking(network_plus.input_layer->nb_neurons * sizeof(nn_type), "main()");
-		expected[i] = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(nn_type), "main()");
-	}
+	// nn_type **inputs = mallocBlocking(NB_TOTAL_DATA * sizeof(nn_type*), "main()");
+	// nn_type **expected = mallocBlocking(NB_TOTAL_DATA * sizeof(nn_type*), "main()");
+	// for (int i = 0; i < NB_TOTAL_DATA; i++) {
+	// 	inputs[i] = mallocBlocking(network_plus.input_layer->nb_neurons * sizeof(nn_type), "main()");
+	// 	expected[i] = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(nn_type), "main()");
+	// }
+	nn_type **inputs;
+	nn_type **expected;
+	nn_type *inputs_flat_matrix = tryFlatMatrixAllocation((void***)&inputs, NB_TOTAL_DATA, network_plus.input_layer->nb_neurons, sizeof(nn_type), "main()");
+	nn_type *outputs_flat_matrix = tryFlatMatrixAllocation((void***)&expected, NB_TOTAL_DATA, network_plus.output_layer->nb_neurons, sizeof(nn_type), "main()");
 
 	// Fill the training data
 	#define MAX_VALUE (200 / 2)
@@ -101,7 +105,7 @@ int main() {
 	}
 
 	// Train the neural network
-	code = NeuralNetworkTrainCPUMultiThreads(&network_plus, inputs, expected,
+	code = NeuralNetworkTrainCPUSingleThread(&network_plus, inputs, expected,
 		NB_TOTAL_DATA,
 		NB_TEST_DATA_PERCENTAGE,
 		BATCH_SIZE,
@@ -112,15 +116,15 @@ int main() {
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
 
 	///// Test the neural network
-	int nb_test_data = NB_TOTAL_DATA * NB_TEST_DATA_PERCENTAGE / 100;
-	nn_type **test_inputs = &inputs[NB_TOTAL_DATA - nb_test_data];
-	nn_type **test_expected = &expected[NB_TOTAL_DATA - nb_test_data];
+	#define NB_TEST_DATA (NB_TOTAL_DATA * NB_TEST_DATA_PERCENTAGE / 100)
+	nn_type **test_inputs = &inputs[NB_TOTAL_DATA - NB_TEST_DATA];
+	nn_type **test_expected = &expected[NB_TOTAL_DATA - NB_TEST_DATA];
 	int nb_errors = 0;
-	for (int i = 0; i < nb_test_data; i++) {
+	for (int i = 0; i < NB_TEST_DATA; i++) {
 
 		// Feed forward
 		nn_type *test_output = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(nn_type), "main()");
-		NeuralNetworkFeedForwardCPUMultiThreads(&network_plus, test_inputs[i], test_output);
+		NeuralNetworkFeedForwardCPUSingleThread(&network_plus, test_inputs[i], test_output);
 
 		// Print the test results
 		int a = convertBinaryDoubleArrayToInt(test_inputs[i], 0);
@@ -132,19 +136,15 @@ int main() {
 			ERROR_PRINT("main(): Error for %d + %d = %d (expected %d)\n", a, b, c, d);
 		}
 	}
-	INFO_PRINT("main(): Success rate: %d/%d (%.2f%%)\n", nb_test_data - nb_errors, nb_test_data, (nb_test_data - nb_errors) * 100.0 / nb_test_data);
+	INFO_PRINT("main(): Success rate: %d/%d (%.2f%%)\n", NB_TEST_DATA - nb_errors, NB_TEST_DATA, (NB_TEST_DATA - nb_errors) * 100.0 / NB_TEST_DATA);
 
 	///// Final part
 	// Free the neural network
 	freeNeuralNetwork(&network_plus);
 
 	// Free the training data
-	for (int i = 0; i < NB_TOTAL_DATA; i++) {
-		free(inputs[i]);
-		free(expected[i]);
-	}
-	free(inputs);
-	free(expected);
+	freeFlatMatrix((void**)inputs, inputs_flat_matrix, NB_TOTAL_DATA);
+	freeFlatMatrix((void**)expected, outputs_flat_matrix, NB_TOTAL_DATA);
 
 	// Final print and return
 	INFO_PRINT("main(): End of program\n");
