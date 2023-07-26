@@ -82,12 +82,6 @@ int main() {
 	#define NB_EPOCHS 200
 	#define ERROR_TARGET 0.000001
 	#define VERBOSE 3
-	// nn_type **inputs = mallocBlocking(NB_TOTAL_DATA * sizeof(nn_type*), "main()");
-	// nn_type **expected = mallocBlocking(NB_TOTAL_DATA * sizeof(nn_type*), "main()");
-	// for (int i = 0; i < NB_TOTAL_DATA; i++) {
-	// 	inputs[i] = mallocBlocking(network_plus.input_layer->nb_neurons * sizeof(nn_type), "main()");
-	// 	expected[i] = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(nn_type), "main()");
-	// }
 	nn_type **inputs;
 	nn_type **expected;
 	nn_type *inputs_flat_matrix = tryFlatMatrixAllocation((void***)&inputs, NB_TOTAL_DATA, network_plus.input_layer->nb_neurons, sizeof(nn_type), "main()");
