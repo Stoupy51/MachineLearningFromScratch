@@ -115,18 +115,17 @@ int main() {
 	int nb_test_data = NB_TOTAL_DATA * NB_TEST_DATA_PERCENTAGE / 100;
 	nn_type **test_inputs = &inputs[NB_TOTAL_DATA - nb_test_data];
 	nn_type **test_expected = &expected[NB_TOTAL_DATA - nb_test_data];
-	nn_type **test_outputs = mallocBlocking(nb_test_data * sizeof(nn_type*), "main()");
-	for (int i = 0; i < nb_test_data; i++) {
-		test_outputs[i] = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(nn_type), "main()");
-		NeuralNetworkFeedForwardCPUMultiCores(&network_plus, test_inputs[i], test_outputs[i]);
-	}
-
-	// Print the test results
 	int nb_errors = 0;
 	for (int i = 0; i < nb_test_data; i++) {
+
+		// Feed forward
+		nn_type *test_output = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(nn_type), "main()");
+		NeuralNetworkFeedForwardCPUMultiCores(&network_plus, test_inputs[i], test_output);
+
+		// Print the test results
 		int a = convertBinaryDoubleArrayToInt(test_inputs[i], 0);
 		int b = convertBinaryDoubleArrayToInt(test_inputs[i], 32);
-		int c = convertBinaryDoubleArrayToInt(test_outputs[i], 0);
+		int c = convertBinaryDoubleArrayToInt(test_output, 0);
 		int d = convertBinaryDoubleArrayToInt(test_expected[i], 0);
 		if (c != d) {
 			nb_errors++;
@@ -146,11 +145,6 @@ int main() {
 	}
 	free(inputs);
 	free(expected);
-
-	// Free the test data
-	for (int i = 0; i < nb_test_data; i++)
-		free(test_outputs[i]);
-	free(test_outputs);
 
 	// Final print and return
 	INFO_PRINT("main(): End of program\n");
