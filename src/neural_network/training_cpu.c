@@ -29,15 +29,12 @@ void NeuralNetworkFeedForwardCPUSingleCore(NeuralNetwork *network, nn_type *inpu
 		for (int j = 0; j < network->layers[i].nb_neurons; j++) {
 
 			// Calculate the sum of the inputs multiplied by the weights
-			nn_type input_sum = 0.0;
+			nn_type input_sum = network->layers[i].biases[j];	// Add the bias to the sum
 			for (int k = 0; k < network->layers[i].nb_inputs_per_neuron; k++) {
 				nn_type input_value = network->layers[i - 1].activations_values[k];
 				nn_type weight = network->layers[i].weights[j][k];
 				input_sum += input_value * weight;
 			}
-
-			// Add the bias to the sum
-			input_sum += network->layers[i].biases[j];
 
 			// Activate the neuron with the activation function
 			network->layers[i].activations_values[j] = network->layers[i].activation_function(input_sum);
@@ -230,11 +227,11 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 				memset(network->layers[i].deltas, 0.0, network->layers[i].nb_neurons * sizeof(nn_type));
 			
 			// Backpropagation
-			NeuralNetworkStartBackPropagationCPUSingleCore(network, predicted, expected, nb_samples);
+			NeuralNetworkStartBackPropagationCPUSingleCore(network, predicted, expected + first_sample, nb_samples);
 
 			// Finish backpropagation
 			for (int i = 0; i < nb_samples; i++)
-				NeuralNetworkFinishBackPropagationCPUSingleCore(network, predicted[i], expected[first_sample + i]);
+				NeuralNetworkFinishBackPropagationCPUSingleCore(network);
 			
 			// Free the predicted outputs array for the current batch
 			for (int i = 0; i < nb_samples; i++)
@@ -242,7 +239,7 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 			free(predicted);
 
 			// Update the weights of the neural network
-			NeuralNetworkUpdateWeightsCPUSingleCore(network, nb_samples);
+			NeuralNetworkUpdateWeightsCPUSingleCore(network);
 		}
 
 		// Use the test inputs to calculate the current error
@@ -287,6 +284,104 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 
 
 #include "../universal_pthread.h"
+
+struct FeedForwardThreadData {
+	NeuronLayer *current_layer;
+	nn_type *previous_activations_values;
+	int start_neuron;
+	int end_neuron;
+};
+
+/**
+ * @brief Feed forward algorithm of the neural network
+ * using multiple threads
+ * 
+ * @param thread_data	Pointer to the FeedForwardThreadData structure
+*/
+thread_return_type FeedForwardThread(thread_param_type thread_data) {
+
+	// Get the thread data
+	struct FeedForwardThreadData *data = (struct FeedForwardThreadData *)thread_data;
+	NeuronLayer *current_layer = data->current_layer;
+	nn_type *previous_activations_values = data->previous_activations_values;
+	int start_neuron = data->start_neuron;
+	int end_neuron = data->end_neuron;
+
+	// For each neuron of the layer,
+	for (int j = start_neuron; j < end_neuron; j++) {
+
+		// Calculate the sum of the inputs multiplied by the weights
+		nn_type input_sum = current_layer->biases[j];	// Add the bias to the sum
+		for (int k = 0; k < current_layer->nb_inputs_per_neuron; k++)
+			input_sum += previous_activations_values[k] * current_layer->weights[j][k];
+
+		// Activate the neuron with the activation function
+		current_layer->activations_values[j] = current_layer->activation_function(input_sum);
+	}
+	return 0;
+}
+
+/**
+ * @brief Feed forward algorithm of the neural network
+ * using multiple threads to process the neurons
+ * 
+ * @details i = Index of the selected layer
+ * @details j = Index of the selected neuron
+ * @details k = Index of the selected input
+ * 
+ * @param network		Pointer to the neural network
+ * @param input			Pointer to the input array (nn_type), must be the same size as the input layer
+ * @param output		Pointer to the output array (nn_type), must be the same size as the output layer
+ * 
+ * @return void
+ */
+void NeuralNetworkFeedForwardCPUMultiCores(NeuralNetwork *network, nn_type *input, nn_type *output) {
+
+	// Copy the inputs to the input layer of the neural network
+	size_t input_layer_size = network->input_layer->nb_neurons * sizeof(nn_type);
+	memcpy(network->input_layer->activations_values, input, input_layer_size);
+
+	// Get number of threads
+	int nb_threads = getNumberOfThreads();
+
+	// Create the threads data and the threads array
+	struct FeedForwardThreadData *threads_data = mallocBlocking(nb_threads * sizeof(struct FeedForwardThreadData), "NeuralNetworkFeedForwardCPUMultiCores");
+	pthread_t *threads = mallocBlocking(nb_threads * sizeof(pthread_t), "NeuralNetworkFeedForwardCPUMultiCores");
+
+	// For each layer of the neural network (except the input layer),
+	for (int i = 1; i < network->nb_layers; i++) {
+
+		// Create the threads
+		int nb_neurons_per_thread = network->layers[i].nb_neurons / nb_threads;
+		for (int j = 0; j < nb_threads; j++) {
+			
+			// Prepare the thread data
+			threads_data[j].current_layer = &network->layers[i];
+			threads_data[j].previous_activations_values = network->layers[i - 1].activations_values;
+			threads_data[j].start_neuron = j * nb_neurons_per_thread;
+			if (j == nb_threads - 1)
+				threads_data[j].end_neuron = network->layers[i].nb_neurons;	// The last thread must process the remaining neurons
+			else
+				threads_data[j].end_neuron = threads_data[j].start_neuron + nb_neurons_per_thread;
+			
+			// Create the thread
+			pthread_create(&threads[j], NULL, FeedForwardThread, &threads_data[j]);
+		}
+
+		// Wait for the threads to finish
+		for (int j = 0; j < nb_threads; j++)
+			pthread_join(threads[j], NULL);
+	}
+
+	// Free the threads data and the threads array
+	free(threads_data);
+	free(threads);
+
+	// Copy the outputs of the output layer to the outputs array
+	size_t output_layer_size = network->output_layer->nb_neurons * sizeof(nn_type);
+	memcpy(output, network->output_layer->activations_values, output_layer_size);
+}
+
 
 
 

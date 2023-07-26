@@ -114,6 +114,7 @@ int file_accessible(char* path);
 size_t get_file_size(int fd);
 int hash_string(char* str);
 int remove_directory(char* path);
+int getNumberOfThreads();
 
 #endif
 

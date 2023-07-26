@@ -82,11 +82,11 @@ int main() {
 	#define NB_EPOCHS 200
 	#define ERROR_TARGET 0.000001
 	#define VERBOSE 3
-	double **inputs = mallocBlocking(NB_TOTAL_DATA * sizeof(double*), "main()");
-	double **expected = mallocBlocking(NB_TOTAL_DATA * sizeof(double*), "main()");
+	nn_type **inputs = mallocBlocking(NB_TOTAL_DATA * sizeof(nn_type*), "main()");
+	nn_type **expected = mallocBlocking(NB_TOTAL_DATA * sizeof(nn_type*), "main()");
 	for (int i = 0; i < NB_TOTAL_DATA; i++) {
-		inputs[i] = mallocBlocking(network_plus.input_layer->nb_neurons * sizeof(double), "main()");
-		expected[i] = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(double), "main()");
+		inputs[i] = mallocBlocking(network_plus.input_layer->nb_neurons * sizeof(nn_type), "main()");
+		expected[i] = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(nn_type), "main()");
 	}
 
 	// Fill the training data
@@ -113,12 +113,13 @@ int main() {
 
 	///// Test the neural network
 	int nb_test_data = NB_TOTAL_DATA * NB_TEST_DATA_PERCENTAGE / 100;
-	double **test_inputs = &inputs[NB_TOTAL_DATA - nb_test_data];
-	double **test_expected = &expected[NB_TOTAL_DATA - nb_test_data];
-	double **test_outputs = mallocBlocking(nb_test_data * sizeof(double*), "main()");
-	for (int i = 0; i < nb_test_data; i++)
-		test_outputs[i] = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(double), "main()");
-	NeuralNetworkFeedForwardCPUSingleCore(&network_plus, test_inputs, test_outputs, nb_test_data);
+	nn_type **test_inputs = &inputs[NB_TOTAL_DATA - nb_test_data];
+	nn_type **test_expected = &expected[NB_TOTAL_DATA - nb_test_data];
+	nn_type **test_outputs = mallocBlocking(nb_test_data * sizeof(nn_type*), "main()");
+	for (int i = 0; i < nb_test_data; i++) {
+		test_outputs[i] = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(nn_type), "main()");
+		NeuralNetworkFeedForwardCPUMultiCores(&network_plus, test_inputs[i], test_outputs[i]);
+	}
 
 	// Print the test results
 	int nb_errors = 0;

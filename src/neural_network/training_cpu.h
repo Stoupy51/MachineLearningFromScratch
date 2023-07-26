@@ -23,7 +23,11 @@ int NeuralNetworkTrainCPUSingleCore(
 	int verbose
 );
 
+
+
 // Multi-core version
+void NeuralNetworkFeedForwardCPUMultiCores(NeuralNetwork *network, nn_type *input, nn_type *output);
+
 
 int NeuralNetworkTrainCPUMultiCores(
 	NeuralNetwork *network,

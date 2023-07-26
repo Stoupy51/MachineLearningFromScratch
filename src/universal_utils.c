@@ -300,3 +300,24 @@ int remove_directory(char* path) {
 	#endif
 }
 
+int local_nb_threads = 0;
+
+/**
+ * @brief Function that returns the number of threads of the CPU of the computer.
+ * Efficiency: O(1) (the number of threads is computed only once)
+ * 
+ * @return int	Number of threads of the CPU.
+*/
+int getNumberOfThreads() {
+	if (local_nb_threads == 0) {
+		#ifdef _WIN32
+			SYSTEM_INFO sysinfo;
+			GetSystemInfo(&sysinfo);
+			local_nb_threads = sysinfo.dwNumberOfProcessors;
+		#else
+			local_nb_threads = sysconf(_SC_NPROCESSORS_ONLN);
+		#endif
+	}
+	return local_nb_threads;
+}
+
