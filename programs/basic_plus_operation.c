@@ -84,8 +84,8 @@ int main() {
 	#define VERBOSE 3
 	nn_type **inputs;
 	nn_type **expected;
-	nn_type *inputs_flat_matrix = tryFlatMatrixAllocation((void***)&inputs, NB_TOTAL_DATA, network_plus.input_layer->nb_neurons, sizeof(nn_type), "main()");
-	nn_type *outputs_flat_matrix = tryFlatMatrixAllocation((void***)&expected, NB_TOTAL_DATA, network_plus.output_layer->nb_neurons, sizeof(nn_type), "main()");
+	nn_type *inputs_flat_matrix = try2DFlatMatrixAllocation((void***)&inputs, NB_TOTAL_DATA, network_plus.input_layer->nb_neurons, sizeof(nn_type), "main()");
+	nn_type *outputs_flat_matrix = try2DFlatMatrixAllocation((void***)&expected, NB_TOTAL_DATA, network_plus.output_layer->nb_neurons, sizeof(nn_type), "main()");
 
 	// Fill the training data
 	#define MAX_VALUE (200 / 2)
@@ -118,7 +118,8 @@ int main() {
 
 		// Feed forward
 		nn_type *test_output = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(nn_type), "main()");
-		NeuralNetworkFeedForwardCPUSingleThread(&network_plus, test_inputs[i], test_output);
+		NeuralNetworkFeedForwardCPUSingleThread(&network_plus, test_inputs[i]);
+		memcpy(test_output, network_plus.output_layer->activations_values, network_plus.output_layer->nb_neurons * sizeof(nn_type));
 
 		// Print the test results
 		int a = convertBinaryDoubleArrayToInt(test_inputs[i], 0);
@@ -137,8 +138,8 @@ int main() {
 	freeNeuralNetwork(&network_plus);
 
 	// Free the training data
-	freeFlatMatrix((void**)inputs, inputs_flat_matrix, NB_TOTAL_DATA);
-	freeFlatMatrix((void**)expected, outputs_flat_matrix, NB_TOTAL_DATA);
+	free2DFlatMatrix((void**)inputs, inputs_flat_matrix, NB_TOTAL_DATA);
+	free2DFlatMatrix((void**)expected, outputs_flat_matrix, NB_TOTAL_DATA);
 
 	// Final print and return
 	INFO_PRINT("main(): End of program\n");

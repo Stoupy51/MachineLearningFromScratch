@@ -58,7 +58,8 @@
 			"st_benchmark.h": "c",
 			"training_gpu.h": "c",
 			"neural_config.h": "c",
-			"cmath": "c"
+			"cmath": "c",
+			"universal_pthread.h": "c"
 		},
 		"OpenCL.explorer.localizedProperties": false
 	}

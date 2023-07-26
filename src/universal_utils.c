@@ -74,7 +74,7 @@ void* duplicateMemory(void* ptr, size_t size, const char* prefix) {
 }
 
 /**
- * @brief This function allocates memory for a matrix and returns a pointer to it.
+ * @brief This function allocates memory for a 2D matrix and returns a pointer to it.
  * This function is blocking, it will wait until the memory is allocated.
  * It will try to allocate the memory every 1000ms.
  * 
@@ -82,24 +82,24 @@ void* duplicateMemory(void* ptr, size_t size, const char* prefix) {
  * @param nb_rows		Number of rows of the matrix
  * @param nb_columns	Number of columns of the matrix
  * @param size			Size of each element of the matrix
- * @param prefix		Prefix to print in the warning message, ex: "tryFlatMatrixAllocation()"
+ * @param prefix		Prefix to print in the warning message, ex: "try2DFlatMatrixAllocation()"
  * 
  * @return void*		Pointer to the flat matrix if success, NULL otherwise (the allocation is not flat)
  */
-void* tryFlatMatrixAllocation(void ***matrix, int nb_rows, int nb_columns, size_t size, const char* prefix) {
+void* try2DFlatMatrixAllocation(void ***matrix, int nb_rows, int nb_columns, size_t size, const char* prefix) {
 
 	// Get the total size of the matrix
 	long long int total_size = (long long int)nb_rows * (long long int)nb_columns * (long long int)size;
 
 	// Allocate the pointers to the rows
-	*matrix = mallocBlocking(sizeof(void*) * nb_rows, prefix == NULL ? "tryFlatMatrixAllocation()" : prefix);
+	*matrix = mallocBlocking(sizeof(void*) * nb_rows, prefix == NULL ? "try2DFlatMatrixAllocation()" : prefix);
 
 	// If the total size is too big (more than INT_MAX), allocate the matrix row by row
 	if (total_size > INT_MAX) {
 
 		// Allocate each row
 		for (int i = 0; i < nb_rows; i++)
-			(*matrix)[i] = mallocBlocking(size * nb_columns, prefix == NULL ? "tryFlatMatrixAllocation()" : prefix);
+			(*matrix)[i] = mallocBlocking(size * nb_columns, prefix == NULL ? "try2DFlatMatrixAllocation()" : prefix);
 
 		// Return NULL (the allocation is not flat)
 		return NULL;
@@ -109,7 +109,7 @@ void* tryFlatMatrixAllocation(void ***matrix, int nb_rows, int nb_columns, size_
 	else {
 
 		// Allocate the flat matrix
-		void* flat_matrix = mallocBlocking(total_size, prefix == NULL ? "tryFlatMatrixAllocation()" : prefix);
+		void* flat_matrix = mallocBlocking(total_size, prefix == NULL ? "try2DFlatMatrixAllocation()" : prefix);
 
 		// Fill the pointers to the rows
 		for (int i = 0; i < nb_rows; i++)
@@ -121,15 +121,15 @@ void* tryFlatMatrixAllocation(void ***matrix, int nb_rows, int nb_columns, size_
 }
 
 /**
- * @brief This function frees a matrix.
+ * @brief This function frees a 2D matrix.
  * 
  * @param matrix		Pointer to the matrix to free
- * @param flat_matrix	Pointer to the flat matrix to free (can be NULL, should be output of tryFlatMatrixAllocation())
+ * @param flat_matrix	Pointer to the flat matrix to free (can be NULL, should be output of try2DFlatMatrixAllocation())
  * @param nb_rows		Number of rows of the matrix
  * 
  * @return void
 */
-void freeFlatMatrix(void **matrix, void *flat_matrix, int nb_rows) {
+void free2DFlatMatrix(void **matrix, void *flat_matrix, int nb_rows) {
 
 	// If the flat matrix is not NULL, free it
 	if (flat_matrix != NULL)
@@ -144,7 +144,87 @@ void freeFlatMatrix(void **matrix, void *flat_matrix, int nb_rows) {
 	free(matrix);
 }
 
+/**
+ * @brief This function allocates memory for a 3D matrix and returns a pointer to it.
+ * This function is blocking, it will wait until the memory is allocated.
+ * It will try to allocate the memory every 1000ms.
+ * 
+ * @param matrix		Pointer to the matrix to allocate
+ * @param nb_rows		Number of rows of the matrix
+ * @param nb_columns	Number of columns of the matrix
+ * @param nb_depths		Number of depths of the matrix
+ * @param size			Size of each element of the matrix
+ * @param prefix		Prefix to print in the warning message, ex: "try3DFlatMatrixAllocation()"
+ * 
+ * @return void*		Pointer to the flat matrix if success, NULL otherwise (the allocation is not flat)
+ */
+void* try3DFlatMatrixAllocation(void ****matrix, int nb_rows, int nb_columns, int nb_depths, size_t size, const char* prefix) {
 
+	// Get the total size of the matrix
+	long long int total_size = (long long int)nb_rows * (long long int)nb_columns * (long long int)nb_depths * (long long int)size;
+
+	// Allocate the pointers to the rows
+	*matrix = mallocBlocking(sizeof(void**) * nb_rows, prefix == NULL ? "try3DFlatMatrixAllocation()" : prefix);
+
+	// If the total size is too big (more than INT_MAX), allocate the matrix row by row
+	if (total_size > INT_MAX) {
+
+		// Allocate each row
+		for (int i = 0; i < nb_rows; i++) {
+			(*matrix)[i] = mallocBlocking(sizeof(void*) * nb_columns, prefix == NULL ? "try3DFlatMatrixAllocation()" : prefix);
+			for (int j = 0; j < nb_columns; j++)
+				(*matrix)[i][j] = mallocBlocking(size * nb_depths, prefix == NULL ? "try3DFlatMatrixAllocation()" : prefix);
+		}
+
+		// Return NULL (the allocation is not flat)
+		return NULL;
+	}
+
+	// If the total size is not too big, allocate the matrix in one block
+	else {
+
+		// Allocate the flat matrix
+		void* flat_matrix = mallocBlocking(total_size, prefix == NULL ? "try3DFlatMatrixAllocation()" : prefix);
+
+		// Fill the pointers to the rows
+		for (int i = 0; i < nb_rows; i++) {
+			(*matrix)[i] = mallocBlocking(sizeof(void*) * nb_columns, prefix == NULL ? "try3DFlatMatrixAllocation()" : prefix);
+			for (int j = 0; j < nb_columns; j++)
+				(*matrix)[i][j] = ((char*)flat_matrix + (i * nb_columns * nb_depths * size) + (j * nb_depths * size));
+		}
+		
+		// Return the flat matrix
+		return flat_matrix;
+	}
+}
+
+/**
+ * @brief This function frees a 3D matrix.
+ * 
+ * @param matrix		Pointer to the matrix to free
+ * @param flat_matrix	Pointer to the flat matrix to free (can be NULL, should be output of try3DFlatMatrixAllocation())
+ * @param nb_rows		Number of rows of the matrix
+ * @param nb_columns	Number of columns of the matrix
+ * 
+ * @return void
+ */
+void free3DFlatMatrix(void ***matrix, void *flat_matrix, int nb_rows, int nb_columns) {
+	
+	// If the flat matrix is not NULL, free it
+	if (flat_matrix != NULL)
+		free(flat_matrix);
+
+	// If the flat matrix is NULL, free each row
+	else
+		for (int i = 0; i < nb_rows; i++)
+			for (int j = 0; j < nb_columns; j++)
+				free(matrix[i][j]);
+
+	// Free the matrix
+	for (int i = 0; i < nb_rows; i++)
+		free(matrix[i]);
+	free(matrix);
+}
 
 /**
  * @brief This function write a string to a file
