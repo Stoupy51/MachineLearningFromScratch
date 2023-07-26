@@ -76,7 +76,7 @@ int main() {
 	printNeuralNetwork(network_plus);
 
 	///// Create the training data
-	#define NB_TOTAL_DATA 10000
+	#define NB_TOTAL_DATA 1000
 	#define NB_TEST_DATA_PERCENTAGE 20
 	#define BATCH_SIZE 1
 	#define NB_EPOCHS 200
@@ -90,7 +90,7 @@ int main() {
 	}
 
 	// Fill the training data
-	#define MAX_VALUE (2000 / 2)	// 1000 + 1000 = 2000
+	#define MAX_VALUE (200 / 2)
 	for (int i = 0; i < NB_TOTAL_DATA; i++) {
 		int a = rand() % MAX_VALUE;
 		int b = rand() % MAX_VALUE;

@@ -228,15 +228,15 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 			
 			// Reset deltas of all the layers (except the input layer)
 			for (int i = 1; i < network->nb_layers; i++)
-				memset(network->layers[i].deltas, 0.0, network->layers[i].nb_neurons * sizeof(nn_type));
-			
+				memset(network->layers[i].deltas, 0, network->layers[i].nb_neurons * sizeof(nn_type));
+
 			// Backpropagation
 			NeuralNetworkStartBackPropagationCPUSingleCore(network, predicted, expected + first_sample, nb_samples);
 
 			// Finish backpropagation
 			for (int i = 0; i < nb_samples; i++)
 				NeuralNetworkFinishBackPropagationCPUSingleCore(network);
-			
+
 			// Free the predicted outputs array for the current batch
 			for (int i = 0; i < nb_samples; i++)
 				free(predicted[i]);
