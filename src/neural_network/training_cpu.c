@@ -269,7 +269,7 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 		// Verbose
 		current_error /= nb_inputs;
 		if ((verbose > 0 && (current_epoch < 6 || current_epoch == nb_epochs || current_epoch % 10 == 0)) || verbose == 2)
-			DEBUG_PRINT("NeuralNetworkTrainCPU(1 core): Epoch %d/%d, Error: %.12f\n", current_epoch, nb_epochs, current_error);
+			DEBUG_PRINT("NeuralNetworkTrainCPU(1 core): Epoch %d/%d, Error: %.12"NN_FORMAT"\n", current_epoch, nb_epochs, current_error);
 	}
 
 	// Verbose

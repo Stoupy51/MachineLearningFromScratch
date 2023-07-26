@@ -183,7 +183,7 @@ void printActivationValues(NeuralNetwork network) {
 	for (int i = 0; i < max_neurons; i++) {
 		for (int j = 0; j < network.nb_layers; j++) {
 			if (i < network.layers[j].nb_neurons)
-				{ PRINTER("%.2f\t", network.layers[j].activations_values[i]); }
+				{ PRINTER("%.2"NN_FORMAT"\t", network.layers[j].activations_values[i]); }
 			else
 				{ PRINTER("\t"); }
 		}
@@ -299,13 +299,13 @@ int saveNeuralNetwork(NeuralNetwork network, char *filename, int generate_human_
 			// Write the formula for each neuron of the layer
 			fprintf(file, "formula for each neuron: ");
 			for (int j = 0; j < network.layers[i].nb_neurons; j++) {
-				fprintf(file, "neuron[%d] = (%.2f) + (", j, network.layers[i].biases[j]);
+				fprintf(file, "neuron[%d] = (%.2"NN_FORMAT") + (", j, network.layers[i].biases[j]);
 				for (int k = 0; k < network.layers[i].nb_inputs_per_neuron; k++) {
-					fprintf(file, "%.2f * %.2f", network.layers[i].weights[j][k], network.layers[i - 1].activations_values[k]);
+					fprintf(file, "%.2"NN_FORMAT" * %.2"NN_FORMAT"", network.layers[i].weights[j][k], network.layers[i - 1].activations_values[k]);
 					if (k != network.layers[i].nb_inputs_per_neuron - 1)
 						fprintf(file, " + ");
 				}
-				fprintf(file, ") = %.2f\n", network.layers[i].activations_values[j]);
+				fprintf(file, ") = %.2"NN_FORMAT"\n", network.layers[i].activations_values[j]);
 			}
 		}
 
