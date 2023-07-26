@@ -101,7 +101,7 @@ int main() {
 	}
 
 	// Train the neural network
-	code = NeuralNetworkTrainCPUMultiCores(&network_plus, inputs, expected,
+	code = NeuralNetworkTrainCPUMultiThreads(&network_plus, inputs, expected,
 		NB_TOTAL_DATA,
 		NB_TEST_DATA_PERCENTAGE,
 		BATCH_SIZE,
@@ -120,7 +120,7 @@ int main() {
 
 		// Feed forward
 		nn_type *test_output = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(nn_type), "main()");
-		NeuralNetworkFeedForwardCPUMultiCores(&network_plus, test_inputs[i], test_output);
+		NeuralNetworkFeedForwardCPUMultiThreads(&network_plus, test_inputs[i], test_output);
 
 		// Print the test results
 		int a = convertBinaryDoubleArrayToInt(test_inputs[i], 0);

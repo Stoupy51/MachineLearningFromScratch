@@ -16,7 +16,7 @@
  * 
  * @return void
  */
-void NeuralNetworkFeedForwardCPUSingleCore(NeuralNetwork *network, nn_type *input, nn_type *output) {
+void NeuralNetworkFeedForwardCPUSingleThread(NeuralNetwork *network, nn_type *input, nn_type *output) {
 
 	// Copy the inputs to the input layer of the neural network
 	size_t input_layer_size = network->input_layer->nb_neurons * sizeof(nn_type);
@@ -57,7 +57,7 @@ void NeuralNetworkFeedForwardCPUSingleCore(NeuralNetwork *network, nn_type *inpu
  * 
  * @return void
  */
-void NeuralNetworkStartBackPropagationCPUSingleCore(NeuralNetwork *network, nn_type **predicted, nn_type **expected, int batch_size) {
+void NeuralNetworkStartBackPropagationCPUSingleThread(NeuralNetwork *network, nn_type **predicted, nn_type **expected, int batch_size) {
 
 	// For each neuron of the output layer,
 	for (int i = 0; i < network->output_layer->nb_neurons; i++) {
@@ -86,7 +86,7 @@ void NeuralNetworkStartBackPropagationCPUSingleCore(NeuralNetwork *network, nn_t
  * 
  * @return void
  */
-void NeuralNetworkFinishBackPropagationCPUSingleCore(NeuralNetwork *network) {
+void NeuralNetworkFinishBackPropagationCPUSingleThread(NeuralNetwork *network) {
 
 	// For each hidden layer of the neural network, starting from the last hidden layer, add the deltas of the layer
 	for (int i = network->nb_layers - 2; i > 0; i--) {
@@ -126,7 +126,7 @@ void NeuralNetworkFinishBackPropagationCPUSingleCore(NeuralNetwork *network) {
  * 
  * @return void
  */
-void NeuralNetworkUpdateWeightsCPUSingleCore(NeuralNetwork *network) {
+void NeuralNetworkUpdateWeightsCPUSingleThread(NeuralNetwork *network) {
 
 	// For each layer of the neural network (except the input layer),
 	for (int i = 1; i < network->nb_layers; i++) {
@@ -175,7 +175,7 @@ void NeuralNetworkUpdateWeightsCPUSingleCore(NeuralNetwork *network) {
  * 
  * @return int						Number of epochs done, -1 if there is an error
 */
-int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn_type **expected, int nb_inputs, int test_inputs_percentage, int batch_size, int nb_epochs, nn_type error_target, int verbose) {
+int NeuralNetworkTrainCPUSingleThread(NeuralNetwork *network, nn_type **inputs, nn_type **expected, int nb_inputs, int test_inputs_percentage, int batch_size, int nb_epochs, nn_type error_target, int verbose) {
 
 	// Check if at least one of the two parameters is specified
 	int boolean_parameters = nb_epochs != -1 || error_target != 0.0;	// 0 when none of the two parameters is specified, 1 otherwise
@@ -224,15 +224,15 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 
 			// Feed forward the current batches
 			for (int i = 0; i < nb_samples; i++)
-				NeuralNetworkFeedForwardCPUSingleCore(network, inputs[first_sample + i], predicted[i]);
+				NeuralNetworkFeedForwardCPUSingleThread(network, inputs[first_sample + i], predicted[i]);
 			
 			// Reset deltas of all the layers (except the input layer)
 			for (int i = 1; i < network->nb_layers; i++)
 				memset(network->layers[i].deltas, 0, network->layers[i].nb_neurons * sizeof(nn_type));
 
 			// Backpropagation
-			NeuralNetworkStartBackPropagationCPUSingleCore(network, predicted, expected + first_sample, nb_samples);
-			NeuralNetworkFinishBackPropagationCPUSingleCore(network);
+			NeuralNetworkStartBackPropagationCPUSingleThread(network, predicted, expected + first_sample, nb_samples);
+			NeuralNetworkFinishBackPropagationCPUSingleThread(network);
 
 			// Free the predicted outputs array for the current batch
 			for (int i = 0; i < nb_samples; i++)
@@ -240,7 +240,7 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 			free(predicted);
 
 			// Update the weights of the neural network
-			NeuralNetworkUpdateWeightsCPUSingleCore(network);
+			NeuralNetworkUpdateWeightsCPUSingleThread(network);
 		}
 
 		// Use the test inputs to calculate the current error
@@ -253,7 +253,7 @@ int NeuralNetworkTrainCPUSingleCore(NeuralNetwork *network, nn_type **inputs, nn
 
 			// Feed forward the test inputs
 			for (int i = 0; i < nb_test_inputs; i++)
-				NeuralNetworkFeedForwardCPUSingleCore(network, test_inputs[i], predicted[i]);
+				NeuralNetworkFeedForwardCPUSingleThread(network, test_inputs[i], predicted[i]);
 			
 			// Calculate the error of the test inputs using the loss function
 			for (int i = 0; i < nb_test_inputs; i++)
@@ -338,7 +338,7 @@ thread_return_type FeedForwardThread(thread_param_type thread_data) {
  * 
  * @return void
  */
-void NeuralNetworkFeedForwardCPUMultiCores(NeuralNetwork *network, nn_type *input, nn_type *output) {
+void NeuralNetworkFeedForwardCPUMultiThreads(NeuralNetwork *network, nn_type *input, nn_type *output) {
 
 	// Copy the inputs to the input layer of the neural network
 	size_t input_layer_size = network->input_layer->nb_neurons * sizeof(nn_type);
@@ -451,7 +451,7 @@ thread_return_type StartBackPropagationThread(thread_param_type thread_data) {
  * 
  * @return void
  */
-void NeuralNetworkStartBackPropagationCPUMultiCores(NeuralNetwork *network, nn_type **predicted, nn_type **expected, int batch_size) {
+void NeuralNetworkStartBackPropagationCPUMultiThreads(NeuralNetwork *network, nn_type **predicted, nn_type **expected, int batch_size) {
 
 	// Get number of threads
 	int nb_threads = getNumberOfThreads();
@@ -540,7 +540,7 @@ thread_return_type FinishBackPropagationThread(thread_param_type thread_data) {
  * 
  * @return void
  */
-void NeuralNetworkFinishBackPropagationCPUMultiCores(NeuralNetwork *network) {
+void NeuralNetworkFinishBackPropagationCPUMultiThreads(NeuralNetwork *network) {
 
 	// Get number of threads
 	int nb_threads = getNumberOfThreads();
@@ -633,7 +633,7 @@ thread_return_type UpdateWeightsThread(thread_param_type thread_data) {
  * 
  * @return void
  */
-void NeuralNetworkUpdateWeightsCPUMultiCores(NeuralNetwork *network) {
+void NeuralNetworkUpdateWeightsCPUMultiThreads(NeuralNetwork *network) {
 
 	// Get number of threads
 	int nb_threads = getNumberOfThreads();
@@ -695,7 +695,7 @@ void NeuralNetworkUpdateWeightsCPUMultiCores(NeuralNetwork *network) {
  * 
  * @return int						Number of epochs done, -1 if there is an error
 */
-int NeuralNetworkTrainCPUMultiCores(NeuralNetwork *network, nn_type **inputs, nn_type **expected, int nb_inputs, int test_inputs_percentage, int batch_size, int nb_epochs, nn_type error_target, int verbose) {
+int NeuralNetworkTrainCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn_type **expected, int nb_inputs, int test_inputs_percentage, int batch_size, int nb_epochs, nn_type error_target, int verbose) {
 
 	// Get number of threads & prepare prefix
 	int nb_threads = getNumberOfThreads();
@@ -749,15 +749,15 @@ int NeuralNetworkTrainCPUMultiCores(NeuralNetwork *network, nn_type **inputs, nn
 
 			// Feed forward the current batches
 			for (int i = 0; i < nb_samples; i++)
-				NeuralNetworkFeedForwardCPUMultiCores(network, inputs[first_sample + i], predicted[i]);
+				NeuralNetworkFeedForwardCPUMultiThreads(network, inputs[first_sample + i], predicted[i]);
 
 			// Reset deltas of all the layers (except the input layer)
 			for (int i = 1; i < network->nb_layers; i++)
 				memset(network->layers[i].deltas, 0, network->layers[i].nb_neurons * sizeof(nn_type));
 			
 			// Backpropagation
-			NeuralNetworkStartBackPropagationCPUMultiCores(network, predicted, expected + first_sample, nb_samples);
-			NeuralNetworkFinishBackPropagationCPUMultiCores(network);
+			NeuralNetworkStartBackPropagationCPUMultiThreads(network, predicted, expected + first_sample, nb_samples);
+			NeuralNetworkFinishBackPropagationCPUMultiThreads(network);
 
 			// Free the predicted outputs array for the current batch
 			for (int i = 0; i < nb_samples; i++)
@@ -765,7 +765,7 @@ int NeuralNetworkTrainCPUMultiCores(NeuralNetwork *network, nn_type **inputs, nn
 			free(predicted);
 
 			// Update the weights of the neural network
-			NeuralNetworkUpdateWeightsCPUMultiCores(network);
+			NeuralNetworkUpdateWeightsCPUMultiThreads(network);
 		}
 
 		// Use the test inputs to calculate the current error
@@ -778,7 +778,7 @@ int NeuralNetworkTrainCPUMultiCores(NeuralNetwork *network, nn_type **inputs, nn
 
 			// Feed forward the test inputs
 			for (int i = 0; i < nb_test_inputs; i++)
-				NeuralNetworkFeedForwardCPUMultiCores(network, test_inputs[i], predicted[i]);
+				NeuralNetworkFeedForwardCPUMultiThreads(network, test_inputs[i], predicted[i]);
 			
 			// Calculate the error of the test inputs using the loss function
 			for (int i = 0; i < nb_test_inputs; i++)
