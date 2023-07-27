@@ -25,6 +25,7 @@ int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_
 	network->learning_rate = learning_rate;
 	network->loss_function_name = loss_function_name;
 	network->loss_function = get_loss_function(loss_function_name);
+	network->loss_function_derivative = get_loss_function_derivative(loss_function_name);
 
 	// Calculate all required memory size
 	long long required_memory_size = 0;
@@ -32,10 +33,9 @@ int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_
 		required_memory_size += sizeof(NeuronLayer);	// NeuronLayer struct
 		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(nn_type);	// activations_values
 		if (i == 0) continue;
-		required_memory_size += (long long)nb_neurons_per_layer[i] * (long long)nb_neurons_per_layer[i - 1] * sizeof(nn_type);	// weights_flat
-		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(nn_type*);	// weights
-		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(nn_type);	// biases
-		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(nn_type);	// deltas
+		required_memory_size += (long long)nb_neurons_per_layer[i] * (long long)nb_neurons_per_layer[i - 1] * sizeof(nn_type) * 2;	// weights_flat + weights_gradients_flat
+		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(nn_type*) * 2;	// weights + weights_gradients
+		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(nn_type) * 2;	// biases + biases_gradients
 	}
 	network->memory_size = required_memory_size;
 
@@ -83,20 +83,13 @@ int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_
 		network->layers[i].activation_function_derivative = get_activation_function_derivative(activation_function_names[i]);
 
 		///// Allocate memory for the weights (nb_neurons * nb_inputs_per_neuron * sizeof(nn_type))
-		this_malloc_size = (long long)network->layers[i].nb_neurons * (long long)network->layers[i].nb_inputs_per_neuron * sizeof(nn_type);
-		network->layers[i].weights_flat = mallocBlocking(this_malloc_size, "initNeuralNetwork()");
-		network->layers[i].weights = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type*), "initNeuralNetwork()");
+		network->layers[i].weights_flat = try2DFlatMatrixAllocation((void***)&network->layers[i].weights, network->layers[i].nb_neurons, network->layers[i].nb_inputs_per_neuron, sizeof(nn_type), "initNeuralNetwork()");
 		fillRandomFloatArray(network->layers[i].weights_flat, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron, -1.0, 1.0);
-
-		// Assign the weights_flat addresses to the weights
-		for (int j = 0; j < network->layers[i].nb_neurons; j++)
-			network->layers[i].weights[j] = &(network->layers[i].weights_flat[j * network->layers[i].nb_inputs_per_neuron]);
 
 		///// Allocate memory for the biases, and the deltas (nb_neurons * sizeof(nn_type))
 		this_malloc_size = network->layers[i].nb_neurons * sizeof(nn_type);
 		network->layers[i].biases = mallocBlocking(this_malloc_size, "initNeuralNetwork()");
 		fillRandomFloatArray(network->layers[i].biases, network->layers[i].nb_neurons, -1.0, 1.0);
-		network->layers[i].deltas = mallocBlocking(this_malloc_size, "initNeuralNetwork()");
 	}
 
 	// Assign the input and output layers pointers
@@ -108,12 +101,23 @@ int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_
 }
 
 /**
+ * @brief Function that initializes the gradients values of a neural network
+ * 
+ * @param network	Neural network to initialize the gradients values of
+ */
+void initGradientsNeuralNetwork(NeuralNetwork *network) {
+	if (network->layers[1].weights_gradients != NULL) return;
+	for (int i = 1; i < network->nb_layers; i++) {
+		network->layers[i].weights_gradients_flat = try2DFlatMatrixAllocation((void***)&network->layers[i].weights_gradients, network->layers[i].nb_neurons, network->layers[i].nb_inputs_per_neuron, sizeof(nn_type), "initGradientsNeuralNetwork()");
+		network->layers[i].biases_gradients = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "initGradientsNeuralNetwork()");
+	}
+}
+
+/**
  * @brief Function that prints a neural network
  * It only prints information about the neural network, not the weights, biases, etc.
  * 
  * @param network	Neural network to print
- * 
- * @return void
  */
 void printNeuralNetwork(NeuralNetwork network) {
 	INFO_PRINT("printNeuralNetwork():\n");
@@ -172,8 +176,6 @@ void printNeuralNetwork(NeuralNetwork network) {
  * @brief Function that prints the activations_values of a neural network
  * 
  * @param network	Neural network to print the activations_values of
- * 
- * @return void
  */
 void printActivationValues(NeuralNetwork network) {
 	INFO_PRINT("printActivationValues():\n");
@@ -196,19 +198,21 @@ void printActivationValues(NeuralNetwork network) {
  * and sets all the bytes of the neural network to 0.
  * 
  * @param network	Neural network to free
- * 
- * @return void
  */
 void freeNeuralNetwork(NeuralNetwork *network) {
 	if (network->nb_layers == 0) return;
 
 	// Free the layers
 	for (int i = 0; i < network->nb_layers; i++) {
-		free(network->layers[i].weights_flat);
-		free(network->layers[i].weights);
+		free2DFlatMatrix((void**)network->layers[i].weights, network->layers[i].weights_flat, network->layers[i].nb_neurons);
 		free(network->layers[i].activations_values);
 		free(network->layers[i].biases);
-		free(network->layers[i].deltas);
+		if (network->layers[i].weights_gradients != NULL)
+			free2DFlatMatrix((void**)network->layers[i].weights_gradients, network->layers[i].weights_gradients_flat, network->layers[i].nb_neurons);
+		if (network->layers[i].biases_gradients != NULL)
+			free(network->layers[i].biases_gradients);
+		if (network->layers[i].activation_function_name != NULL)
+			free(network->layers[i].activation_function_name);
 	}
 
 	// Free the layers array
@@ -344,6 +348,7 @@ int loadNeuralNetwork(NeuralNetwork *network, char *filename) {
 
 	// Get the loss function
 	network->loss_function = get_loss_function(network->loss_function_name);
+	network->loss_function_derivative = get_loss_function_derivative(network->loss_function_name);
 
 	// Allocate memory for the layers
 	long long this_malloc_size = network->nb_layers * sizeof(NeuronLayer);
@@ -372,7 +377,6 @@ int loadNeuralNetwork(NeuralNetwork *network, char *filename) {
 		this_malloc_size = network->layers[i].nb_neurons * sizeof(nn_type);
 		network->layers[i].activations_values = mallocBlocking(this_malloc_size, "loadNeuralNetwork()");
 		network->layers[i].biases = mallocBlocking(this_malloc_size, "loadNeuralNetwork()");
-		network->layers[i].deltas = mallocBlocking(this_malloc_size, "loadNeuralNetwork()");
 
 		// Read the weights_flat, and the biases
 		fread(network->layers[i].weights_flat, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(nn_type), 1, file);
@@ -403,8 +407,6 @@ int loadNeuralNetwork(NeuralNetwork *network, char *filename) {
  * 
  * @param network_to_clone		Neural network to clone
  * @param cloned_network		Pointer to the cloned neural network
- * 
- * @return void
  */
 void deepCloneNeuralNetwork(NeuralNetwork *network_to_clone, NeuralNetwork *cloned_network) {
 
@@ -428,11 +430,13 @@ void deepCloneNeuralNetwork(NeuralNetwork *network_to_clone, NeuralNetwork *clon
 		// Duplicate the weights_flat, the weights, the biases, the deltas and the errors
 		this_malloc_size = (long long)network_to_clone->layers[i].nb_neurons * (long long)network_to_clone->layers[i].nb_inputs_per_neuron * sizeof(nn_type);
 		cloned_network->layers[i].weights_flat = duplicateMemory(network_to_clone->layers[i].weights_flat, this_malloc_size, "deepCloneNeuralNetwork()");
+		cloned_network->layers[i].weights_gradients_flat = duplicateMemory(network_to_clone->layers[i].weights_gradients_flat, this_malloc_size, "deepCloneNeuralNetwork()");
 		this_malloc_size = network_to_clone->layers[i].nb_neurons * sizeof(nn_type);
 		cloned_network->layers[i].weights = duplicateMemory(network_to_clone->layers[i].weights, this_malloc_size, "deepCloneNeuralNetwork()");
 		cloned_network->layers[i].activations_values = duplicateMemory(network_to_clone->layers[i].activations_values, this_malloc_size, "deepCloneNeuralNetwork()");
 		cloned_network->layers[i].biases = duplicateMemory(network_to_clone->layers[i].biases, this_malloc_size, "deepCloneNeuralNetwork()");
-		cloned_network->layers[i].deltas = duplicateMemory(network_to_clone->layers[i].deltas, this_malloc_size, "deepCloneNeuralNetwork()");
+		cloned_network->layers[i].weights_gradients = duplicateMemory(network_to_clone->layers[i].weights_gradients, this_malloc_size, "deepCloneNeuralNetwork()");
+		cloned_network->layers[i].biases_gradients = duplicateMemory(network_to_clone->layers[i].biases_gradients, this_malloc_size, "deepCloneNeuralNetwork()");
 
 		// Assign the weights_flat addresses to the weights
 		for (int j = 0; j < network_to_clone->layers[i].nb_neurons; j++)

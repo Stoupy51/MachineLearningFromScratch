@@ -9,8 +9,6 @@
  * @param size				The size of the array
  * @param min				The minimum value of the random values
  * @param max_minus_min		The maximum value of the random values minus the minimum value (max - min)
- * 
- * @return void
  */
 kernel void fillRandomFloatArrayGPU(global double* array, ulong size, double min, double max_minus_min) {
 

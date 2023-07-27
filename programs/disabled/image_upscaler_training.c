@@ -19,9 +19,7 @@ int code;
 /**
  * @brief Function run at the end of the program
  * [registered with atexit()] in the main() function.
- * 
- * @return void
-*/
+ */
 void exitProgram() {
 
 	// Read all the buffers & Save the neural network to a file

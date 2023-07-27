@@ -6,9 +6,7 @@
 /**
  * @brief Function run at the end of the program
  * [registered with atexit()] in the main() function.
- * 
- * @return void
-*/
+ */
 void exitProgram() {
 
 	// Print end of program
@@ -28,8 +26,6 @@ int doubleToInt(nn_type d) {
  * @param value The integer to convert
  * @param array The array to fill
  * @param offset The offset in the array
- * 
- * @return void
  */
 void convertIntToBinaryDoubleArray(int value, nn_type* array, int array_offset) {
 	for (int i = 0; i < 32; i++)
@@ -99,7 +95,7 @@ int main() {
 	}
 
 	// Train the neural network
-	code = NeuralNetworkTrainCPUSingleThread(&network_plus, inputs, expected,
+	code = TrainCPUSingleThread(&network_plus, inputs, expected,
 		NB_TOTAL_DATA,
 		NB_TEST_DATA_PERCENTAGE,
 		BATCH_SIZE,
@@ -118,7 +114,7 @@ int main() {
 
 		// Feed forward
 		nn_type *test_output = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(nn_type), "main()");
-		NeuralNetworkFeedForwardCPUSingleThread(&network_plus, test_inputs[i]);
+		FeedForwardCPUSingleThread(&network_plus, test_inputs[i]);
 		memcpy(test_output, network_plus.output_layer->activations_values, network_plus.output_layer->nb_neurons * sizeof(nn_type));
 
 		// Print the test results

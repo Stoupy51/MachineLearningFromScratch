@@ -8,9 +8,7 @@
 /**
  * @brief Function run at the end of the program
  * [registered with atexit()] in the main() function.
- * 
- * @return void
-*/
+ */
 void exitProgram() {
 
 	// Free private GPU buffers
@@ -75,7 +73,7 @@ int main() {
 	// Test the neural network
 	WARNING_PRINT("main(): Testing the neural network\n");
 	for (int i = 0; i < nb_training_data; i++) {
-		NeuralNetworkFeedForwardCPUSingleThread(&network_and, inputs[i]);
+		FeedForwardCPUSingleThread(&network_and, inputs[i]);
 		//NeuralNetworkfeedForwardGPU(&network_and, inputs[i], 1);
 		printActivationValues(network_and);
 	}

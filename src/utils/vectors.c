@@ -34,8 +34,6 @@ int* create_random_vector(int min, int max, int size, size_t vector_size_bytes) 
  * @param min Minimum value of the integers
  * @param max Maximum value of the integers
  * @param size Size of the vector
- * 
- * @return void
  */
 void fill_random_vector(int* vector, int min, int max, int size) {
 	for (size--; size >= 0; size--)
@@ -48,8 +46,6 @@ void fill_random_vector(int* vector, int min, int max, int size) {
  * 
  * @param vector Pointer to the vector
  * @param size Size of the vector
- * 
- * @return void
  */
 void print_vector(int* vector, int size) {
 

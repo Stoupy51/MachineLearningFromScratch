@@ -107,8 +107,6 @@ int fillRandomFloatArrayCPUThreads(nn_type* array, unsigned long long size, nn_t
  * @param size			The size of the array
  * @param min			The minimum value
  * @param max			The maximum value
- * 
- * @return void
  */
 void fillRandomFloatArray(nn_type* array, unsigned long long size, nn_type min, nn_type max) {
 

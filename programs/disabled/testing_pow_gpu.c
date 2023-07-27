@@ -22,8 +22,6 @@ int i;
  * 
  * @param first_vector		The first vector
  * @param second_vector		The second vector
- * 
- * @return void
  */
 void computePowerFastExponentiation(int* first_vector, int* second_vector, int n) {
 
@@ -57,9 +55,7 @@ void computePowerFastExponentiation(int* first_vector, int* second_vector, int n
 /**
  * @brief Function run at the end of the program
  * [registered with atexit()] in the main() function.
- * 
- * @return void
-*/
+ */
 void exitProgram() {
 
 	// Release OpenCL objects

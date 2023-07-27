@@ -60,7 +60,8 @@
  * @param activations_values				Outputs of the neurons when activated ( [nb_neurons] )
  * @param biases							Biases of the neurons ( [nb_neurons] )
  * 
- * @param deltas							Deltas of the neurons ( [nb_neurons] ) : used for backpropagation
+ * @param weights_gradients					Gradients of the weights of the neurons ( [nb_neurons][nb_inputs_per_neuron] )
+ * @param biases_gradients					Gradients of the biases of the neurons ( [nb_neurons] )
  */
 typedef struct NeuronLayer {
 	int nb_neurons;				// Arbitrary
@@ -77,8 +78,10 @@ typedef struct NeuronLayer {
 	nn_type *activations_values;
 	nn_type *biases;
 
-	// Backpropagation variables
-	nn_type *deltas;
+	// Backpropagation gradients variables
+	nn_type *weights_gradients_flat;	// Single array of weights gradients for better memory management
+	nn_type **weights_gradients;
+	nn_type *biases_gradients;
 } NeuronLayer;
 
 
@@ -94,18 +97,20 @@ typedef struct NeuronLayer {
  * @param loss_function			Loss function of the neural network: how the network will calculate the error
  */
 typedef struct NeuralNetwork {
-	int nb_layers;										// Arbitrary
-	NeuronLayer *layers;								// Containing the input layer, the hidden layers and the output layer
-	NeuronLayer *input_layer;							// Pointer to the input layer (For easier access and readability)
-	NeuronLayer *output_layer;							// Pointer to the output layer (For easier access and readability)
-	nn_type learning_rate;								// Arbitrary, ex: 1.0, 0.5, 0.1, 0.01, 0.001, ...
-	char *loss_function_name;							// Arbitrary, ex: "MSE", "MAE", "cross_entropy", ...
-	nn_type (*loss_function)(nn_type*, nn_type*, int);	// Arbitrary, ex: mean_squared_error, mean_absolute_error, cross_entropy, ...
+	int nb_layers;											// Arbitrary
+	NeuronLayer *layers;									// Containing the input layer, the hidden layers and the output layer
+	NeuronLayer *input_layer;								// Pointer to the input layer (For easier access and readability)
+	NeuronLayer *output_layer;								// Pointer to the output layer (For easier access and readability)
+	nn_type learning_rate;									// Arbitrary, ex: 1.0, 0.5, 0.1, 0.01, 0.001, ...
+	char *loss_function_name;								// Arbitrary, ex: "MSE", "MAE", "cross_entropy", ...
+	nn_type (*loss_function)(nn_type, nn_type);				// Arbitrary, ex: mean_squared_error, mean_absolute_error, cross_entropy, ...
+	nn_type (*loss_function_derivative)(nn_type, nn_type);	// Arbitrary, ex: mean_squared_error_derivative, mean_absolute_error_derivative, cross_entropy_derivative, ...
 
-	long long memory_size;								// Memory size of the neural network (in bytes)
+	long long memory_size;									// Memory size of the neural network (in bytes)
 } NeuralNetwork;
 
 int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_layer[], char **activation_function_names, char *loss_function_name, double learning_rate);
+void initGradientsNeuralNetwork(NeuralNetwork *network);
 void printNeuralNetwork(NeuralNetwork network);
 void printActivationValues(NeuralNetwork network);
 void freeNeuralNetwork(NeuralNetwork *network);

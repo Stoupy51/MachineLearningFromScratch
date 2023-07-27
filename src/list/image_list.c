@@ -36,8 +36,6 @@ int img_list_insert(img_list_t *list, image_t image) {
  * @brief Frees an image list and its elements
  * 
  * @param list		Pointer to the image list
- * 
- * @return void
  */
 void img_list_free(img_list_t *list) {
 	img_list_elt_t *current_elt = list->head;
@@ -56,8 +54,6 @@ void img_list_free(img_list_t *list) {
  * @brief Shuffles an image list
  * 
  * @param list		Pointer t
- * 
- * @return void
  */
 void img_list_shuffle(img_list_t *list) {
 	

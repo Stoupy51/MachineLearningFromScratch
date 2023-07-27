@@ -20,9 +20,7 @@ int code;
 /**
  * @brief Function run at the end of the program
  * [registered with atexit()] in the main() function.
- * 
- * @return void
-*/
+ */
 void exitProgram() {
 
 	// Free the neural network & free private GPU buffers
@@ -128,7 +126,7 @@ int main() {
 			// Feed forward the neural network
 			code = NeuralNetworkfeedForwardGPU(&network, input, 1);
 			ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error feeding forward the neural network\n");
-			// NeuralNetworkFeedForwardCPUSingleThread(&network, input);
+			// FeedForwardCPUSingleThread(&network, input);
 			},
 			benchmark_name, 1);
 			PRINTER(benchmark_buffer);

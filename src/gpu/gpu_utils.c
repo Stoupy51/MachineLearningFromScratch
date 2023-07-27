@@ -245,8 +245,6 @@ void printPlatformInfo(cl_platform_id platform_id) {
  * - Max constant buffer size
  * 
  * @param device_id		The device to print information about
- * 
- * @return void
  */
 void printDeviceInfo(cl_device_id device_id) {
 

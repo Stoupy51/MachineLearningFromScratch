@@ -5,8 +5,8 @@
 #include "neural_utils.h"
 
 // Single-core version
-void NeuralNetworkFeedForwardCPUSingleThread(NeuralNetwork *network, nn_type *input);
-int NeuralNetworkTrainCPUSingleThread(
+void FeedForwardCPUSingleThread(NeuralNetwork *network, nn_type *input);
+int TrainCPUSingleThread(
 	NeuralNetwork *network,
 	nn_type **inputs,
 	nn_type **expected,

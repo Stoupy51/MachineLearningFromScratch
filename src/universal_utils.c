@@ -11,9 +11,7 @@
  * printing the header
  * 
  * @param header	The header to print
- * 
- * @return void
-*/
+ */
 void mainInit(char* header) {
 
 	// Launch empty powershell command on Windows,
@@ -66,8 +64,9 @@ void* mallocBlocking(size_t size, const char* prefix) {
  * @param prefix	Prefix to print in the warning message, ex: "duplicateMemory()"
  * 
  * @return void*	Pointer to the duplicated memory block
-*/
+ */
 void* duplicateMemory(void* ptr, size_t size, const char* prefix) {
+	if (ptr == NULL) return NULL;
 	void* new_ptr = mallocBlocking(size, prefix == NULL ? "duplicateMemory()" : prefix);
 	memcpy(new_ptr, ptr, size);
 	return new_ptr;
@@ -82,7 +81,7 @@ void* duplicateMemory(void* ptr, size_t size, const char* prefix) {
  * @param nb_rows		Number of rows of the matrix
  * @param nb_columns	Number of columns of the matrix
  * @param size			Size of each element of the matrix
- * @param prefix		Prefix to print in the warning message, ex: "try2DFlatMatrixAllocation()"
+ * @param prefix		Prefix to print in the warning message, ex: "try2DFlatMatrixAllocation((void***))"
  * 
  * @return void*		Pointer to the flat matrix if success, NULL otherwise (the allocation is not flat)
  */
@@ -92,14 +91,14 @@ void* try2DFlatMatrixAllocation(void ***matrix, int nb_rows, int nb_columns, siz
 	long long int total_size = (long long int)nb_rows * (long long int)nb_columns * (long long int)size;
 
 	// Allocate the pointers to the rows
-	*matrix = mallocBlocking(sizeof(void*) * nb_rows, prefix == NULL ? "try2DFlatMatrixAllocation()" : prefix);
+	*matrix = mallocBlocking(sizeof(void*) * nb_rows, prefix == NULL ? "try2DFlatMatrixAllocation((void***))" : prefix);
 
 	// If the total size is too big (more than INT_MAX), allocate the matrix row by row
-	if (total_size > INT_MAX) {
+	if (total_size > INT_MAX && sizeof(size_t) <= sizeof(int)) {
 
 		// Allocate each row
 		for (int i = 0; i < nb_rows; i++)
-			(*matrix)[i] = mallocBlocking(size * nb_columns, prefix == NULL ? "try2DFlatMatrixAllocation()" : prefix);
+			(*matrix)[i] = mallocBlocking(size * nb_columns, prefix == NULL ? "try2DFlatMatrixAllocation((void***))" : prefix);
 
 		// Return NULL (the allocation is not flat)
 		return NULL;
@@ -109,7 +108,7 @@ void* try2DFlatMatrixAllocation(void ***matrix, int nb_rows, int nb_columns, siz
 	else {
 
 		// Allocate the flat matrix
-		void* flat_matrix = mallocBlocking(total_size, prefix == NULL ? "try2DFlatMatrixAllocation()" : prefix);
+		void* flat_matrix = mallocBlocking(total_size, prefix == NULL ? "try2DFlatMatrixAllocation((void***))" : prefix);
 
 		// Fill the pointers to the rows
 		for (int i = 0; i < nb_rows; i++)
@@ -124,11 +123,9 @@ void* try2DFlatMatrixAllocation(void ***matrix, int nb_rows, int nb_columns, siz
  * @brief This function frees a 2D matrix.
  * 
  * @param matrix		Pointer to the matrix to free
- * @param flat_matrix	Pointer to the flat matrix to free (can be NULL, should be output of try2DFlatMatrixAllocation())
+ * @param flat_matrix	Pointer to the flat matrix to free (can be NULL, should be output of try2DFlatMatrixAllocation((void***)))
  * @param nb_rows		Number of rows of the matrix
- * 
- * @return void
-*/
+ */
 void free2DFlatMatrix(void **matrix, void *flat_matrix, int nb_rows) {
 
 	// If the flat matrix is not NULL, free it
@@ -167,7 +164,7 @@ void* try3DFlatMatrixAllocation(void ****matrix, int nb_rows, int nb_columns, in
 	*matrix = mallocBlocking(sizeof(void**) * nb_rows, prefix == NULL ? "try3DFlatMatrixAllocation()" : prefix);
 
 	// If the total size is too big (more than INT_MAX), allocate the matrix row by row
-	if (total_size > INT_MAX) {
+	if (total_size > INT_MAX && sizeof(size_t) <= sizeof(int)) {
 
 		// Allocate each row
 		for (int i = 0; i < nb_rows; i++) {
@@ -205,8 +202,6 @@ void* try3DFlatMatrixAllocation(void ****matrix, int nb_rows, int nb_columns, in
  * @param flat_matrix	Pointer to the flat matrix to free (can be NULL, should be output of try3DFlatMatrixAllocation())
  * @param nb_rows		Number of rows of the matrix
  * @param nb_columns	Number of columns of the matrix
- * 
- * @return void
  */
 void free3DFlatMatrix(void ***matrix, void *flat_matrix, int nb_rows, int nb_columns) {
 	
@@ -302,7 +297,7 @@ char* readEntireFile(char* path) {
  * @param fd		File descriptor of the file to read.
  * 
  * @return int		0 if the line is read, -1 if the end of the file is reached.
-*/
+ */
 int get_line_from_file(char **lineptr, int fd) {
 
 	// Variables
@@ -365,7 +360,7 @@ int get_line_from_file(char **lineptr, int fd) {
  * @param path	Path of the file to check.
  * 
  * @return int	0 if the file is accessible, -1 otherwise.
-*/
+ */
 int file_accessible(char* path) {
 	
 	// Open the file
@@ -392,7 +387,7 @@ int file_accessible(char* path) {
  * @param fd	File descriptor of the file to get the size.
  * 
  * @return size_t	Size of the file.
-*/
+ */
 size_t get_file_size(int fd) {
 	#ifdef _WIN32
 		return _filelength(fd);
@@ -409,7 +404,7 @@ size_t get_file_size(int fd) {
  * @param str	String to hash.
  * 
  * @return int	Hash value of the string.
-*/
+ */
 int hash_string(char* str) {
 	
 	// Variables
@@ -440,7 +435,7 @@ int hash_string(char* str) {
  * @param path	Path of the directory to remove.
  * 
  * @return int	0 if the directory is removed, -1 otherwise.
-*/
+ */
 int remove_directory(char* path) {
 	char command[2048];
 	#ifdef _WIN32
@@ -459,7 +454,7 @@ int local_nb_threads = 0;
  * Efficiency: O(1) (the number of threads is computed only once)
  * 
  * @return int	Number of threads of the CPU.
-*/
+ */
 int getNumberOfThreads() {
 	if (local_nb_threads == 0) {
 		#ifdef _WIN32

@@ -42,8 +42,6 @@ kernel void feedForwardActivationValuesSigmoid(global double* previous_layer_act
  * @param activation_values		The activation values array of the output layer
  * @param output_deltas			The output deltas array of the output layer
  * @param output_layer_size		The size of the output layer
- * 
- * @return void
  */
 kernel void backpropagationOutputLayerDeltas(global double* excepted_output, global double* activation_values, global double* output_deltas, int output_layer_size) {
 
@@ -67,8 +65,6 @@ kernel void backpropagationOutputLayerDeltas(global double* excepted_output, glo
  * @param deltas				The deltas of the current layer
  * @param current_layer_size	The size of the current layer
  * @param next_layer_size		The size of the next layer
- * 
- * @return void
  */
 kernel void backpropagationHiddenLayersDeltas(global double* next_layer_weights, global double* next_layer_deltas, global double* activation_values, global double* deltas, int current_layer_size, int next_layer_size) {
 
@@ -100,8 +96,6 @@ kernel void backpropagationHiddenLayersDeltas(global double* next_layer_weights,
  * @param current_layer_size				The size of the current layer
  * @param previous_layer_size				The size of the previous layer
  * @param learning_rate						The learning rate of the network
- * 
- * @return void
  */
 kernel void updateWeightsAndBiases(global double* previous_layer_activation_values, global double* deltas, global double* weights, global double* biases, int current_layer_size, int previous_layer_size, double learning_rate) {
 

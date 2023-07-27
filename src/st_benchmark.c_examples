@@ -14,7 +14,7 @@ void testMatriceMalloc2(size_t nOI);
  * @param argv Arguments list
  * 
  * @return int
-*/
+ */
 int main(int argc, char *argv[]) {
 
 	// Check the number of arguments
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
  * @brief Function that uses multiple mallocs to allocate memory for different types
  * 
  * @c slower than testMultipleMallocs2 but more readable to allocate memory
-*/
+ */
 void testMultipleMallocs1(size_t nOI) {
 
 	// Allocate the memory
@@ -82,7 +82,7 @@ void testMultipleMallocs1(size_t nOI) {
  * different types and then cast the pointer to the right type
  * 
  * @c faster than testMultipleMallocs1 but less readable to allocate memory
-*/
+ */
 void testMultipleMallocs2(size_t nOI) {
 	// Calculate the total size of the memory to allocate
 	size_t totalSize = nOI * (sizeof(int) + sizeof(double) + sizeof(char) + sizeof(float)
@@ -111,7 +111,7 @@ void testMultipleMallocs2(size_t nOI) {
  * @brief Function that allocates memory for a matrice naively
  * 
  * @c slower than testMatriceMalloc2 but more readable to allocate memory
-*/
+ */
 void testMatriceMalloc1(size_t nOI) {
 	
 	// Initialisations of variables
@@ -134,7 +134,7 @@ void testMatriceMalloc1(size_t nOI) {
  * @brief Function that allocates memory for a matrice efficiently
  * 
  * @c faster than testMatriceMalloc1 but less readable to allocate memory
-*/
+ */
 void testMatriceMalloc2(size_t nOI) {
 	
 	// Initialisations of variables

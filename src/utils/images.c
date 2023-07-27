@@ -96,8 +96,6 @@ int image_load_empty(image_t* image, int width, int height, int channels) {
  * @brief Free the memory allocated by the image structure.
  * 
  * @param image			Pointer to the image structure
- * 
- * @return void
  */
 void image_free(image_t* image) {
 	free(image->flat_data);
