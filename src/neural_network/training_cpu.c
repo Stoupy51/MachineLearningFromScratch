@@ -193,7 +193,7 @@ void BackpropagationCPUSingleThread(NeuralNetwork *network, nn_type **predicted_
 
 	// Initialize the gradients of the weights and the biases to 0
 	initGradientsNeuralNetwork(network);
-	for (int i = 0; i < network->nb_layers; i++) {
+	for (int i = 1; i < network->nb_layers; i++) {
 		memset(network->layers[i].biases_gradients, 0, network->layers[i].nb_neurons * sizeof(nn_type));
 		memset(network->layers[i].weights_gradients_flat, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(nn_type));
 	}
@@ -268,7 +268,6 @@ void BackpropagationCPUSingleThread(NeuralNetwork *network, nn_type **predicted_
 	}
 }
 
-
 /**
  * @brief Mini-batch Gradient Descent algorithm of the neural network
  * using a batch of inputs and a batch of target outputs
@@ -286,10 +285,8 @@ void MiniBatchGradientDescentCPUSingleThread(NeuralNetwork *network, nn_type **i
 
 	// Compute the forward pass to get predictions for the mini-batch
 	FeedForwardBatchCPUSingleThread(network, inputs, predicted_outputs, batch_size);
-
 	// Compute the gradients using backpropagation
 	BackpropagationCPUSingleThread(network, predicted_outputs, target_outputs, batch_size);
-
 	// Free the predicted outputs array for the batch
 	free2DFlatMatrix((void**)predicted_outputs, predicted_flat_outputs, batch_size);
 }
@@ -446,16 +443,13 @@ int TrainCPUSingleThread(NeuralNetwork *network, nn_type **inputs, nn_type **tar
 			FeedForwardBatchCPUSingleThread(network, test_inputs, predicted, nb_test_inputs);
 			
 			// Calculate the error of the test inputs using the loss function
-			for (int i = 0; i < nb_test_inputs; i++)
-				for (int j = 0; j < network->output_layer->nb_neurons; j++)
-					current_error += network->loss_function(predicted[i][j], target_tests[i][j]);
+			current_error = ComputeCostCPUSingleThread(network, predicted, target_tests, nb_test_inputs);
 			
 			// Free the predicted outputs array for the test inputs
 			free2DFlatMatrix((void**)predicted, flat_predicted, nb_test_inputs);
 		}
 
 		// Verbose
-		current_error /= nb_inputs;
 		if ((verbose > 0 && (current_epoch < 6 || current_epoch == nb_epochs || current_epoch % 10 == 0)) || verbose == 2)
 			DEBUG_PRINT("TrainCPU(1 thread): Epoch %d/%d, Error: %.12"NN_FORMAT"\n", current_epoch, nb_epochs, current_error);
 	}

@@ -59,7 +59,8 @@
 			"training_gpu.h": "c",
 			"neural_config.h": "c",
 			"cmath": "c",
-			"universal_pthread.h": "c"
+			"universal_pthread.h": "c",
+			"neural_utils.h": "c"
 		},
 		"OpenCL.explorer.localizedProperties": false
 	}
