@@ -26,6 +26,10 @@ NeuralNetwork getSimpleCopyForMultiThreadedFeedForward(NeuralNetwork network) {
 		copy.layers[i].activations_values = mallocBlocking(network.layers[i].nb_neurons * sizeof(nn_type), "getSimpleCopyForMultiThreadedFeedForward()");
 	}
 
+	// Correct the pointers of the input layer and the output layer
+	copy.input_layer = &copy.layers[0];
+	copy.output_layer = &copy.layers[network.nb_layers - 1];
+
 	// Return the copy
 	return copy;
 }
@@ -106,78 +110,6 @@ void FeedForwardBatchCPUSingleThread(NeuralNetwork *network, nn_type **inputs, n
 		// Copy the outputs of the neural network to the outputs array
 		memcpy(outputs[i], network->output_layer->activations_values, output_layer_size);
 	}
-}
-
-/**
- * @brief Structure representing the arguments of a multi-threaded feed forward algorithm
- * 
- * @param network			Neural network to use (duplicate of the original network, only the activations values are duplicated)
- * @param input				Pointer to the input array
- * @param output_to_fill	Pointer to the output array
- */
-struct FeedForwardMultiThreadRoutineArgs {
-	NeuralNetwork network;
-	nn_type *input;
-	nn_type *output_to_fill;
-};
-
-/**
- * @brief Routine of a thread of the multi-threaded feed forward algorithm
- * 
- * @param arg	Pointer to the arguments of the multi-threaded feed forward algorithm
- */
-thread_return_type FeedForwardMultiThreadRoutine(thread_param_type arg) {
-
-	// Get the arguments
-	struct FeedForwardMultiThreadRoutineArgs *args = (struct FeedForwardMultiThreadRoutineArgs *)arg;
-	NeuralNetwork network = args->network;
-	nn_type *input = args->input;
-	nn_type *output_to_fill = args->output_to_fill;
-
-	// Feed forward the inputs
-	FeedForwardCPUSingleThread(&network, input);
-
-	// Copy the outputs of the neural network to the outputs array
-	memcpy(output_to_fill, network.output_layer->activations_values, network.output_layer->nb_neurons * sizeof(nn_type));
-
-	// Free the copy of the neural network & return
-	freeSimpleCopyForMultiThreadedFeedForward(network);
-	return 0;
-}
-
-/**
- * @brief Multi-threading FeedForward algorithm of the neural network using a batch of inputs
- * 
- * @param network		Pointer to the neural network
- * @param inputs		Pointer to the inputs array
- * @param outputs		Pointer to the outputs array
- * @param batch_size	Number of samples in the batch (also number of threads)
- */
-void FeedForwardBatchCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, int batch_size) {
-
-	// Prepare the arguments of the multi-threaded feed forward algorithm and the threads
-	struct FeedForwardMultiThreadRoutineArgs *args = mallocBlocking(batch_size * sizeof(struct FeedForwardMultiThreadRoutineArgs), "FeedForwardBatchCPUMultiThreads()");
-	pthread_t *threads = mallocBlocking(batch_size * sizeof(pthread_t), "FeedForwardBatchCPUMultiThreads()");
-
-	// For each sample of the batch,
-	for (int i = 0; i < batch_size; i++) {
-
-		// Prepare the arguments of the multi-threaded feed forward algorithm
-		args[i].network = getSimpleCopyForMultiThreadedFeedForward(*network);
-		args[i].input = inputs[i];
-		args[i].output_to_fill = outputs[i];
-
-		// Create the thread
-		pthread_create(&threads[i], NULL, FeedForwardMultiThreadRoutine, &args[i]);
-	}
-
-	// Wait for the threads to finish
-	for (int i = 0; i < batch_size; i++)
-		pthread_join(threads[i], NULL);
-	
-	// Free the memory
-	free(threads);
-	free(args);
 }
 
 /**
@@ -291,10 +223,6 @@ void MiniBatchGradientDescentCPUSingleThread(NeuralNetwork *network, nn_type **i
 	free2DFlatMatrix((void**)predicted_outputs, predicted_flat_outputs, batch_size);
 }
 
-
-
-
-
 /**
  * @brief Utility function to shuffle the training data
  * 
@@ -349,13 +277,11 @@ void shuffleTrainingData(nn_type **inputs, nn_type **target_outputs, int batch_s
  */
 nn_type ComputeCostCPUSingleThread(NeuralNetwork *network, nn_type **predicted_outputs, nn_type **target_outputs, int batch_size) {
 	
-	// Local variables
-	nn_type cost = 0.0;
-
 	// Add the cost of each output neuron of each sample of the batch
+	nn_type cost = 0.0;
 	for (int i = 0; i < batch_size; i++)
 		for (int j = 0; j < network->output_layer->nb_neurons; j++)
-			cost += network->loss_function(predicted_outputs[i][j], target_outputs[i][j]);
+			cost += network->loss_function(predicted_outputs[i][j], target_outputs[i][j]) / network->output_layer->nb_neurons;
 
 	// Return the cost of the neural network
 	return cost / batch_size;
@@ -465,4 +391,77 @@ int TrainCPUSingleThread(NeuralNetwork *network, nn_type **inputs, nn_type **tar
 
 
 
+///// Multi-threaded version /////
+
+/**
+ * @brief Structure representing the arguments of a multi-threaded feed forward algorithm
+ * 
+ * @param network			Neural network to use (duplicate of the original network, only the activations values are duplicated)
+ * @param input				Pointer to the input array
+ * @param output_to_fill	Pointer to the output array
+ */
+struct FeedForwardMultiThreadRoutineArgs {
+	NeuralNetwork network;
+	nn_type *input;
+	nn_type *output_to_fill;
+};
+
+/**
+ * @brief Routine of a thread of the multi-threaded feed forward algorithm
+ * 
+ * @param arg	Pointer to the arguments of the multi-threaded feed forward algorithm
+ */
+thread_return_type FeedForwardMultiThreadRoutine(thread_param_type arg) {
+
+	// Get the arguments
+	struct FeedForwardMultiThreadRoutineArgs *args = (struct FeedForwardMultiThreadRoutineArgs *)arg;
+	NeuralNetwork network = args->network;
+	nn_type *input = args->input;
+	nn_type *output_to_fill = args->output_to_fill;
+
+	// Feed forward the inputs
+	FeedForwardCPUSingleThread(&network, input);
+
+	// Copy the outputs of the neural network to the outputs array
+	memcpy(output_to_fill, network.output_layer->activations_values, network.output_layer->nb_neurons * sizeof(nn_type));
+
+	// Free the copy of the neural network & return
+	freeSimpleCopyForMultiThreadedFeedForward(network);
+	return 0;
+}
+
+/**
+ * @brief Multi-threading FeedForward algorithm of the neural network using a batch of inputs
+ * 
+ * @param network		Pointer to the neural network
+ * @param inputs		Pointer to the inputs array
+ * @param outputs		Pointer to the outputs array
+ * @param batch_size	Number of samples in the batch (also number of threads)
+ */
+void FeedForwardBatchCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, int batch_size) {
+
+	// Prepare the arguments of the multi-threaded feed forward algorithm and the threads
+	struct FeedForwardMultiThreadRoutineArgs *args = mallocBlocking(batch_size * sizeof(struct FeedForwardMultiThreadRoutineArgs), "FeedForwardBatchCPUMultiThreads()");
+	pthread_t *threads = mallocBlocking(batch_size * sizeof(pthread_t), "FeedForwardBatchCPUMultiThreads()");
+
+	// For each sample of the batch,
+	for (int i = 0; i < batch_size; i++) {
+
+		// Prepare the arguments of the multi-threaded feed forward algorithm
+		args[i].network = getSimpleCopyForMultiThreadedFeedForward(*network);
+		args[i].input = inputs[i];
+		args[i].output_to_fill = outputs[i];
+
+		// Create the thread
+		pthread_create(&threads[i], NULL, FeedForwardMultiThreadRoutine, &args[i]);
+	}
+
+	// Wait for the threads to finish
+	for (int i = 0; i < batch_size; i++)
+		pthread_join(threads[i], NULL);
+	
+	// Free the memory
+	free(threads);
+	free(args);
+}
 
