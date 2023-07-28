@@ -11,6 +11,7 @@ void BackpropagationCPUSingleThread(NeuralNetwork *network, nn_type **predicted_
 void MiniBatchGradientDescentCPUSingleThread(NeuralNetwork *network, nn_type **inputs, nn_type **target_outputs, int batch_size);
 void shuffleTrainingData(nn_type **inputs, nn_type **target_outputs, int batch_size);
 nn_type ComputeCostCPUSingleThread(NeuralNetwork *network, nn_type **predicted_outputs, nn_type **target_outputs, int batch_size);
+void epochCPUSingleThread(NeuralNetwork *network, nn_type **inputs, nn_type **target, int nb_inputs, int nb_batches, int batch_size, int current_epoch, int nb_epochs, nn_type *current_error, nn_type **test_inputs, nn_type **target_tests, int nb_test_inputs, int verbose);
 
 int TrainCPUSingleThread(
 	NeuralNetwork *network,

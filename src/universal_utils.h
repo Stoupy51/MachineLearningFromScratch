@@ -35,6 +35,22 @@ typedef unsigned char byte;
 #define CYAN "\033[0;36m"
 #define WHITE "\033[0;37m"
 #define RESET "\033[0m"
+#define STR_BLACK_R(str) BLACK str RESET
+#define STR_RED_R(str) RED str RESET
+#define STR_GREEN_R(str) GREEN str RESET
+#define STR_YELLOW_R(str) YELLOW str RESET
+#define STR_BLUE_R(str) BLUE str RESET
+#define STR_MAGENTA_R(str) MAGENTA str RESET
+#define STR_CYAN_R(str) CYAN str RESET
+#define STR_WHITE_R(str) WHITE str RESET
+#define STR_BLACK(str) BLACK str
+#define STR_RED(str) RED str
+#define STR_GREEN(str) GREEN str
+#define STR_YELLOW(str) YELLOW str
+#define STR_BLUE(str) BLUE str
+#define STR_MAGENTA(str) MAGENTA str
+#define STR_CYAN(str) CYAN str
+#define STR_WHITE(str) WHITE str
 
 // Defines for the different levels of debug output
 #define INFO_LEVEL 1

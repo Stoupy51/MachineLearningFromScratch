@@ -2,6 +2,7 @@
 #include "../src/universal_utils.h"
 #include "../src/neural_network/neural_utils.h"
 #include "../src/neural_network/training_cpu.h"
+#include "../src/st_benchmark.h"
 
 /**
  * @brief Function run at the end of the program
@@ -77,7 +78,7 @@ int main() {
 	#define BATCH_SIZE 1
 	#define NB_EPOCHS 200
 	#define ERROR_TARGET 0.000001
-	#define VERBOSE 3
+	#define VERBOSE 1
 	nn_type **inputs;
 	nn_type **expected;
 	nn_type *inputs_flat_matrix = try2DFlatMatrixAllocation((void***)&inputs, NB_TOTAL_DATA, network_plus.input_layer->nb_neurons, sizeof(nn_type), "main()");
@@ -95,15 +96,19 @@ int main() {
 	}
 
 	// Train the neural network
-	code = TrainCPUSingleThread(&network_plus, inputs, expected,
-		NB_TOTAL_DATA,
-		NB_TEST_DATA_PERCENTAGE,
-		BATCH_SIZE,
-		NB_EPOCHS,
-		ERROR_TARGET,
-		VERBOSE
-	);
-	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
+	char buffer[16];
+	ST_BENCHMARK_SOLO_COUNT(buffer, {
+		code = TrainCPUSingleThread(&network_plus, inputs, expected,
+			NB_TOTAL_DATA,
+			NB_TEST_DATA_PERCENTAGE,
+			BATCH_SIZE,
+			NB_EPOCHS,
+			ERROR_TARGET,
+			VERBOSE
+		);
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
+	}, "", 1, 1);
+	INFO_PRINT("main(): Total training time: "STR_YELLOW_R("%s")"s\n", buffer);
 
 	///// Test the neural network
 	#define NB_TEST_DATA (NB_TOTAL_DATA * NB_TEST_DATA_PERCENTAGE / 100)

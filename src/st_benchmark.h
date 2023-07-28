@@ -13,17 +13,12 @@
 
 #include <windows.h>
 
-#define st_gettimeofday(tp, tzp) { { \
-	static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL); \
-	SYSTEMTIME  system_time; \
-	FILETIME    file_time; \
-	uint64_t    time; \
-	GetSystemTime( &system_time ); \
-	SystemTimeToFileTime( &system_time, &file_time ); \
-	time =  ((uint64_t)file_time.dwLowDateTime )      ; \
-	time += ((uint64_t)file_time.dwHighDateTime) << 32; \
-	tp.tv_sec  = (long) ((time - EPOCH) / 10000000L); \
-	tp.tv_usec = (long) (system_time.wMilliseconds * 1000); }\
+#define st_gettimeofday(tp, tzp) { \
+	LARGE_INTEGER counter, frequency; \
+	QueryPerformanceCounter(&counter); \
+	QueryPerformanceFrequency(&frequency); \
+	tp.tv_sec = counter.QuadPart / frequency.QuadPart; \
+	tp.tv_usec = (counter.QuadPart % frequency.QuadPart) * 1000000 / frequency.QuadPart; \
 }
 
 #else
@@ -51,11 +46,11 @@
 		ST_BENCH_f2; \
 		ST_BENCH_countF2 += 1; \
 	} \
-	sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "%s %s than %s by " ST_COLOR_YELLOW "%f" ST_COLOR_RED " times with" ST_COLOR_YELLOW "\n[BENCHMARK] " ST_COLOR_RED ST_BENCH_f1_name " executed " ST_COLOR_YELLOW "%ld" ST_COLOR_RED " time%s and " ST_BENCH_f2_name " executed " ST_COLOR_YELLOW "%ld" ST_COLOR_RED " time%s\n" ST_COLOR_RESET, ST_BENCH_f1_name, (ST_BENCH_countF1 > ST_BENCH_countF2) ? "faster" : "slower", ST_BENCH_f2_name, (double)ST_BENCH_countF1 / (double)ST_BENCH_countF2, ST_BENCH_countF1, (ST_BENCH_countF1 == 1 ? "" : "s"), ST_BENCH_countF2, (ST_BENCH_countF2 == 1 ? "" : "s")); \
+	sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "'%s" ST_COLOR_RED "' %s" ST_COLOR_RED " than '%s'" ST_COLOR_RED " by " ST_COLOR_YELLOW "%f" ST_COLOR_RED " times with" ST_COLOR_YELLOW "\n[BENCHMARK] " ST_COLOR_RED ST_BENCH_f1_name " executed " ST_COLOR_YELLOW "%ld" ST_COLOR_RED " time%s and " ST_BENCH_f2_name " executed " ST_COLOR_YELLOW "%ld" ST_COLOR_RED " time%s\n" ST_COLOR_RESET, ST_BENCH_f1_name, (ST_BENCH_countF1 > ST_BENCH_countF2) ? "faster" : "slower", ST_BENCH_f2_name, (double)ST_BENCH_countF1 / (double)ST_BENCH_countF2, ST_BENCH_countF1, (ST_BENCH_countF1 == 1 ? "" : "s"), ST_BENCH_countF2, (ST_BENCH_countF2 == 1 ? "" : "s")); \
 }
 
 
-#define ST_BENCHMARK_SOLO_COUNT(ST_BENCH_buffer, ST_BENCH_f, ST_BENCH_f_name, ST_BENCH_count) { \
+#define ST_BENCHMARK_SOLO_COUNT(ST_BENCH_buffer, ST_BENCH_f, ST_BENCH_f_name, ST_BENCH_count, ST_RETURN_TIME_ONLY) { \
 	struct timeval ST_BENCH_timeval, ST_BENCH_timeval2; \
 	st_gettimeofday(ST_BENCH_timeval, NULL); \
 	unsigned long ST_BENCH_time = 1000000 * ST_BENCH_timeval.tv_sec + ST_BENCH_timeval.tv_usec; \
@@ -65,10 +60,12 @@
 	} \
 	st_gettimeofday(ST_BENCH_timeval2, NULL); \
 	ST_BENCH_time = 1000000 * ST_BENCH_timeval2.tv_sec + ST_BENCH_timeval2.tv_usec - ST_BENCH_time; \
-	if (ST_BENCH_count != 1) \
-		sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "%s executed " ST_COLOR_YELLOW "%d" ST_COLOR_RED " time%s in " ST_COLOR_YELLOW "%lf" ST_COLOR_RED "s\n" ST_COLOR_RESET, ST_BENCH_f_name, ST_BENCH_count, (ST_BENCH_count == 1 ? "" : "s"), (double)ST_BENCH_time / 1000000.0); \
+	if (ST_RETURN_TIME_ONLY) \
+		sprintf(ST_BENCH_buffer, "%lf", (double)ST_BENCH_time / 1000000.0); \
+	else if (ST_BENCH_count != 1) \
+		sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "'%s" ST_COLOR_RED "' executed " ST_COLOR_YELLOW "%d" ST_COLOR_RED " time%s in " ST_COLOR_YELLOW "%lf" ST_COLOR_RED "s\n" ST_COLOR_RESET, ST_BENCH_f_name, ST_BENCH_count, (ST_BENCH_count == 1 ? "" : "s"), (double)ST_BENCH_time / 1000000.0); \
 	else \
-		sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "%s executed in " ST_COLOR_YELLOW "%lf" ST_COLOR_RED "s\n" ST_COLOR_RESET, ST_BENCH_f_name, (double)ST_BENCH_time / 1000000.0); \
+		sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "'%s" ST_COLOR_RED "' executed in " ST_COLOR_YELLOW "%lf" ST_COLOR_RED "s\n" ST_COLOR_RESET, ST_BENCH_f_name, (double)ST_BENCH_time / 1000000.0); \
 }
 
 
@@ -81,7 +78,7 @@
 		ST_BENCH_f; \
 		ST_BENCH_count += 1; \
 	} \
-	sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "%s executed " ST_COLOR_YELLOW "%ld" ST_COLOR_RED " time%s in " ST_COLOR_YELLOW "%ld" ST_COLOR_RED "s\n" ST_COLOR_RESET, ST_BENCH_f_name, ST_BENCH_count, (ST_BENCH_count == 1 ? "" : "s"), (long)ST_BENCH_testing_time); \
+	sprintf(ST_BENCH_buffer, ST_COLOR_YELLOW "[BENCHMARK] " ST_COLOR_RED "'%s" ST_COLOR_RED "' executed " ST_COLOR_YELLOW "%ld" ST_COLOR_RED " time%s in " ST_COLOR_YELLOW "%ld" ST_COLOR_RED "s\n" ST_COLOR_RESET, ST_BENCH_f_name, ST_BENCH_count, (ST_BENCH_count == 1 ? "" : "s"), (long)ST_BENCH_testing_time); \
 }
 
 #endif

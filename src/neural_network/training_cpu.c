@@ -217,8 +217,10 @@ void MiniBatchGradientDescentCPUSingleThread(NeuralNetwork *network, nn_type **i
 
 	// Compute the forward pass to get predictions for the mini-batch
 	FeedForwardBatchCPUSingleThread(network, inputs, predicted_outputs, batch_size);
+
 	// Compute the gradients using backpropagation
 	BackpropagationCPUSingleThread(network, predicted_outputs, target_outputs, batch_size);
+
 	// Free the predicted outputs array for the batch
 	free2DFlatMatrix((void**)predicted_outputs, predicted_flat_outputs, batch_size);
 }
@@ -288,6 +290,69 @@ nn_type ComputeCostCPUSingleThread(NeuralNetwork *network, nn_type **predicted_o
 }
 
 /**
+ * @brief One epoch of the training of the neural network with the CPU (Single core)
+ * 
+ * @param network				Pointer to the neural network
+ * @param inputs				Pointer to the inputs array
+ * @param target				Pointer to the target outputs array
+ * @param nb_inputs				Number of samples in the inputs array and in the target outputs array
+ * @param nb_batches			Number of batches
+ * @param batch_size			Number of samples in the batch
+ * @param current_epoch			Current epoch
+ * @param nb_epochs				Number of epochs to train the neural network
+ * @param current_error			Pointer to the current error value
+ * @param test_inputs			Pointer to the test inputs array
+ * @param target_tests			Pointer to the target outputs array for the test inputs
+ * @param nb_test_inputs		Number of samples in the test inputs array and in the target outputs array for the test inputs
+ * @param verbose				Verbose level (0: no verbose, 1: verbose, 2: very verbose, 3: all)
+ * 
+ * @return void
+ */
+void epochCPUSingleThread(NeuralNetwork *network, nn_type **inputs, nn_type **target, int nb_inputs, int nb_batches, int batch_size, int current_epoch, int nb_epochs, nn_type *current_error, nn_type **test_inputs, nn_type **target_tests, int nb_test_inputs, int verbose) {
+
+	// Shuffle the training data
+	shuffleTrainingData(inputs, target, nb_inputs);
+
+	// For each batch of the inputs,
+	for (int current_batch = 0; current_batch < nb_batches; current_batch++) {
+
+		// Calculate the index of the first and the last sample of the batch
+		int first_sample = current_batch * batch_size;
+		int last_sample = first_sample + batch_size - 1;
+		if (last_sample >= nb_inputs)
+			last_sample = nb_inputs - 1;
+		
+		// Calculate the number of samples in the batch
+		int nb_samples = last_sample - first_sample + 1;
+
+		// Verbose
+		if (verbose > 1)
+			DEBUG_PRINT("TrainCPU(1 thread): Epoch %d/%d,\tBatch %d/%d,\tSamples %d-%d/%d\n", current_epoch, nb_epochs, current_batch + 1, nb_batches, first_sample + 1, last_sample + 1, nb_inputs);
+		
+		// Do the mini-batch gradient descent
+		MiniBatchGradientDescentCPUSingleThread(network, inputs + first_sample, target + first_sample, nb_samples);
+	}
+
+	///// Test the neural network to see the accuracy
+	// Use the test inputs to calculate the current error
+	if (nb_test_inputs > 0) {
+
+		// Prepare predicted outputs array for the test inputs
+		nn_type **predicted;
+		nn_type *flat_predicted = try2DFlatMatrixAllocation((void***)&predicted, nb_test_inputs, network->output_layer->nb_neurons, sizeof(nn_type), "TrainCPU(1 thread)");
+
+		// Feed forward the test inputs
+		FeedForwardBatchCPUSingleThread(network, test_inputs, predicted, nb_test_inputs);
+		
+		// Calculate the error of the test inputs using the loss function
+		*current_error = ComputeCostCPUSingleThread(network, predicted, target_tests, nb_test_inputs);
+		
+		// Free the predicted outputs array for the test inputs
+		free2DFlatMatrix((void**)predicted, flat_predicted, nb_test_inputs);
+	}
+}
+
+/**
  * @brief Train the neural network with the CPU (Single core)
  * by using a batch of inputs and a batch of target outputs,
  * a number of epochs and a target error value
@@ -304,7 +369,7 @@ nn_type ComputeCostCPUSingleThread(NeuralNetwork *network, nn_type **predicted_o
  * @param error_target				Target error value to stop the training (optional, 0 to disable)
  * At least one of the two must be specified. If both are specified, the training will stop when one of the two conditions is met.
  * 
- * @param verbose					Verbose level (0: no verbose, 1: verbose, 2: very verbose, 3: normal verbose + benchmark, 4: all)
+ * @param verbose					Verbose level (0: no verbose, 1: verbose, 2: very verbose, 3: all)
  * 
  * @return int						Number of epochs done, -1 if there is an error
  */
@@ -334,50 +399,22 @@ int TrainCPUSingleThread(NeuralNetwork *network, nn_type **inputs, nn_type **tar
 		current_error = 0;
 		current_epoch++;
 
-		// Shuffle the training data
-		shuffleTrainingData(inputs, target, nb_inputs);
-
-		// For each batch of the inputs,
-		for (int current_batch = 0; current_batch < nb_batches; current_batch++) {
-
-			// Calculate the index of the first and the last sample of the batch
-			int first_sample = current_batch * batch_size;
-			int last_sample = first_sample + batch_size - 1;
-			if (last_sample >= nb_inputs)
-				last_sample = nb_inputs - 1;
-			
-			// Calculate the number of samples in the batch
-			int nb_samples = last_sample - first_sample + 1;
-
-			// Verbose
-			if (verbose == 2 || verbose > 3)
-				DEBUG_PRINT("TrainCPU(1 thread): Epoch %d/%d,\tBatch %d/%d,\tSamples %d-%d/%d\n", current_epoch, nb_epochs, current_batch + 1, nb_batches, first_sample + 1, last_sample + 1, nb_inputs);
-			
-			// Do the mini-batch gradient descent
-			MiniBatchGradientDescentCPUSingleThread(network, inputs + first_sample, target + first_sample, nb_samples);
-		}
-
-		///// Test the neural network to see the accuracy
-		// Use the test inputs to calculate the current error
-		if (nb_test_inputs > 0) {
-
-			// Prepare predicted outputs array for the test inputs
-			nn_type **predicted;
-			nn_type *flat_predicted = try2DFlatMatrixAllocation((void***)&predicted, nb_test_inputs, network->output_layer->nb_neurons, sizeof(nn_type), "TrainCPU(1 thread)");
-
-			// Feed forward the test inputs
-			FeedForwardBatchCPUSingleThread(network, test_inputs, predicted, nb_test_inputs);
-			
-			// Calculate the error of the test inputs using the loss function
-			current_error = ComputeCostCPUSingleThread(network, predicted, target_tests, nb_test_inputs);
-			
-			// Free the predicted outputs array for the test inputs
-			free2DFlatMatrix((void**)predicted, flat_predicted, nb_test_inputs);
-		}
-
 		// Verbose
-		if ((verbose > 0 && (current_epoch < 6 || current_epoch == nb_epochs || current_epoch % 10 == 0)) || verbose == 2)
-			DEBUG_PRINT("TrainCPU(1 thread): Epoch %d/%d, Error: %.12"NN_FORMAT"\n", current_epoch, nb_epochs, current_error);
+		if ((verbose > 0 && (current_epoch < 6 || current_epoch == nb_epochs || current_epoch % 10 == 0)) || verbose > 1) {
+			//DEBUG_PRINT("TrainCPU(1 thread): Epoch %d/%d, Error: %.12"NN_FORMAT"\n", current_epoch, nb_epochs, current_error);
+
+			// Benchmark the training
+			char benchmark_buffer[256];
+			ST_BENCHMARK_SOLO_COUNT(benchmark_buffer,
+				epochCPUSingleThread(network, inputs, target, nb_inputs, nb_batches, batch_size, current_epoch, nb_epochs, &current_error, test_inputs, target_tests, nb_test_inputs, verbose),
+				"TrainCPU(1 thread): Epoch %d/%d, Error: " ST_COLOR_YELLOW "%.12"NN_FORMAT, 1, 0
+			);
+			PRINTER(benchmark_buffer, current_epoch, nb_epochs, current_error);
+		}
+
+		else
+			// Do one epoch of the training
+			epochCPUSingleThread(network, inputs, target, nb_inputs, nb_batches, batch_size, current_epoch, nb_epochs, &current_error, test_inputs, target_tests, nb_test_inputs, verbose);
 	}
 
 	// Verbose
