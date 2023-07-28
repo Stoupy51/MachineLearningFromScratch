@@ -5,9 +5,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#ifndef _WIN32
-	#include <unistd.h>
-#endif
 
 #if 1 == 1
 
@@ -80,20 +77,21 @@ void str_linked_list_free(str_linked_list_t* list) {
 	#define WINDOWS_FLAGS " -lws2_32"
 	#define sleep(x) Sleep((int)x * 1000)
 #else
+	#include <unistd.h>
 	#define WINDOWS_FLAGS ""
 #endif
 
 #ifdef _WIN32
 	#include <windows.h>
-	#define thread_return_type DWORD WINAPI
-	#define thread_param_type LPVOID
+	#define thread_return DWORD WINAPI
+	#define thread_param LPVOID
 	#define pthread_t HANDLE
 	#define pthread_create(thread, attr, start_routine, arg) (*thread = CreateThread(NULL, 0, start_routine, arg, 0, NULL))
 	#define pthread_join(thread, value_ptr) WaitForSingleObject(thread, INFINITE)
 #else
 	#include <pthread.h>
-	#define thread_return_type void *
-	#define thread_param_type void *
+	#define thread_return void *
+	#define thread_param void *
 #endif
 
 #define SRC_FOLDER "src"
@@ -103,9 +101,6 @@ void str_linked_list_free(str_linked_list_t* list) {
 #define FILES_TIMESTAMPS ".files_timestamps"
 
 #define CC "gcc"
-#define LINKER_FLAGS "-lm -lpthread" WINDOWS_FLAGS
-#define COMPILER_FLAGS "-Wall -Wextra -Wpedantic -Werror -O3"
-#define ALL_FLAGS COMPILER_FLAGS " " LINKER_FLAGS
 
 // Global variables
 char* additional_flags = NULL;
@@ -596,9 +591,9 @@ int findCFiles(str_linked_list_t *files_timestamps) {
  * 
  * @param param		Command to execute
  * 
- * @return thread_return_type
+ * @return thread_return
  */
-thread_return_type compile_thread(thread_param_type param) {
+thread_return compile_thread(thread_param param) {
 
 	// Get the command
 	char *command = (char*)param;

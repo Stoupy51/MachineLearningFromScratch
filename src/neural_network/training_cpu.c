@@ -448,7 +448,7 @@ struct FeedForwardMultiThreadRoutineArgs {
  * 
  * @param arg	Pointer to the arguments of the multi-threaded feed forward algorithm
  */
-thread_return_type FeedForwardMultiThreadRoutine(thread_param_type arg) {
+thread_return FeedForwardMultiThreadRoutine(thread_param arg) {
 
 	// Get the arguments
 	struct FeedForwardMultiThreadRoutineArgs *args = (struct FeedForwardMultiThreadRoutineArgs *)arg;
@@ -475,7 +475,7 @@ thread_return_type FeedForwardMultiThreadRoutine(thread_param_type arg) {
  * @param outputs		Pointer to the outputs array
  * @param batch_size	Number of samples in the batch (also number of threads)
  */
-void FeedForwardBatchCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, int batch_size) {
+int FeedForwardBatchCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, int batch_size) {
 
 	// Prepare the arguments of the multi-threaded feed forward algorithm and the threads
 	struct FeedForwardMultiThreadRoutineArgs *args = mallocBlocking(batch_size * sizeof(struct FeedForwardMultiThreadRoutineArgs), "FeedForwardBatchCPUMultiThreads()");
@@ -490,15 +490,21 @@ void FeedForwardBatchCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, n
 		args[i].output_to_fill = outputs[i];
 
 		// Create the thread
-		pthread_create(&threads[i], NULL, FeedForwardMultiThreadRoutine, &args[i]);
+		int code = pthread_create(&threads[i], NULL, FeedForwardMultiThreadRoutine, &args[i]);
+		ERROR_HANDLE_INT_RETURN_INT(code, "FeedForwardBatchCPUMultiThreads(): Error while creating thread #%d\n", i);
 	}
 
 	// Wait for the threads to finish
-	for (int i = 0; i < batch_size; i++)
-		pthread_join(threads[i], NULL);
+	for (int i = 0; i < batch_size; i++) {
+		int code = pthread_join(threads[i], NULL);
+		ERROR_HANDLE_INT_RETURN_INT(code, "FeedForwardBatchCPUMultiThreads(): Error while joining thread #%d\n", i);
+	}
 	
 	// Free the memory
 	free(threads);
 	free(args);
+
+	// Return
+	return 0;
 }
 

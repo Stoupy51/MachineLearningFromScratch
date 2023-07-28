@@ -27,7 +27,7 @@ struct frdacptt_args_t frdacptt_args;
  * 
  * @return 0
  */
-thread_return_type fillRandomFloatArrayCPUThreadsThread(thread_param_type args) {
+thread_return fillRandomFloatArrayCPUThreadsThread(thread_param args) {
 
 	// Get the argument
 	int thread_id = *(int*)args;
@@ -83,12 +83,15 @@ int fillRandomFloatArrayCPUThreads(nn_type* array, unsigned long long size, nn_t
 	pthread_t* threads = malloc(nb_cores * sizeof(pthread_t));
 	for (int i = 0; i < nb_cores; i++) {
 		threads_ids[i] = i;
-		pthread_create(&threads[i], NULL, fillRandomFloatArrayCPUThreadsThread, &threads_ids[i]);
+		int code = pthread_create(&threads[i], NULL, fillRandomFloatArrayCPUThreadsThread, &threads_ids[i]);
+		ERROR_HANDLE_INT_RETURN_INT(code, "fillRandomFloatArrayCPUThreads(): Failed to create thread #%d\n", i);
 	}
 
 	// Wait for the threads to finish
-	for (int i = 0; i < nb_cores; i++)
-		pthread_join(threads[i], NULL);
+	for (int i = 0; i < nb_cores; i++) {
+		int code = pthread_join(threads[i], NULL);
+		ERROR_HANDLE_INT_RETURN_INT(code, "fillRandomFloatArrayCPUThreads(): Failed to join thread #%d\n", i);
+	}
 	
 	// Free the memory
 	free(threads_ids);

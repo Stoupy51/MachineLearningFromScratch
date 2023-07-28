@@ -28,7 +28,7 @@ int TrainCPUSingleThread(
 
 
 // Multi-thread version
-void FeedForwardBatchCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, int batch_size);
+int FeedForwardBatchCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, int batch_size);
 // TODO
 
 
