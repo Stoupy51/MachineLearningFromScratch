@@ -204,15 +204,15 @@ void freeNeuralNetwork(NeuralNetwork *network) {
 
 	// Free the layers
 	for (int i = 0; i < network->nb_layers; i++) {
-		free2DFlatMatrix((void**)network->layers[i].weights, network->layers[i].weights_flat, network->layers[i].nb_neurons);
 		free(network->layers[i].activations_values);
+		if (i == 0) continue;
+
+		free2DFlatMatrix((void**)network->layers[i].weights, network->layers[i].weights_flat, network->layers[i].nb_neurons);
 		free(network->layers[i].biases);
 		if (network->layers[i].weights_gradients != NULL)
 			free2DFlatMatrix((void**)network->layers[i].weights_gradients, network->layers[i].weights_gradients_flat, network->layers[i].nb_neurons);
 		if (network->layers[i].biases_gradients != NULL)
 			free(network->layers[i].biases_gradients);
-		if (network->layers[i].activation_function_name != NULL)
-			free(network->layers[i].activation_function_name);
 	}
 
 	// Free the layers array

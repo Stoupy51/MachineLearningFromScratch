@@ -111,28 +111,25 @@ int main() {
 	INFO_PRINT("main(): Total training time: "STR_YELLOW_R("%s")"s\n", buffer);
 
 	///// Test the neural network
-	#define NB_TEST_DATA (NB_TOTAL_DATA * NB_TEST_DATA_PERCENTAGE / 100)
-	nn_type **test_inputs = &inputs[NB_TOTAL_DATA - NB_TEST_DATA];
-	nn_type **test_expected = &expected[NB_TOTAL_DATA - NB_TEST_DATA];
+	nn_type **test_inputs = &inputs[NB_TOTAL_DATA - NB_TOTAL_DATA];
+	nn_type **test_expected = &expected[NB_TOTAL_DATA - NB_TOTAL_DATA];
+	nn_type **test_outputs;
+	nn_type *test_outputs_flat_matrix = try2DFlatMatrixAllocation((void***)&test_outputs, NB_TOTAL_DATA, network_plus.output_layer->nb_neurons, sizeof(nn_type), "main()");
+	FeedForwardBatchCPUMultiThreads(&network_plus, test_inputs, test_outputs, NB_TOTAL_DATA);
 	int nb_errors = 0;
-	for (int i = 0; i < NB_TEST_DATA; i++) {
-
-		// Feed forward
-		nn_type *test_output = mallocBlocking(network_plus.output_layer->nb_neurons * sizeof(nn_type), "main()");
-		FeedForwardCPUSingleThread(&network_plus, test_inputs[i]);
-		memcpy(test_output, network_plus.output_layer->activations_values, network_plus.output_layer->nb_neurons * sizeof(nn_type));
+	for (int i = 0; i < NB_TOTAL_DATA; i++) {
 
 		// Print the test results
 		int a = convertBinaryDoubleArrayToInt(test_inputs[i], 0);
 		int b = convertBinaryDoubleArrayToInt(test_inputs[i], 32);
-		int c = convertBinaryDoubleArrayToInt(test_output, 0);
+		int c = convertBinaryDoubleArrayToInt(test_outputs[i], 0);
 		int d = convertBinaryDoubleArrayToInt(test_expected[i], 0);
 		if (c != d) {
 			nb_errors++;
 			ERROR_PRINT("main(): Error for %d + %d = %d (expected %d)\n", a, b, c, d);
 		}
 	}
-	INFO_PRINT("main(): Success rate: %d/%d (%.2f%%)\n", NB_TEST_DATA - nb_errors, NB_TEST_DATA, (NB_TEST_DATA - nb_errors) * 100.0 / NB_TEST_DATA);
+	INFO_PRINT("main(): Success rate: %d/%d (%.2f%%)\n", NB_TOTAL_DATA - nb_errors, NB_TOTAL_DATA, (double)(NB_TOTAL_DATA - nb_errors) / NB_TOTAL_DATA * 100.0);
 
 	///// Final part
 	// Free the neural network
@@ -141,6 +138,7 @@ int main() {
 	// Free the training data
 	free2DFlatMatrix((void**)inputs, inputs_flat_matrix, NB_TOTAL_DATA);
 	free2DFlatMatrix((void**)expected, outputs_flat_matrix, NB_TOTAL_DATA);
+	free2DFlatMatrix((void**)test_outputs, test_outputs_flat_matrix, NB_TOTAL_DATA);
 
 	// Final print and return
 	INFO_PRINT("main(): End of program\n");
