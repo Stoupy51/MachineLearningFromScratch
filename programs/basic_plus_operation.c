@@ -63,8 +63,7 @@ int main() {
 	int nb_neurons_per_layer[] = {64, 48, 48, 48, 32};
 	char *activation_functions[] = {NULL, "sigmoid", "sigmoid", "sigmoid", "sigmoid"};
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
-	if (nb_layers != sizeof(activation_functions) / sizeof(char*))
-		ERROR_HANDLE_INT_RETURN_INT(-1, "main(): Error, the number of layers and the number of activation functions must be the same\n");
+	if (nb_layers != sizeof(activation_functions) / sizeof(char*)) ERROR_HANDLE_INT_RETURN_INT(-1, "main(): Error, the number of layers and the number of activation functions must be the same\n");
 	NeuralNetwork network_plus;
 	int code = initNeuralNetwork(&network_plus, nb_layers, nb_neurons_per_layer, activation_functions, "MSE", 0.1, 0);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while initializing the neural network\n");
