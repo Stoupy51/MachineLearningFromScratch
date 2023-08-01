@@ -52,7 +52,16 @@ model.compile(
 )
 
 # Train the model using multi threading
-model.fit(np.array(training_data[0]), np.array(training_data[1]), batch_size = 1, epochs = 200, use_multiprocessing = True, workers = 12, verbose = 2)
+model.fit(
+	np.array(training_data[0]),
+	np.array(training_data[1]),
+	batch_size = 1,
+	epochs = 200,
+	verbose = 2,
+	validation_split = 0.2,
+	use_multiprocessing = True,
+	workers = 8,
+)
 
 # Convert a binary double array to an integer
 def convertBinaryDoubleArrayToInt(binary_double_array, start_index):
@@ -76,4 +85,6 @@ for i in range(len(test_inputs)):
 		print(f"main(): Error for {a} + {b} = {c} (expected {d})")
 print(f"main(): Success rate: {len(test_inputs) - nb_errors}/{len(test_inputs)} ({(len(test_inputs) - nb_errors) / len(test_inputs) * 100.0}%)")
 
+# Save the model
+model.save("bin/basic_plus_operation.py_model")
 

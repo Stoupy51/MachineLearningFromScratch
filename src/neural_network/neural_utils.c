@@ -162,21 +162,21 @@ void printNeuralNetwork(NeuralNetwork network) {
 	if (total_weights < 1000)
 		{ PRINTER(YELLOW"%lld"CYAN"\n", total_weights); }
 	else if (total_weights < 1000000)
-		{ PRINTER(YELLOW"%.2Lf"CYAN" K ("YELLOW"%lld"CYAN")\n", (long double)total_weights / 1000, total_weights); }
+		{ PRINTER(YELLOW"%.2Lf"CYAN" K ("YELLOW"%lld"CYAN" weights)\n", (long double)total_weights / 1000, total_weights); }
 	else if (total_weights < 1000000000)
-		{ PRINTER(YELLOW"%.2Lf"CYAN" M ("YELLOW"%lld"CYAN")\n", (long double)total_weights / 1000000, total_weights); }
+		{ PRINTER(YELLOW"%.2Lf"CYAN" M ("YELLOW"%lld"CYAN" weights)\n", (long double)total_weights / 1000000, total_weights); }
 	else
-		{ PRINTER(YELLOW"%.2Lf"CYAN" B ("YELLOW"%lld"CYAN")\n", (long double)total_weights / 1000000000, total_weights); }
+		{ PRINTER(YELLOW"%.2Lf"CYAN" B ("YELLOW"%lld"CYAN" weights)\n", (long double)total_weights / 1000000000, total_weights); }
 
 	// Print memory size
 	if (network.memory_size < 1000)
 		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%lld"CYAN" Bytes\n", network.memory_size); }
 	else if (network.memory_size < 1000000)
-		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" KB ("YELLOW"%lld"CYAN")\n", (long double)network.memory_size / 1000, network.memory_size); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" KB ("YELLOW"%lld"CYAN" bytes)\n", (long double)network.memory_size / 1000, network.memory_size); }
 	else if (network.memory_size < 1000000000)
-		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" MB ("YELLOW"%lld"CYAN")\n", (long double)network.memory_size / 1000000, network.memory_size); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" MB ("YELLOW"%lld"CYAN" bytes)\n", (long double)network.memory_size / 1000000, network.memory_size); }
 	else
-		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" GB ("YELLOW"%lld"CYAN")\n", (long double)network.memory_size / 1000000000, network.memory_size); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" GB ("YELLOW"%lld"CYAN" bytes)\n", (long double)network.memory_size / 1000000000, network.memory_size); }
 
 	// End of the function
 	PRINTER(RESET"\n");
