@@ -34,9 +34,9 @@ int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_
 		required_memory_size += sizeof(NeuronLayer);	// NeuronLayer struct
 		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(nn_type);	// activations_values
 		if (i == 0) continue;
-		required_memory_size += (long long)nb_neurons_per_layer[i] * (long long)nb_neurons_per_layer[i - 1] * sizeof(nn_type) * 2;	// weights_flat + weights_gradients_flat
-		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(nn_type*) * 2;	// weights + weights_gradients
-		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(nn_type) * 2;	// biases + biases_gradients
+		required_memory_size += (long long)nb_neurons_per_layer[i] * (long long)nb_neurons_per_layer[i - 1] * sizeof(nn_type);	// weights_flat
+		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(nn_type*);	// weights
+		required_memory_size += (long long)nb_neurons_per_layer[i] * sizeof(nn_type);	// biases
 	}
 	network->memory_size = required_memory_size;
 
@@ -118,6 +118,7 @@ void initGradientsNeuralNetwork(NeuralNetwork *network) {
 	for (int i = 1; i < network->nb_layers; i++) {
 		network->layers[i].weights_gradients_flat = try2DFlatMatrixAllocation((void***)&network->layers[i].weights_gradients, network->layers[i].nb_neurons, network->layers[i].nb_inputs_per_neuron, sizeof(nn_type), "initGradientsNeuralNetwork()");
 		network->layers[i].biases_gradients = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "initGradientsNeuralNetwork()");
+		network->memory_size += network->layers[i].nb_neurons * (network->layers[i].nb_inputs_per_neuron + 1) * sizeof(nn_type);
 	}
 }
 

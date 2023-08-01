@@ -389,12 +389,26 @@ int TrainCPUSingleThread(NeuralNetwork *network, nn_type **inputs, nn_type **tar
 
 		// Verbose, benchmark the training or do one epoch of the training
 		if ((verbose > 0 && (current_epoch < 6 || current_epoch == nb_epochs || current_epoch % 10 == 0)) || verbose > 1) {
+			
+			// Get current microseconds
+			struct timeval start_time;
+			st_gettimeofday(start_time, NULL);
+
 			char benchmark_buffer[256];
 			ST_BENCHMARK_SOLO_COUNT(benchmark_buffer,
 				epochCPUSingleThread(network, inputs, target, nb_inputs, nb_batches, batch_size, current_epoch, nb_epochs, &current_error, test_inputs, target_tests, nb_test_inputs, verbose),
-				"TrainCPU(1 thread): Epoch %d/%d, Error: " ST_COLOR_YELLOW "%.12"NN_FORMAT, 1, 0
+				"TrainCPU(1 thread): Epoch %d/%d, %s Error: " ST_COLOR_YELLOW "%.12"NN_FORMAT ST_COLOR_RED " ("ST_COLOR_YELLOW "%.2f" ST_COLOR_RED "us/input)", 1, 0
 			);
-			PRINTER(benchmark_buffer, current_epoch, nb_epochs, current_error);
+
+			// Get current microseconds
+			struct timeval end_time;
+			st_gettimeofday(end_time, NULL);
+
+			// Calculate the time spent per step (time of the epoch divided by the number of inputs)
+			double time_per_step = (double)(end_time.tv_sec - start_time.tv_sec) * (1000000.0 / nb_inputs) + (double)(end_time.tv_usec - start_time.tv_usec) / nb_inputs;
+
+			// Print the benchmark
+			PRINTER(benchmark_buffer, current_epoch, nb_epochs, network->loss_function_name, current_error, time_per_step);
 		}
 
 		else

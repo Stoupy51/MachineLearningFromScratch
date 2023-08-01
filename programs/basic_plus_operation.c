@@ -73,8 +73,8 @@ int main() {
 	printNeuralNetwork(network_plus);
 
 	// Save the neural network
-	code = saveNeuralNetwork(network_plus, "basic_plus_operation.nn", 1);
-	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while saving the neural network\n");
+	// code = saveNeuralNetwork(network_plus, "bin/basic_plus_operation.nn", 1);
+	// ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while saving the neural network\n");
 
 	///// Create the training data
 	#define NB_TOTAL_DATA 1000
@@ -99,10 +99,21 @@ int main() {
 		convertIntToBinaryDoubleArray(c, expected[i], 0);
 	}
 
+	// Save the training data in a file
+	FILE *file = fopen("bin/basic_plus_operation.data", "w");
+	for (int i = 0; i < NB_TOTAL_DATA; i++) {
+		for (int j = 0; j < network_plus.input_layer->nb_neurons; j++)
+			fprintf(file, "%d ", doubleToInt(inputs[i][j]));
+		for (int j = 0; j < network_plus.output_layer->nb_neurons; j++)
+			fprintf(file, "%d ", doubleToInt(expected[i][j]));
+		fprintf(file, "\n");
+	}
+	fclose(file);
+
 	// Train the neural network
 	char buffer[16];
 	ST_BENCHMARK_SOLO_COUNT(buffer, {
-		code = TrainCPUMultiThreads(&network_plus, inputs, expected,
+		code = TrainCPUSingleThread(&network_plus, inputs, expected,
 			NB_TOTAL_DATA,
 			NB_TEST_DATA_PERCENTAGE,
 			BATCH_SIZE,
