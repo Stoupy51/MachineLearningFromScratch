@@ -422,11 +422,13 @@ int TrainCPUSingleThread(NeuralNetwork *network, nn_type **inputs, nn_type **tar
  * @param network			Neural network to use (duplicate of the original network, only the activations values are duplicated)
  * @param input				Pointer to the input array
  * @param output_to_fill	Pointer to the output array
+ * @param do_simple_delete	1 to free the copy of the neural network, 0 otherwise
  */
 struct FeedForwardMultiThreadRoutineArgs {
 	NeuralNetwork network;
 	nn_type *input;
 	nn_type *output_to_fill;
+	int do_simple_delete;
 };
 
 /**
@@ -448,7 +450,8 @@ thread_return FeedForwardMultiThreadRoutine(thread_param arg) {
 	memcpy(output_to_fill, network.output_layer->activations_values, network.output_layer->nb_neurons * sizeof(nn_type));
 
 	// Free the copy of the neural network & return
-	freeSimpleCopyForMultiThreadedFeedForward(network);
+	if (args->do_simple_delete)
+		freeSimpleCopyForMultiThreadedFeedForward(network);
 	return 0;
 }
 
@@ -470,9 +473,10 @@ int FeedForwardBatchCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn
 	for (int i = 0; i < batch_size; i++) {
 
 		// Prepare the arguments of the multi-threaded feed forward algorithm
-		args[i].network = getSimpleCopyForMultiThreadedFeedForward(*network);
+		args[i].network = i == 0 ? *network : getSimpleCopyForMultiThreadedFeedForward(*network);
 		args[i].input = inputs[i];
 		args[i].output_to_fill = outputs[i];
+		args[i].do_simple_delete = i == 0 ? 0 : 1;
 
 		// Create the thread
 		int code = pthread_create(&threads[i], NULL, FeedForwardMultiThreadRoutine, &args[i]);
@@ -880,9 +884,9 @@ int TrainCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn_type **tar
 			char benchmark_buffer[256];
 			ST_BENCHMARK_SOLO_COUNT(benchmark_buffer,
 				epochCPUMultiThreads(network, inputs, target, nb_inputs, nb_batches, batch_size, current_epoch, nb_epochs, &current_error, test_inputs, target_tests, nb_test_inputs, verbose),
-				"TrainCPU(%d threads): Epoch %d/%d, Error: " ST_COLOR_YELLOW "%.12"NN_FORMAT, nb_threads, 0
+				"TrainCPU(%d threads): Epoch %d/%d, Error: " ST_COLOR_YELLOW "%.12"NN_FORMAT, 1, 0
 			);
-			PRINTER(benchmark_buffer, current_epoch, nb_epochs, current_error);
+			PRINTER(benchmark_buffer, nb_threads, current_epoch, nb_epochs, current_error);
 		}
 
 		else

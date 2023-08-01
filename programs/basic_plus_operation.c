@@ -72,6 +72,10 @@ int main() {
 	// Print the neural network information
 	printNeuralNetwork(network_plus);
 
+	// Save the neural network
+	code = saveNeuralNetwork(network_plus, "basic_plus_operation.nn", 1);
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while saving the neural network\n");
+
 	///// Create the training data
 	#define NB_TOTAL_DATA 1000
 	#define NB_TEST_DATA_PERCENTAGE 20
@@ -98,7 +102,7 @@ int main() {
 	// Train the neural network
 	char buffer[16];
 	ST_BENCHMARK_SOLO_COUNT(buffer, {
-		code = TrainCPUSingleThread(&network_plus, inputs, expected,
+		code = TrainCPUMultiThreads(&network_plus, inputs, expected,
 			NB_TOTAL_DATA,
 			NB_TEST_DATA_PERCENTAGE,
 			BATCH_SIZE,
