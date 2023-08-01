@@ -66,6 +66,7 @@
 typedef struct NeuronLayer {
 	int nb_neurons;				// Arbitrary
 	int nb_inputs_per_neuron;	// Depends on the previous layer
+	int has_bias_neuron;		// 1 if the layer has a bias neuron set to 1.0, 0 otherwise
 
 	// Activation function variables
 	char *activation_function_name;						// Arbitrary, ex: "sigmoid", "tanh", "relu", ...
@@ -109,7 +110,7 @@ typedef struct NeuralNetwork {
 	long long memory_size;									// Memory size of the neural network (in bytes)
 } NeuralNetwork;
 
-int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_layer[], char **activation_function_names, char *loss_function_name, double learning_rate);
+int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_layer[], char **activation_function_names, char *loss_function_name, double learning_rate, int has_bias_neurons);
 void initGradientsNeuralNetwork(NeuralNetwork *network);
 void printNeuralNetwork(NeuralNetwork network);
 void printActivationValues(NeuralNetwork network);

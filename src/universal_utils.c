@@ -447,7 +447,7 @@ int remove_directory(char* path) {
 	#endif
 }
 
-int local_nb_threads = 0;
+int local_nb_threads = 1;
 
 /**
  * @brief Function that returns the number of threads of the CPU of the computer.
