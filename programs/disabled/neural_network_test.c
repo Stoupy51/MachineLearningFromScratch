@@ -53,27 +53,27 @@ int main() {
 	// Print the neural network information
 	printNeuralNetwork(network);
 
-	// Create an input array and an excepted output array
+	// Create an input array and an expected output array
 	double *input = (double*)malloc(network.input_layer->nb_neurons * sizeof(double));
-	double *excepted_output = (double*)malloc(network.output_layer->nb_neurons * sizeof(double));
+	double *expected_output = (double*)malloc(network.output_layer->nb_neurons * sizeof(double));
 
-	// Make random input and excepted output
+	// Make random input and expected output
 	fillRandomFloatArray(input, network.input_layer->nb_neurons, 0.0, 1.0);
-	fillRandomFloatArray(excepted_output, network.output_layer->nb_neurons, 0.0, 1.0);
+	fillRandomFloatArray(expected_output, network.output_layer->nb_neurons, 0.0, 1.0);
 	
 	// Benchmark the GPU training
 	char buffer[1024];
 	ST_BENCHMARK_SOLO_COUNT(buffer,
-		NeuralNetworktrainGPU(&network, input, excepted_output, 0),
+		NeuralNetworktrainGPU(&network, input, expected_output, 0),
 		"NeuralNetworktrain (GPU)", 10
 	);
 	PRINTER(buffer);
 	int code = NeuralNetworkReadAllBuffersGPU(&network);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Failed to read all buffers from GPU\n");
 
-	// Free the input and excepted output arrays
+	// Free the input and expected output arrays
 	free(input);
-	free(excepted_output);
+	free(expected_output);
 
 	// Save the neural network to a file and another human readable file
 	saveNeuralNetwork(network, NEURAL_NETWORK_PATH, 0);

@@ -38,19 +38,19 @@ kernel void feedForwardActivationValuesSigmoid(global double* previous_layer_act
  * @brief Function to calculate the output delta for the output layer
  * in the backpropagation algorithm.
  * 
- * @param excepted_output		The excepted output array of the network
+ * @param expected_output		The expected output array of the network
  * @param activation_values		The activation values array of the output layer
  * @param output_deltas			The output deltas array of the output layer
  * @param output_layer_size		The size of the output layer
  */
-kernel void backpropagationOutputLayerDeltas(global double* excepted_output, global double* activation_values, global double* output_deltas, int output_layer_size) {
+kernel void backpropagationOutputLayerDeltas(global double* expected_output, global double* activation_values, global double* output_deltas, int output_layer_size) {
 
 	// Get the index of the current thread
 	int index = get_global_id(0);
 
 	// If the index is smaller than the output layer size
 	if (index < output_layer_size) {
-		output_deltas[index] = (excepted_output[index] - activation_values[index]) * activation_values[index] * (1 - activation_values[index]);
+		output_deltas[index] = (expected_output[index] - activation_values[index]) * activation_values[index] * (1 - activation_values[index]);
 		//printf("- id: %d, output_delta: %f\n", index, output_deltas[index]);
 	}
 }

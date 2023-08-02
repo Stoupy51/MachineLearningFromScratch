@@ -148,7 +148,7 @@ int main() {
 					int code = NeuralNetworktrainFromImageListGPU(&network, img_list_resized, current_elt->image, 0);
 					ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error training the neural network with the image %d/%d\n", img_number, img_list_split.size);
 
-					// Free the resized images list & the excepted output array & go next image
+					// Free the resized images list & the expected output array & go next image
 					img_list_free(&img_list_resized);
 					current_elt = current_elt->next;
 				},

@@ -35,8 +35,8 @@
  * Feeding the inputs means: for each layer of the neural network (except the input layer), calculate the activation values of the neurons.
  * 
  * The backpropagation algorithm is the algorithm that will adjust the weights of the neural network depending on the error of the neural network.
- * It requires an excepted output array with the same size as the output layer of the neural network.
- * The error of the neural network is the difference between the excepted output and the actual output of the neural network using a loss function.
+ * It requires an expected output array with the same size as the output layer of the neural network.
+ * The error of the neural network is the difference between the expected output and the actual output of the neural network using a loss function.
  * The backpropagation algorithm will calculate the deltas of the neurons of the neural network and adjust the weights of the neural network.
  * 
  * The learning rate is a value between 0 and 1 that will be used to adjust the weights of the neural network.
