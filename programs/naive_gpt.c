@@ -54,10 +54,10 @@ int main() {
 	#define NB_WORDS 10
 	#define SIZE_WORD 24
 	#define INPUT_SIZE (NB_WORDS * SIZE_WORD)
-	#define HIDDEN_LAYER_SIZE (int)(INPUT_SIZE * 0.75)
+	#define HIDDEN_LAYER_SIZE (int)(INPUT_SIZE * 0.5)
 
 	// Create a neural network
-	int nb_neurons_per_layer[] = {INPUT_SIZE, HIDDEN_LAYER_SIZE, HIDDEN_LAYER_SIZE, HIDDEN_LAYER_SIZE, SIZE_WORD};
+	int nb_neurons_per_layer[] = {INPUT_SIZE, INPUT_SIZE / 2, INPUT_SIZE / 4, INPUT_SIZE / 8, SIZE_WORD};
 	char *activation_functions[] = {NULL, "sigmoid", "sigmoid", "sigmoid", "sigmoid"};
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 	if (nb_layers != sizeof(activation_functions) / sizeof(char*)) ERROR_HANDLE_INT_RETURN_INT(-1, "main(): Error, the number of layers and the number of activation functions must be the same\n");
@@ -200,9 +200,9 @@ int main() {
 
 	///// Final part
 	// Save the neural network
-	INFO_PRINT("main(): Saving the neural network\n");
-	code = saveNeuralNetwork(network, "naive_gpt.nn", 1);
-	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while saving the neural network\n");
+	// INFO_PRINT("main(): Saving the neural network\n");
+	// code = saveNeuralNetwork(network, "naive_gpt.nn", 1);
+	// ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while saving the neural network\n");
 
 	// Free the neural network
 	freeNeuralNetwork(&network);
