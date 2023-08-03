@@ -3,6 +3,9 @@
 #include "../src/list/token_dictionary.h"
 #include "../src/st_benchmark.h"
 
+#define WORDS_FOLDER_PATH "data/words"
+#define DICTIONNARY_TOKEN_PATH "data/words_tokens.txt"
+
 /**
  * @brief Function run at the end of the program
  * [registered with atexit()] in the main() function.
@@ -15,13 +18,9 @@ void exitProgram() {
 	exit(0);
 }
 
-#define WORDS_FOLDER_PATH "data/words"
-#define WORDS_TOKENS_FILE_PATH "data/words_tokens.txt"
-
 /**
  * This program create a token dictionary for the GPT (Generative Pre-trained Transformer)
  * by assigning a token to each word in the files of the folder "words".
- * 
  * 
  * @author Stoupy51 (COLLIGNON Alexandre)
  */
@@ -94,8 +93,8 @@ int main() {
 	token_dict_print(token_dictionary, 10);
 
 	// Save the token dictionary and free it
-	int code = token_dict_save(&token_dictionary, WORDS_TOKENS_FILE_PATH);
-	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Can't save token dictionary to file '%s'\n", WORDS_TOKENS_FILE_PATH);
+	int code = token_dict_save(&token_dictionary, DICTIONNARY_TOKEN_PATH);
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Can't save token dictionary to file '%s'\n", DICTIONNARY_TOKEN_PATH);
 	token_dict_free(&token_dictionary);
 
 	}, "create_token_dictionary main()", 1, 0);
