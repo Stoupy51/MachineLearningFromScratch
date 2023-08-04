@@ -55,6 +55,36 @@ void* mallocBlocking(size_t size, const char* prefix) {
 	return ptr;
 }
 
+/**
+ * @brief This function reallocates memory and returns a pointer to it.
+ * This function is blocking, it will wait until the memory is allocated.
+ * It will try to allocate the memory every 1000ms.
+ * 
+ * @param ptr		Pointer to the memory to reallocate
+ * @param size		Size of the memory to reallocate
+ * @param prefix	Prefix to print in the warning message, ex: "reallocBlocking()"
+ * 
+ * @return void*	Pointer to the reallocated memory
+ */
+void* reallocBlocking(void* ptr, size_t size, const char* prefix) {
+	
+	// Reallocate the memory
+	void* new_ptr = realloc(ptr, size);
+
+	// If the memory is not allocated, wait 1000ms and try again
+	while (new_ptr == NULL) {
+
+		// Print a warning
+		WARNING_PRINT("%s: Cannot reallocate memory for %zu bytes, waiting 1000ms\n", prefix == NULL ? "reallocBlocking()" : prefix, size);
+
+		// Wait 1000ms and try again
+		sleep(1);
+		new_ptr = realloc(ptr, size);
+	}
+
+	// Return the pointer
+	return new_ptr;
+}
 
 /**
  * @brief This function duplicates a memory block and returns a pointer to it.

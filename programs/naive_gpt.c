@@ -3,9 +3,10 @@
 #include "../src/neural_network/neural_utils.h"
 #include "../src/neural_network/training_cpu.h"
 #include "../src/list/token_dictionary.h"
+#include "../src/utils/text_file.h"
 #include "../src/st_benchmark.h"
 
-#define DICTIONNARY_TOKEN_PATH "data/words_tokens.txt"
+#define DICTIONARY_TOKEN_PATH "data/token_dictionary.txt"
 
 /**
  * @brief Function run at the end of the program
@@ -40,7 +41,7 @@ int convertBinaryDoubleArrayToXbInt(nn_type *binary, int number_of_bits) {
  * 
  * Plan:
  * - Words are represented in a binary way as tokens (" " = 1, "bonjour" = 2, "salut" = 3, etc.) Binary up to 2^24 = 16777216 different tokens.
- * - The words are automatically assigned with a token in the file "words_tokens.txt" (generated with the program "generate_words_tokens.c").
+ * - The words are automatically assigned with a token in the file "token_dictionary.txt" (generated with the program "create_token_dictionary.c").
  * - The neural network is trained to predict the next word in a sentence.
  * - The sentence is represented as a sequence of 100 words (100 tokens) where the token 0 means no word or end of sentence.
  * 
@@ -55,7 +56,7 @@ int main() {
 
 	// Load the token dictionary
 	token_dictionary_t token_dictionary;
-	int code = token_dict_load(&token_dictionary, DICTIONNARY_TOKEN_PATH);
+	int code = token_dict_load(&token_dictionary, DICTIONARY_TOKEN_PATH);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while loading the token dictionary\n");
 
 	// Get the number of bits depending on the number of words
@@ -85,20 +86,9 @@ int main() {
 	printNeuralNetwork(network);
 
 	// Prepare sentences
-	// TODO: Add sentences dynamically
-	char* sentences[] = {
-		"bonjour comment ca va aujourd'hui",
-		"salut comment ca va aujourd'hui",
-		"bonjour comment ca va",
-		"salut comment ca va",
-		"bonjour comment ca",
-		"salut comment ca",
-		"bonjour comment",
-		"salut comment",
-		"bonjour",
-		"salut"
-	};
-	int nb_sentences = sizeof(sentences) / sizeof(char*);
+	char **sentences;
+	int nb_sentences;
+	code = generateSentencesFromTextFileForGPT("data/words/test.txt", &sentences, 100000, NB_WORDS + 1, &nb_sentences);
 	INFO_PRINT("main(): %d sentences\n", nb_sentences);
 
 	// Prepare the training data
@@ -106,6 +96,7 @@ int main() {
 	nn_type **expected;
 	nn_type *inputs_flat_matrix = try2DFlatMatrixAllocation((void***)&inputs, nb_sentences, network.input_layer->nb_neurons, sizeof(nn_type), "main()");
 	nn_type *outputs_flat_matrix = try2DFlatMatrixAllocation((void***)&expected, nb_sentences, network.output_layer->nb_neurons, sizeof(nn_type), "main()");
+	// TODO: make is dynamic
 	for (int i = 0; i < nb_sentences; i++) {
 		
 		// Convert the sentence to a sequence of tokens

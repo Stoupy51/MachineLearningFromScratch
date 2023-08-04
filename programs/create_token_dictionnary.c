@@ -4,7 +4,7 @@
 #include "../src/st_benchmark.h"
 
 #define WORDS_FOLDER_PATH "data/words"
-#define DICTIONNARY_TOKEN_PATH "data/words_tokens.txt"
+#define DICTIONARY_TOKEN_PATH "data/token_dictionary.txt"
 
 /**
  * @brief Function run at the end of the program
@@ -93,8 +93,8 @@ int main() {
 	token_dict_print(token_dictionary, 10);
 
 	// Save the token dictionary and free it
-	int code = token_dict_save(&token_dictionary, DICTIONNARY_TOKEN_PATH);
-	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Can't save token dictionary to file '%s'\n", DICTIONNARY_TOKEN_PATH);
+	int code = token_dict_save(&token_dictionary, DICTIONARY_TOKEN_PATH);
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Can't save token dictionary to file '%s'\n", DICTIONARY_TOKEN_PATH);
 	token_dict_free(&token_dictionary);
 
 	}, "create_token_dictionary main()", 1, 0);

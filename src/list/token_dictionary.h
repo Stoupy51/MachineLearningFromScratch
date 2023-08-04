@@ -1,6 +1,6 @@
 
-#ifndef __TOKEN_DICTIONNARY_H__
-#define __TOKEN_DICTIONNARY_H__
+#ifndef __TOKEN_DICTIONARY_H__
+#define __TOKEN_DICTIONARY_H__
 
 /**
  * @brief Structure representing a token in a token Dictionary and Linked List.

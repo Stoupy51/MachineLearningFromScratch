@@ -122,6 +122,7 @@ typedef struct simple_string_t {
 // Function prototypes
 void mainInit(char* header);
 void* mallocBlocking(size_t size, const char* prefix);
+void* reallocBlocking(void* ptr, size_t size, const char* prefix);
 void* duplicateMemory(void* ptr, size_t size, const char* prefix);
 void* try2DFlatMatrixAllocation(void ***matrix, int nb_rows, int nb_columns, size_t size, const char* prefix);
 void free2DFlatMatrix(void **matrix, void *flat_matrix, int nb_rows);
