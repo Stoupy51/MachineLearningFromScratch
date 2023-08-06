@@ -371,6 +371,7 @@ int loadNeuralNetwork(NeuralNetwork *network, char *filename) {
 		// Read the number of neurons and the number of inputs per neuron
 		fread(&(network->layers[i].nb_neurons), sizeof(int), 1, file);
 		fread(&(network->layers[i].nb_inputs_per_neuron), sizeof(int), 1, file);
+		network->layers[i].activations_values = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "loadNeuralNetwork()");
 		
 		// Read the activation function name
 		int activation_function_name_length;
@@ -384,9 +385,7 @@ int loadNeuralNetwork(NeuralNetwork *network, char *filename) {
 		this_malloc_size = (long long)network->layers[i].nb_neurons * (long long)network->layers[i].nb_inputs_per_neuron * sizeof(nn_type);
 		network->layers[i].weights_flat = mallocBlocking(this_malloc_size, "loadNeuralNetwork()");
 		network->layers[i].weights = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type*), "loadNeuralNetwork()");
-		this_malloc_size = network->layers[i].nb_neurons * sizeof(nn_type);
-		network->layers[i].activations_values = mallocBlocking(this_malloc_size, "loadNeuralNetwork()");
-		network->layers[i].biases = mallocBlocking(this_malloc_size, "loadNeuralNetwork()");
+		network->layers[i].biases = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "loadNeuralNetwork()");
 
 		// Read the weights_flat, and the biases
 		fread(network->layers[i].weights_flat, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(nn_type), 1, file);

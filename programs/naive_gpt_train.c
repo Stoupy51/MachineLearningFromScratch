@@ -46,6 +46,18 @@ int convertBinaryDoubleArrayToXbInt(nn_type *binary, int number_of_bits) {
  * - The neural network is trained to predict the next word in a sentence.
  * - The sentence is represented as a sequence of 100 words (100 tokens) where the token 0 means no word or end of sentence.
  * 
+ * Reality:
+ * - The binary size of the tokens is dynamically calculated depending on the number of words in the dictionary.
+ * - The number of tokens is not 100 but defined by the macro NB_WORDS (making it adjustable).
+ * 
+ * Observations:
+ * - Below 20 context words, smaller the input layer is, worse the neural network is.
+ * - MSE Error is stable at about 3 epochs.
+ * - The more tokens there are, the less the neural network is good.
+ * - 100 epochs & NB_WORDS = 50: 21.74% success rate	(600 seconds of training)
+ * - 100 epochs & NB_WORDS = 250: ???
+ * 
+ * 
  * 
  * @author Stoupy51 (COLLIGNON Alexandre)
  */
@@ -62,7 +74,7 @@ int main() {
 
 	// Get the number of bits depending on the number of words
 	int number_of_bits = 0;
-	int nb_words = token_dictionary.size;
+	int nb_words = token_dictionary.size * 2;	// *2 to add a bit, to easily interpret new tokens
 	while (nb_words > 0) {
 		number_of_bits++;
 		nb_words >>= 1;
@@ -70,9 +82,8 @@ int main() {
 	INFO_PRINT("main(): Number of bits: %d\n", number_of_bits);
 
 	// Macros
-	#define NB_WORDS 10
+	#define NB_WORDS 250
 	#define INPUT_SIZE (NB_WORDS * number_of_bits)
-	#define HIDDEN_LAYER_SIZE (int)(INPUT_SIZE * 0.5)
 
 	// Create a neural network
 	int nb_neurons_per_layer[] = {INPUT_SIZE, INPUT_SIZE / 2, INPUT_SIZE / 4, INPUT_SIZE / 8, number_of_bits};
@@ -92,7 +103,7 @@ int main() {
 	code = generateSentencesFromFolderForGPT("data/words/", &sentences, 100000, NB_WORDS + 1, &nb_sentences);
 	INFO_PRINT("main(): %d sentences\n", nb_sentences);
 
-	// Prepare the training data
+	// Prepare the training data (output = last word of the sentence)
 	nn_type **inputs;
 	nn_type **expected;
 	nn_type *inputs_flat_matrix = try2DFlatMatrixAllocation((void***)&inputs, nb_sentences, network.input_layer->nb_neurons, sizeof(nn_type), "main()");
@@ -123,10 +134,9 @@ int main() {
 	// Train the neural network
 	#define NB_TEST_DATA_PERCENTAGE 20
 	#define BATCH_SIZE 1
-	#define NB_EPOCHS 200
+	#define NB_EPOCHS 100
 	#define ERROR_TARGET 0.000001
 	#define VERBOSE 1
-	INFO_PRINT("main(): Training the neural network\n");
 	char buffer[16];
 	ST_BENCHMARK_SOLO_COUNT(buffer, {
 		code = TrainCPUSingleThread(&network, inputs, expected,
@@ -159,30 +169,12 @@ int main() {
 		// If there is no input token, continue
 		if (convertBinaryDoubleArrayToXbInt(test_inputs[i], number_of_bits) == 0) continue;
 
-		// Print the expected and output tokens
-		if (expected_token != output_token) {
-			ERROR_PRINT("main(): input tokens:");
-			for (int j = 0; j < NB_WORDS; j++) {
-				int token = convertBinaryDoubleArrayToXbInt(test_inputs[i] + j * number_of_bits, number_of_bits);
-				PRINTER(" "STR_YELLOW_R("%d"), token);
-				if (token == 0) break;
-			}
-			PRINTER(",\texpected token: "STR_YELLOW_R("%d")", output token: "STR_YELLOW_R("%d")"\n", expected_token, output_token);
+		// If the output token is not the expected token, increment the number of errors
+		if (expected_token != output_token)
 			nb_errors++;
-		}
-		else {
-			INFO_PRINT("main(): input tokens:");
-			for (int j = 0; j < NB_WORDS; j++) {
-				int token = convertBinaryDoubleArrayToXbInt(test_inputs[i] + j * number_of_bits, number_of_bits);
-				PRINTER(" "STR_GREEN_R("%d"), token);
-				if (token == 0) break;
-			}
-			PRINTER(",\texpected token: "STR_GREEN_R("%d")", output token: "STR_GREEN_R("%d")"\n", expected_token, output_token);
-		}
 	}
 	INFO_PRINT("main(): Success rate: %d/%d (%.2f%%)\n", nb_sentences - nb_errors, nb_sentences, (double)(nb_sentences - nb_errors) / nb_sentences * 100.0);
-
-
+	free2DFlatMatrix((void**)test_outputs, test_outputs_flat_matrix, nb_sentences);
 
 	///// Final part
 	// Save the neural network
@@ -196,7 +188,6 @@ int main() {
 	// Free the training data
 	free2DFlatMatrix((void**)inputs, inputs_flat_matrix, nb_sentences);
 	free2DFlatMatrix((void**)expected, outputs_flat_matrix, nb_sentences);
-	free2DFlatMatrix((void**)test_outputs, test_outputs_flat_matrix, nb_sentences);
 
 	// Final print and return
 	INFO_PRINT("main(): End of program\n");

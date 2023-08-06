@@ -397,7 +397,7 @@ int TrainCPUSingleThread(NeuralNetwork *network, nn_type **inputs, nn_type **tar
 			char benchmark_buffer[256];
 			ST_BENCHMARK_SOLO_COUNT(benchmark_buffer,
 				epochCPUSingleThread(network, inputs, target, nb_inputs, nb_batches, batch_size, current_epoch, nb_epochs, &current_error, test_inputs, target_tests, nb_test_inputs, verbose),
-				"TrainCPU(1 thread): Epoch %d/%d, %s Error: " ST_COLOR_YELLOW "%.12"NN_FORMAT ST_COLOR_RED " ("ST_COLOR_YELLOW "%.2f" ST_COLOR_RED "us/input)", 1, 0
+				"TrainCPU(1 thread): Epoch %d/%d, %s Error: " ST_COLOR_YELLOW "%.8"NN_FORMAT ST_COLOR_RED " ("ST_COLOR_YELLOW "%.2f" ST_COLOR_RED "us/input)", 1, 0
 			);
 
 			// Get current microseconds
@@ -903,7 +903,7 @@ int TrainCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn_type **tar
 			char benchmark_buffer[256];
 			ST_BENCHMARK_SOLO_COUNT(benchmark_buffer,
 				epochCPUMultiThreads(network, inputs, target, nb_inputs, nb_batches, batch_size, current_epoch, nb_epochs, &current_error, test_inputs, target_tests, nb_test_inputs, verbose),
-				"TrainCPU(%d threads): Epoch %d/%d, %s Error: " ST_COLOR_YELLOW "%.12"NN_FORMAT ST_COLOR_RED " ("ST_COLOR_YELLOW "%.2f" ST_COLOR_RED "us/input)", 1, 0
+				"TrainCPU(%d threads): Epoch %d/%d, %s Error: " ST_COLOR_YELLOW "%.8"NN_FORMAT ST_COLOR_RED " ("ST_COLOR_YELLOW "%.2f" ST_COLOR_RED "us/input)", 1, 0
 			);
 
 			// Get current microseconds
