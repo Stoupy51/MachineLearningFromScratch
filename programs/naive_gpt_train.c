@@ -7,6 +7,7 @@
 #include "../src/st_benchmark.h"
 
 #define DICTIONARY_TOKEN_PATH "data/token_dictionary.txt"
+#define NEURAL_NETWORK_PATH "bin/naive_gpt.nn"
 
 /**
  * @brief Function run at the end of the program
@@ -88,7 +89,7 @@ int main() {
 	// Prepare sentences
 	char **sentences;
 	int nb_sentences;
-	code = generateSentencesFromTextFileForGPT("data/words/test.txt", &sentences, 100000, NB_WORDS + 1, &nb_sentences);
+	code = generateSentencesFromFolderForGPT("data/words/", &sentences, 100000, NB_WORDS + 1, &nb_sentences);
 	INFO_PRINT("main(): %d sentences\n", nb_sentences);
 
 	// Prepare the training data
@@ -96,29 +97,12 @@ int main() {
 	nn_type **expected;
 	nn_type *inputs_flat_matrix = try2DFlatMatrixAllocation((void***)&inputs, nb_sentences, network.input_layer->nb_neurons, sizeof(nn_type), "main()");
 	nn_type *outputs_flat_matrix = try2DFlatMatrixAllocation((void***)&expected, nb_sentences, network.output_layer->nb_neurons, sizeof(nn_type), "main()");
-	// TODO: make is dynamic
 	for (int i = 0; i < nb_sentences; i++) {
 		
 		// Convert the sentence to a sequence of tokens
 		int sentence_tokens[NB_WORDS];
 		int nb_sentence_tokens = 0;
-		char* sentence = sentences[i];
-		DEBUG_PRINT("main(): Sentence: '%s'\n", sentence);
-		char* word = strtok(strdup(sentence), " ");
-		while (word != NULL) {
-
-			// Get the token id of the word
-			token_t token;
-			token.size = strlen(word);
-			token.str = word;
-			token_t *token_ptr = token_dict_search(token_dictionary, token);
-			int token_id = token_ptr == NULL ? 0 : token_ptr->token_id;
-			if (token_id == 0) WARNING_PRINT("main(): Unknown word: '%s'\n", word);
-
-			// Add the token to the sentence tokens and get the next word
-			sentence_tokens[nb_sentence_tokens++] = token_id;
-			word = strtok(NULL, " ");
-		}
+		convertSentenceToTokensArray(&token_dictionary, sentences[i], sentence_tokens, &nb_sentence_tokens);
 
 		// Convert the sentence tokens to a binary array
 		nn_type *sentence_binary = inputs[i];
@@ -202,9 +186,9 @@ int main() {
 
 	///// Final part
 	// Save the neural network
-	// INFO_PRINT("main(): Saving the neural network\n");
-	// code = saveNeuralNetwork(network, "naive_gpt.nn", 1);
-	// ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while saving the neural network\n");
+	INFO_PRINT("main(): Saving the neural network\n");
+	code = saveNeuralNetwork(network, NEURAL_NETWORK_PATH, 0);
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while saving the neural network\n");
 
 	// Free the neural network
 	freeNeuralNetwork(&network);

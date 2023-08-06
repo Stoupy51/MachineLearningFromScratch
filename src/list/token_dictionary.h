@@ -51,7 +51,6 @@ token_t* token_list_search_id(token_list_t *list_ptr, int token_id);
 int token_list_delete(token_list_t *list_ptr, token_t *token_ptr);
 void token_list_free(token_list_t *list_ptr);
 
-int token_hash(token_t token, int hash_table_size);
 void token_dict_init(token_dictionary_t *dict_ptr, int hash_table_size);
 void token_dict_add(token_dictionary_t *dict_ptr, token_t token);
 token_t* token_dict_search(token_dictionary_t dict, token_t token);
@@ -62,6 +61,8 @@ void token_dict_print(token_dictionary_t dict, int nb_tokens);
 
 int token_dict_save(token_dictionary_t *dict_ptr, char *filename);
 int token_dict_load(token_dictionary_t *dict_ptr, char *filename);
+
+void convertSentenceToTokensArray(token_dictionary_t *token_dictionary, char *sentence, int *sentence_tokens, int *nb_sentence_tokens);
 
 #endif
 

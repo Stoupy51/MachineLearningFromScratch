@@ -126,22 +126,6 @@ void token_list_free(token_list_t *list_ptr) {
 
 
 /**
- * @brief Get the hash of a token.
- * 
- * @param token				The token to hash.
- * @param hash_table_size	The size of the hash table.
- * 
- * @return int				The hash of the token.
- */
-int token_hash(token_t token, int hash_table_size) {
-	int hash = 0;
-	unsigned char *str = (unsigned char*)token.str;	// Use unsigned char to avoid negative values
-	for (int i = 0; i < token.size; i++)
-		hash = (hash * 31 + str[i]) % hash_table_size;	// 31 for better distribution: https://www.google.com/search?q=why+31+in+hash+function
-	return hash;
-}
-
-/**
  * @brief Initialize a token dictionary.
  * 
  * @param dict_ptr			The pointer to the token dictionary to initialize.
@@ -212,7 +196,7 @@ token_t* token_dict_search_id(token_dictionary_t dict, int token_id) {
  * @return int				0 if the token was found and deleted, -1 if not found.
  */
 int token_dict_delete(token_dictionary_t *dict_ptr, token_t *token_ptr) {
-	return token_list_delete(&dict_ptr->table[token_hash(*token_ptr, dict_ptr->hash_table_size)], token_ptr);
+	return token_list_delete(&dict_ptr->table[token_ptr->token_id % dict_ptr->hash_table_size], token_ptr);
 }
 
 /**
@@ -336,11 +320,48 @@ int token_dict_load(token_dictionary_t *dict_ptr, char *filename) {
 		token.str[token.size] = '\0';
 
 		// Add the token directly to the table
-		token_list_add(&dict_ptr->table[token_hash(token, dict_ptr->hash_table_size)], token);
+		token_list_add(&dict_ptr->table[token.token_id % dict_ptr->hash_table_size], token);
 	}
 
 	// Close the file and return
 	return fclose(file);
 }
+
+
+/**
+ * @brief Convert a sentence to a sequence of tokens.
+ * 
+ * @param token_dictionary		Pointer to the token dictionary.
+ * @param sentence				The sentence to convert.
+ * @param sentence_tokens		The array to store the tokens.
+ * @param nb_sentence_tokens	Pointer to the number of tokens.
+*/
+void convertSentenceToTokensArray(token_dictionary_t *token_dictionary, char *sentence, int *sentence_tokens, int *nb_sentence_tokens) {
+	
+	// Initialize the number of tokens
+	*nb_sentence_tokens = 0;
+
+	// Convert the sentence to a sequence of tokens
+	char* word = strtok(strdup(sentence), " ");
+	while (word != NULL) {
+
+		// Get the token id of the word
+		token_t token = {0};
+		token.size = strlen(word);
+		token.str = word;
+		token_t *token_ptr = token_dict_search(*token_dictionary, token);
+		int token_id = token_ptr == NULL ? 0 : token_ptr->token_id;
+		if (token_id == 0) {
+			token_dict_add(token_dictionary, token);
+			token.token_id = token_dictionary->size;
+			WARNING_PRINT("convertSentenceToTokensArray(): Unknown word: '%s', added to the dictionary with id %d\n", word, token.token_id);
+		}
+
+		// Add the token to the sentence tokens and get the next word
+		sentence_tokens[(*nb_sentence_tokens)++] = token_id;
+		word = strtok(NULL, " ");
+	}
+}
+
 
 

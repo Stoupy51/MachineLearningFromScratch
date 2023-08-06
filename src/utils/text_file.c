@@ -58,6 +58,9 @@ int generateSentencesFromFileForGPT(FILE *file, char ***sentences, int max_sente
 				memset(sentence, 0, current_alloc_size * sizeof(char));
 				sentence_length = 0;
 				nb_words_in_sentence = 0;
+
+				// If the character is not a new line, add it to the new sentence buffer
+				if (c != '\n') sentence[sentence_length++] = c;
 			}
 		}
 
@@ -99,4 +102,65 @@ int generateSentencesFromTextFileForGPT(char *filename, char ***sentences, int m
 	return code;
 }
 
+
+/**
+ * @brief Function to generate sentences from a folder by reading all the files in the folder.
+ * The sentences can be used to train a neural network such as GPT.
+ * 
+ * @param folder					The folder to read (must end with a '/')
+ * @param sentences					[out] The sentences generated (automatically allocated)
+ * @param max_sentences				The maximum number of sentences to generate.
+ * @param max_words_per_sentence	The maximum number of words in a sentence.
+ * @param total_sentences			[out] Pointer to the total number of sentences generated.
+ * 
+ * @return int						0 if at least one file was read, -1 otherwise.
+*/
+int generateSentencesFromFolderForGPT(char *folder, char ***sentences, int max_sentences, int max_words_per_sentence, int *total_sentences) {
+
+	// Get the list of files in the folder using a pipe with ls
+	char command[512];
+	sprintf(command, "ls %s", folder);
+	FILE *pipe = popen(command, "r");
+	ERROR_HANDLE_PTR_RETURN_INT(pipe, "generateSentencesFromFolderForGPT(): Error while opening the pipe for the path '%s'\n", folder);
+	#ifdef _WIN32
+		system("powershell -command \"\"");
+	#endif
+
+	// Read the files one by one
+	char filename[512];
+	*total_sentences = 0;
+	*sentences = NULL;
+	while ((*total_sentences) < max_sentences && fgets(filename, 512, pipe) != NULL) {
+
+		// Remove the \n at the end of the filename
+		int filename_length = strlen(filename);
+		if (filename[filename_length - 1] == '\n') filename[filename_length - 1] = '\0';
+
+		// Add the folder to the filename
+		char full_filename[1024];
+		sprintf(full_filename, "%s%s", folder, filename);
+
+		// Generate the sentences from the file
+		int nb_sentences;
+		char **local_sentences;
+		int code = generateSentencesFromTextFileForGPT(full_filename, &local_sentences, max_sentences - (*total_sentences), max_words_per_sentence, &nb_sentences);
+		if (code < 0) {
+			ERROR_PRINT("generateSentencesFromFolderForGPT(): Error while generating sentences from the file '%s'\n", full_filename);
+			continue;
+		}
+
+		// Add the sentences to the sentences array (realloc, memcpy and free)
+		*sentences = reallocBlocking(*sentences, ((*total_sentences) + nb_sentences) * sizeof(char*), "generateSentencesFromFolderForGPT(sentences)");
+		memcpy(*sentences + (*total_sentences), local_sentences, nb_sentences * sizeof(char*));
+		*total_sentences += nb_sentences;
+		free(local_sentences);
+	}
+
+	// Close the pipe
+	int code = pclose(pipe);
+	ERROR_HANDLE_INT_RETURN_INT(code, "generateSentencesFromFolderForGPT(): Error while closing the pipe for the path '%s'\n", folder);
+
+	// Return success if at least one file was read
+	return (*total_sentences) > 0 ? 0 : -1;
+}
 

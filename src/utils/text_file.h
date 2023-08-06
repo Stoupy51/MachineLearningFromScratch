@@ -9,6 +9,7 @@
 int generateSentencesFromFileForGPT(FILE *file, char ***sentences, int max_sentences, int max_words_per_sentence, int *total_sentences);
 int generateSentencesFromTextFileForGPT(char *filename, char ***sentences, int max_sentences, int max_words_per_sentence, int *total_sentences);
 
+int generateSentencesFromFolderForGPT(char *folder, char ***sentences, int max_sentences, int max_words_per_sentence, int *total_sentences);
 
 
 

@@ -78,6 +78,9 @@ int main() {
 	sprintf(command, "ls %s", IMAGES_PATH);
 	FILE* pipe = popen(command, "r");
 	ERROR_HANDLE_PTR_RETURN_INT(pipe, "main(): Error listing the images in the folder '%s'\n", IMAGES_PATH);
+	#ifdef _WIN32
+		system("powershell -command \"\"");
+	#endif
 	char file_name[512];
 	while (fgets(file_name, sizeof(file_name), pipe) != NULL) {
 
