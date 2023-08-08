@@ -4,7 +4,7 @@
 #include "../src/st_benchmark.h"
 
 #define WORDS_FOLDER_PATH "data/words"
-#define DICTIONARY_TOKEN_PATH "data/token_dictionary.txt"
+#define DICTIONARY_TOKEN_PATH "data/token_dictionary.bin"
 
 /**
  * @brief Function run at the end of the program
@@ -19,8 +19,8 @@ void exitProgram() {
 }
 
 /**
- * This program create a token dictionary for the GPT (Generative Pre-trained Transformer)
- * by assigning a token to each word in the files of the folder "words".
+ * This program create a token dictionary by assigning a token to
+ * each word in the files of the folder "words".
  * 
  * @author Stoupy51 (COLLIGNON Alexandre)
  */
