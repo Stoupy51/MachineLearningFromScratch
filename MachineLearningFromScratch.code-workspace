@@ -65,7 +65,8 @@
 			"__threading_support": "c",
 			"random": "c",
 			"mutex": "c",
-			"__mutex_base": "c"
+			"__mutex_base": "c",
+			"token_dictionary.h": "c"
 		},
 		"OpenCL.explorer.localizedProperties": false
 	}
