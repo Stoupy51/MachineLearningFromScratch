@@ -83,9 +83,12 @@ void FeedForwardCPUSingleThread(NeuralNetwork *network, nn_type *input) {
 			if (network->layers[i].has_bias_neuron)
 				input_sum += network->layers[i].weights[j][network->layers[i].nb_inputs_per_neuron];
 
-			// Activate the neuron with the activation function
-			network->layers[i].activations_values[j] = network->layers[i].activation_function(input_sum);
+			// Save the sum of the inputs multiplied by the weights
+			network->layers[i].activations_values[j] = input_sum;
 		}
+
+		// Activate the layer with the activation function
+		network->layers[i].activation_function(network->layers[i].activations_values, network->layers[i].nb_neurons);
 	}
 }
 
@@ -135,6 +138,9 @@ void BackpropagationCPUSingleThread(NeuralNetwork *network, nn_type **predicted_
 		memset(network->layers[i].weights_gradients_flat, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(nn_type));
 	}
 
+	// Calculate the derivatives of activation functions for output layer
+	network->output_layer->activation_function_derivative(network->output_layer->activations_values, network->output_layer->nb_neurons);
+
 	// For each sample of the batch,
 	for (int sample = 0; sample < batch_size; sample++) {
 
@@ -143,7 +149,7 @@ void BackpropagationCPUSingleThread(NeuralNetwork *network, nn_type **predicted_
 
 			// Calculate the gradient of the cost function with respect to the activation value of the neuron
 			nn_type gradient = network->loss_function_derivative(predicted_outputs[sample][j], target_outputs[sample][j])
-				* network->output_layer->activation_function_derivative(network->output_layer->activations_values[j]);
+				* network->output_layer->activations_values[j];
 
 			// For each input of the neuron, calculate the gradient of the cost function with respect to the weight of the input
 			for (int k = 0; k < network->output_layer->nb_inputs_per_neuron; k++)
@@ -154,36 +160,39 @@ void BackpropagationCPUSingleThread(NeuralNetwork *network, nn_type **predicted_
 		}
 	}
 
-	// For each layer of the neural network (except the input layer) (in reverse order), calculate the gradients and update the weights and the biases
-	for (int i = network->nb_layers - 1; i > 0; i--) {
+	// For each layer of the neural network (except the input layer) (in reverse order),
+	for (int i = network->nb_layers - 2; i > 0; i--) {
+
+		// Calculate the derivatives of activation functions
+		network->layers[i].activation_function_derivative(network->layers[i].activations_values, network->layers[i].nb_neurons);
 
 		// For each neuron of the layer,
-		if (i > 1) {
-			for (int j = 0; j < network->layers[i].nb_inputs_per_neuron; j++) {
+		for (int j = 0; j < network->layers[i].nb_neurons; j++) {
 
-				// Calculate the gradient of the cost function with respect to the activation value of the neuron
-				nn_type gradient = 0.0;
-				for (int k = 0; k < network->layers[i].nb_neurons; k++)
-					gradient += network->layers[i].weights[k][j]
-						* network->layers[i].biases_gradients[k];
+			// Calculate the gradient of the cost function with respect to the activation value of the neuron
+			nn_type gradient = 0.0;
+			for (int k = 0; k < network->layers[i + 1].nb_neurons; k++)
+				gradient += network->layers[i + 1].weights[k][j]
+					* network->layers[i + 1].biases_gradients[k];
 
-				// Multiply the gradient by the derivative of the activation function of the neuron
-				gradient *= network->layers[i - 1].activation_function_derivative(network->layers[i - 1].activations_values[j]);
+			// Multiply the gradient by the derivative of the activation function of the neuron
+			gradient *= network->layers[i].activations_values[j];
 
-				// For each input of the neuron, calculate the gradient of the cost function with respect to the weight of the input
-				for (int k = 0; k < network->layers[i - 1].nb_inputs_per_neuron; k++)
-					network->layers[i - 1].weights_gradients[j][k] += gradient * network->layers[i - 2].activations_values[k];
+			// For each input of the neuron, calculate the gradient of the cost function with respect to the weight of the input
+			for (int k = 0; k < network->layers[i].nb_inputs_per_neuron; k++)
+				network->layers[i].weights_gradients[j][k] += gradient * network->layers[i - 1].activations_values[k];
 
-				// Calculate the gradient of the cost function with respect to the bias of the neuron
-				network->layers[i - 1].biases_gradients[j] += gradient;
-			}
+			// Calculate the gradient of the cost function with respect to the bias of the neuron
+			network->layers[i].biases_gradients[j] += gradient;
 		}
+	}
 
-		// Update the weights and the biases
+	// Update the weights and the biases
+	for (int i = 1; i < network->nb_layers; i++) {
 		for (int j = 0; j < network->layers[i].nb_neurons; j++) {
 			for (int k = 0; k < network->layers[i].nb_inputs_per_neuron; k++)
-				network->layers[i].weights[j][k] -= (network->learning_rate * network->layers[i].weights_gradients[j][k]) / batch_size;
-			network->layers[i].biases[j] -= (network->learning_rate * network->layers[i].biases_gradients[j]) / batch_size;
+				network->layers[i].weights[j][k] -= (network->learning_rate * network->layers[i].weights_gradients[j][k]);
+			network->layers[i].biases[j] -= (network->learning_rate * network->layers[i].biases_gradients[j]);
 		}
 	}
 }
@@ -430,6 +439,7 @@ int TrainCPUSingleThread(NeuralNetwork *network, nn_type **inputs, nn_type **tar
 ///// Multi-threaded version /////
 
 // Feed forward multi-threaded algorithm
+
 /**
  * @brief Structure representing the arguments of a multi-threaded feed forward algorithm
  * 
@@ -511,248 +521,6 @@ int FeedForwardBatchCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn
 	return 0;
 }
 
-
-// Backpropagation multi-threaded algorithm
-/**
- * @brief Structure representing the arguments of the first part of
- * multi-threaded backpropagation algorithm without updating
- * the weights and the biases of the neural network
- * 
- * @param network				Pointer to the neural network
- * @param predicted_outputs		Pointer to the predicted outputs array
- * @param target_outputs		Pointer to the target outputs array
- * @param batch_size			Number of samples in the batch
- * @param start_neuron			Index of the first neuron to process
- * @param end_neuron			Index of the last neuron to process
- */
-struct BackpropagationPart1MultiThreadRoutineArgs {
-	NeuralNetwork *network;
-	nn_type **predicted_outputs;
-	nn_type **target_outputs;
-	int batch_size;
-	int start_neuron;
-	int end_neuron;
-};
-
-/**
- * @brief Routine of a thread of the first part of
- * multi-threaded backpropagation algorithm without updating
- * the weights and the biases of the neural network
- * 
- * @param arg	Pointer to BackpropagationPart1MultiThreadRoutineArgs
- */
-thread_return BackpropagationPart1MultiThreadRoutine(thread_param arg) {
-	
-	// Get the arguments
-	struct BackpropagationPart1MultiThreadRoutineArgs *args = (struct BackpropagationPart1MultiThreadRoutineArgs *)arg;
-	NeuralNetwork *network = args->network;
-	NeuronLayer *output_layer = network->output_layer;
-	NeuronLayer *previous_layer = &network->layers[network->nb_layers - 2];
-	nn_type **predicted_outputs = args->predicted_outputs;
-	nn_type **target_outputs = args->target_outputs;
-	int batch_size = args->batch_size;
-	int start_neuron = args->start_neuron;
-	int end_neuron = args->end_neuron;
-
-	// For each sample of the batch,
-	for (int sample = 0; sample < batch_size; sample++) {
-
-		// For each neuron of the output layer,
-		for (int j = start_neuron; j < end_neuron; j++) {
-
-			// Calculate the gradient of the cost function with respect to the activation value of the neuron
-			nn_type gradient = network->loss_function_derivative(predicted_outputs[sample][j], target_outputs[sample][j])
-				* output_layer->activation_function_derivative(output_layer->activations_values[j]);
-
-			// For each input of the neuron, calculate the gradient of the cost function with respect to the weight of the input
-			for (int k = 0; k < output_layer->nb_inputs_per_neuron; k++)
-				output_layer->weights_gradients[j][k] += gradient * previous_layer->activations_values[k];
-
-			// Calculate the gradient of the cost function with respect to the bias of the neuron
-			output_layer->biases_gradients[j] += gradient;
-		}
-	}
-
-	// Return
-	return 0;
-}
-
-/**
- * @brief Structure representing the arguments of the second part of
- * multi-threaded backpropagation algorithm with updating
- * the weights and the biases of the neural network
- * 
- * @param network				Pointer to the neural network
- * @param current_layer_index	Index of the current layer
- * @param current_first_neuron	Index of the first neuron to process in the current layer
- * @param current_last_neuron	Index of the last neuron to process in the current layer
- * @param previous_first_neuron	Index of the first neuron to process in the previous layer
- * @param previous_last_neuron	Index of the last neuron to process in the previous layer
- * @param batch_size			Number of samples in the batch
- */
-struct BackpropagationPart2MultiThreadRoutineArgs {
-	NeuralNetwork *network;
-	int current_layer_index;
-	int current_first_neuron;
-	int current_last_neuron;
-	int previous_first_neuron;
-	int previous_last_neuron;
-	int batch_size;
-};
-
-/**
- * @brief Routine of a thread of the second part of
- * multi-threaded backpropagation algorithm with updating
- * the weights and the biases of the neural network
- * 
- * @param arg	Pointer to BackpropagationPart2MultiThreadRoutineArgs
- */
-thread_return BackpropagationPart2MultiThreadRoutine(thread_param arg) {
-
-	// Get the arguments
-	struct BackpropagationPart2MultiThreadRoutineArgs *args = (struct BackpropagationPart2MultiThreadRoutineArgs *)arg;
-	NeuralNetwork *network = args->network;
-	int current_layer_index = args->current_layer_index;
-	int current_first_neuron = args->current_first_neuron;
-	int current_last_neuron = args->current_last_neuron;
-	int previous_first_neuron = args->previous_first_neuron;
-	int previous_last_neuron = args->previous_last_neuron;
-	int batch_size = args->batch_size;
-
-	// For each neuron of the current layer,
-	if (current_layer_index > 1) {
-		for (int j = current_first_neuron; j < current_last_neuron; j++) {
-
-			// Calculate the gradient of the cost function with respect to the activation value of the neuron
-			nn_type gradient = 0.0;
-			for (int k = 0; k < network->layers[current_layer_index].nb_neurons; k++)
-				gradient += network->layers[current_layer_index].weights[k][j]
-					* network->layers[current_layer_index].biases_gradients[k];
-			gradient *= network->layers[current_layer_index - 1].activation_function_derivative(network->layers[current_layer_index - 1].activations_values[j]);
-
-			// For each input of the neuron, calculate the gradient of the cost function with respect to the weight of the input
-			for (int k = 0; k < network->layers[current_layer_index - 1].nb_inputs_per_neuron; k++)
-				network->layers[current_layer_index - 1].weights_gradients[j][k] += gradient * network->layers[current_layer_index - 2].activations_values[k];
-
-			// Calculate the gradient of the cost function with respect to the bias of the neuron
-			network->layers[current_layer_index - 1].biases_gradients[j] += gradient;
-		}
-	}
-
-	// Update the weights and the biases
-	for (int j = previous_first_neuron; j < previous_last_neuron; j++) {
-		for (int k = 0; k < network->layers[current_layer_index].nb_inputs_per_neuron; k++)
-			network->layers[current_layer_index].weights[j][k] -= (network->learning_rate * network->layers[current_layer_index].weights_gradients[j][k]) / batch_size;
-		network->layers[current_layer_index].biases[j] -= (network->learning_rate * network->layers[current_layer_index].biases_gradients[j]) / batch_size;
-	}
-
-	// Return
-	return 0;
-}
-
-/**
- * @brief Multi-threading Backpropagation algorithm of the neural network
- * and update the weights and the biases of the neural network
- * 
- * @param network				Pointer to the neural network
- * @param predicted_outputs		Pointer to the predicted outputs array
- * @param target_outputs		Pointer to the target outputs array
- * @param batch_size			Number of samples in the batch
- */
-int BackpropagationCPUMultiThreads(NeuralNetwork *network, nn_type **predicted_outputs, nn_type **target_outputs, int batch_size) {
-
-	// Initialize the gradients of the weights and the biases to 0
-	initGradientsNeuralNetwork(network);
-	for (int i = 1; i < network->nb_layers; i++) {
-		memset(network->layers[i].biases_gradients, 0, network->layers[i].nb_neurons * sizeof(nn_type));
-		memset(network->layers[i].weights_gradients_flat, 0, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(nn_type));
-	}
-
-	// Get number of threads and prepare the threads
-	int nb_threads = getNumberOfThreads();
-	pthread_t *threads = mallocBlocking(nb_threads * sizeof(pthread_t), "BackpropagationCPUMultiThreads()");
-	struct BackpropagationPart1MultiThreadRoutineArgs *args_part1 = mallocBlocking(nb_threads * sizeof(struct BackpropagationPart1MultiThreadRoutineArgs), "BackpropagationCPUMultiThreads()");
-	int part1_nb_neurons_per_thread = network->output_layer->nb_neurons / nb_threads;
-
-	// For each thread of the first part of the multi-threaded backpropagation algorithm
-	for (int i = 0; i < nb_threads; i++) {
-
-		// Prepare the arguments
-		args_part1[i].network = network;
-		args_part1[i].predicted_outputs = predicted_outputs;
-		args_part1[i].target_outputs = target_outputs;
-		args_part1[i].batch_size = batch_size;
-		args_part1[i].start_neuron = i * part1_nb_neurons_per_thread;
-		args_part1[i].end_neuron = (i + 1) * part1_nb_neurons_per_thread;
-		if (i == nb_threads - 1)
-			args_part1[i].end_neuron = network->output_layer->nb_neurons;
-
-		// Create the thread
-		int code = pthread_create(&threads[i], NULL, BackpropagationPart1MultiThreadRoutine, &args_part1[i]);
-		ERROR_HANDLE_INT_RETURN_INT(code, "BackpropagationCPUMultiThreads(): Error while creating thread #%d\n", i);
-	}
-
-	// Prepare the args of the second part of the multi-threaded backpropagation algorithm
-	struct BackpropagationPart2MultiThreadRoutineArgs **args_part2;
-	struct BackpropagationPart2MultiThreadRoutineArgs *args_part2_flat = try2DFlatMatrixAllocation((void***)&args_part2, network->nb_layers - 1, nb_threads, sizeof(struct BackpropagationPart2MultiThreadRoutineArgs), "BackpropagationCPUMultiThreads()");
-
-	// For each layer of the neural network (except the input layer) (in reverse order), prepare the arguments of the second part of the multi-threaded backpropagation algorithm
-	for (int i = network->nb_layers - 1; i > 0; i--) {
-
-		// Calculate the number of neurons to process in the current layer
-		int neurons_per_thread = network->layers[i].nb_inputs_per_neuron / nb_threads;
-		int update_nb_neurons_per_thread = network->layers[i].nb_neurons / nb_threads;
-
-		// For each thread of the second part of the multi-threaded backpropagation algorithm
-		for (int j = 0; j < nb_threads; j++) {
-
-			// Prepare the arguments
-			args_part2[i - 1][j].network = network;
-			args_part2[i - 1][j].current_layer_index = i;
-			args_part2[i - 1][j].current_first_neuron = j * neurons_per_thread;
-			args_part2[i - 1][j].current_last_neuron = (j + 1) * neurons_per_thread;
-			args_part2[i - 1][j].previous_first_neuron = j * update_nb_neurons_per_thread;
-			args_part2[i - 1][j].previous_last_neuron = (j + 1) * update_nb_neurons_per_thread;
-			args_part2[i - 1][j].batch_size = batch_size;
-			if (j == nb_threads - 1) {
-				args_part2[i - 1][j].current_last_neuron = network->layers[i].nb_inputs_per_neuron;
-				args_part2[i - 1][j].previous_last_neuron = network->layers[i].nb_neurons;
-			}
-		}
-	}
-
-	// Wait for the threads of the first part of the multi-threaded backpropagation algorithm to finish
-	for (int i = 0; i < nb_threads; i++) {
-		int code = pthread_join(threads[i], NULL);
-		ERROR_HANDLE_INT_RETURN_INT(code, "BackpropagationCPUMultiThreads(): Error while joining thread #%d\n", i);
-	}
-
-	// For each layer of the neural network (except the input layer) (in reverse order), create the threads of the second part of the multi-threaded backpropagation algorithm
-	for (int i = network->nb_layers - 1; i > 0; i--) {
-
-		// Create the threads of the second part of the multi-threaded backpropagation algorithm
-		for (int j = 0; j < nb_threads; j++) {
-			int code = pthread_create(&threads[j], NULL, BackpropagationPart2MultiThreadRoutine, &args_part2[i - 1][j]);
-			ERROR_HANDLE_INT_RETURN_INT(code, "BackpropagationCPUMultiThreads(): Error while creating thread #%d\n", j);
-		}
-
-		// Wait for the threads of the second part of the multi-threaded backpropagation algorithm to finish
-		for (int j = 0; j < nb_threads; j++) {
-			int code = pthread_join(threads[j], NULL);
-			ERROR_HANDLE_INT_RETURN_INT(code, "BackpropagationCPUMultiThreads(): Error while joining thread #%d\n", j);
-		}
-	}
-
-	// Free the memory
-	free(threads);
-	free(args_part1);
-	free2DFlatMatrix((void**)args_part2, args_part2_flat, network->nb_layers - 1);
-
-	// Return
-	return 0;
-}
-
-
 /**
  * @brief Mini-batch Gradient Descent algorithm of the neural network
  * using a batch of inputs and a batch of target outputs (multi-threaded version)
@@ -772,7 +540,7 @@ void MiniBatchGradientDescentCPUMultiThreads(NeuralNetwork *network, nn_type **i
 	FeedForwardBatchCPUMultiThreads(network, inputs, predicted_outputs, batch_size);
 
 	// Compute the gradients using backpropagation
-	BackpropagationCPUMultiThreads(network, predicted_outputs, target_outputs, batch_size);
+	BackpropagationCPUSingleThread(network, predicted_outputs, target_outputs, batch_size);
 
 	// Free the predicted outputs array for the batch
 	free2DFlatMatrix((void**)predicted_outputs, predicted_flat_outputs, batch_size);

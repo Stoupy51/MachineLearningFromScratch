@@ -31,7 +31,6 @@ int TrainCPUSingleThread(
 // Multi-thread version
 
 int FeedForwardBatchCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, int batch_size);
-int BackpropagationCPUMultiThreads(NeuralNetwork *network, nn_type **predicted_outputs, nn_type **target_outputs, int batch_size);
 void MiniBatchGradientDescentCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn_type **target_outputs, int batch_size);
 void epochCPUMultiThreads(NeuralNetwork *network, nn_type **inputs, nn_type **target, int nb_inputs, int nb_batches, int batch_size, int current_epoch, int nb_epochs, nn_type *current_error, nn_type **test_inputs, nn_type **target_tests, int nb_test_inputs, int verbose);
 
