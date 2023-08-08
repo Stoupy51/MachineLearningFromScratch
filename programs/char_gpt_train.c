@@ -44,6 +44,31 @@ int main() {
 	int nb_characters = strlen(training_data);
 	INFO_PRINT("main(): %d characters in the training data: [%d, %d, ...]\n", nb_characters, (int)training_data[0], (int)training_data[1]);
 
+	// Create vocabulary from the training data (list of characters)
+	INFO_PRINT("main(): Creating vocabulary\n");
+	char *vocabulary = mallocBlocking(256 * sizeof(char), "main(vocabulary)");
+	memset(vocabulary, 0, 256 * sizeof(char));
+	int vocabulary_size = 0;
+	for (int i = 0; i < nb_characters; i++) {
+		char c = training_data[i];
+		if (strchr(vocabulary, c) == NULL) {
+			vocabulary[vocabulary_size] = c;
+			vocabulary_size++;
+		}
+	}
+
+	// Sort the vocabulary
+	for (int i = 0; i < vocabulary_size; i++) {
+		for (int j = i + 1; j < vocabulary_size; j++) {
+			if (vocabulary[i] > vocabulary[j]) {
+				char tmp = vocabulary[i];
+				vocabulary[i] = vocabulary[j];
+				vocabulary[j] = tmp;
+			}
+		}
+	}
+	INFO_PRINT("main(): %d characters in the vocabulary: %s\n", vocabulary_size, vocabulary);
+
 	// Convert the list of tokens into chunks of tokens
 	#define NB_TEST_DATA_PERCENTAGE 20
 	#define BATCH_SIZE 2
