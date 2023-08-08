@@ -63,7 +63,7 @@ char** selectRandomChunksFromCharArray(char *array, int array_size, int number_o
 
 		// Select a random index in the array, but continue if the chunk is too close to the end of the array
 		int random_index = rand() % array_size;
-		if (random_index + chunk_size >= array_size) continue;
+		if (random_index + chunk_size >= (array_size - 1)) continue;
 
 		// Link the chunk to the array of chunks
 		chunks[current_nb_chunks++] = array + random_index;
@@ -94,7 +94,7 @@ int** selectRandomChunksFromIntArray(int *array, int array_size, int number_of_c
 
 		// Select a random index in the array, but continue if the chunk is too close to the end of the array
 		int random_index = rand() % array_size;
-		if (random_index + chunk_size >= array_size) continue;
+		if (random_index + chunk_size >= (array_size - 1)) continue;
 
 		// Link the chunk to the array of chunks
 		chunks[current_nb_chunks++] = array + random_index;
