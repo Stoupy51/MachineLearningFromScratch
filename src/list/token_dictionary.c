@@ -364,4 +364,53 @@ void convertSentenceToTokensArray(token_dictionary_t *token_dictionary, char *se
 }
 
 
+/**
+ * @brief Convert a text to a list of tokens.
+ * 
+ * @param token_dictionary		Pointer to the token dictionary.
+ * @param text					The text to convert.
+ * @param nb_tokens				Pointer to the number of tokens.
+ * 
+ * @return int*					The list of tokens (automatically allocated).
+ */
+int *token_dict_convert_text_to_token_list(token_dictionary_t *token_dictionary, char *text, int *nb_tokens) {
+
+	// Initialize the number of tokens
+	*nb_tokens = 0;
+	int tokens_alloc_size = 1024;	// The memory size for the tokens array (without sizeof(int))
+	int *tokens = mallocBlocking(tokens_alloc_size * sizeof(int), "token_dict_convert_text_to_token_list(malloc)");
+
+	// Convert the text to a list of tokens
+	char* word = strtok(strdup(text), " ");
+	while (word != NULL) {
+
+		// Get the token id of the word
+		token_t token = {0};
+		token.size = strlen(word);
+		token.str = word;
+		token_t *token_ptr = token_dict_search(*token_dictionary, token);
+		int token_id = token_ptr == NULL ? 0 : token_ptr->token_id;
+		if (token_id == 0) {
+			token_dict_add(token_dictionary, token);
+			token.token_id = token_dictionary->size;
+		}
+
+		// Increase the tokens array size if needed (+1000)
+		if (*nb_tokens >= tokens_alloc_size) {
+			tokens_alloc_size += 1024;
+			tokens = reallocBlocking(tokens, tokens_alloc_size * sizeof(int), "token_dict_convert_text_to_token_list(realloc 1)");
+		}
+
+		// Add the token to the sentence tokens and get the next word
+		tokens[(*nb_tokens)++] = token_id;
+		word = strtok(NULL, " ");
+	}
+
+	// Reallocate the tokens array to the exact size if needed
+	if (*nb_tokens < tokens_alloc_size)
+		tokens = reallocBlocking(tokens, *nb_tokens * sizeof(int), "token_dict_convert_text_to_token_list(realloc 2)");
+	
+	// Return the tokens array
+	return tokens;
+}
 

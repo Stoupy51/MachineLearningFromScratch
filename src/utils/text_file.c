@@ -3,6 +3,99 @@
 #include "../universal_utils.h"
 
 /**
+ * @brief Function to read a text file and return its content as a string.
+ * 
+ * @param file	The file to read.
+ * 
+ * @return char*	The content of the file as a string (automatically allocated).
+ */
+char *readTextFromFile(FILE *file) {
+
+	// Get the size of the file
+	size_t file_size = get_file_size(fileno(file));
+
+	// Allocate the buffer
+	char *buffer = mallocBlocking(file_size * sizeof(char), "readTextFromFile(buffer)");
+	memset(buffer, 0, file_size * sizeof(char));
+
+	// Read the file and return the buffer
+	fread(buffer, sizeof(char), file_size, file);
+	return buffer;
+}
+
+/**
+ * @brief Function to read a text file and return its content as a string.
+ * 
+ * @param filename	The file to read.
+ * 
+ * @return char*	The content of the file as a string (automatically allocated).
+ */
+char *readTextFromTextFile(char *filename) {
+	FILE *file = fopen(filename, "r");
+	ERROR_HANDLE_PTR_RETURN_NULL(file, "readTextFromTextFile(): Error while opening the file '%s'\n", filename);
+	char *buffer = readTextFromFile(file);
+	fclose(file);
+	return buffer;
+}
+
+/**
+ * @brief Function to read all the text files in a folder and return their content as a string.
+ * 
+ * @param folder	The folder to read (must end with a '/').
+ * 
+ * @return char*	The content of the files as a string (automatically allocated).
+ */
+char *readTextFromFolder(char *folder) {
+
+	// Get the list of files in the folder using a pipe with ls
+	char command[512];
+	sprintf(command, "ls %s", folder);
+	FILE *pipe = popen(command, "r");
+	ERROR_HANDLE_PTR_RETURN_NULL(pipe, "readTextFromFolder(): Error while opening the pipe for the path '%s'\n", folder);
+	#ifdef _WIN32
+		system("powershell -command \"\"");
+	#endif
+
+	// Read the files one by one
+	char filename[512];
+	char *buffer = NULL;
+	size_t buffer_size = 0;
+	while (fgets(filename, 512, pipe) != NULL) {
+
+		// Remove the \n at the end of the filename
+		int filename_length = strlen(filename);
+		if (filename[filename_length - 1] == '\n') filename[filename_length - 1] = '\0';
+
+		// Add the folder to the filename
+		char full_filename[1024];
+		sprintf(full_filename, "%s%s", folder, filename);
+
+		// Read the file
+		char *file_buffer = readTextFromTextFile(full_filename);
+		if (file_buffer == NULL) {
+			ERROR_PRINT("readTextFromFolder(): Error while reading the file '%s'\n", full_filename);
+			continue;
+		}
+
+		// Add the file content to the buffer (realloc, memcpy and free)
+		size_t file_buffer_size = strlen(file_buffer);
+		buffer = reallocBlocking(buffer, (buffer_size + file_buffer_size + 1) * sizeof(char), "readTextFromFolder(buffer)");
+		memcpy(buffer + buffer_size, file_buffer, file_buffer_size * sizeof(char));
+		buffer_size += file_buffer_size;
+		buffer[buffer_size] = '\0';
+		free(file_buffer);
+	}
+
+	// Close the pipe
+	int code = pclose(pipe);
+	ERROR_HANDLE_INT_RETURN_NULL(code, "readTextFromFolder(): Error while closing the pipe for the path '%s'\n", folder);
+
+	// Return the buffer
+	return buffer;
+}
+
+
+/**
  * @brief Function to generate sentences from a text file.
  * The sentences can be used to train a neural network such as GPT.
  * 

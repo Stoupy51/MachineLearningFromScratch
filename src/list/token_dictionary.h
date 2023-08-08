@@ -63,6 +63,7 @@ int token_dict_save(token_dictionary_t *dict_ptr, char *filename);
 int token_dict_load(token_dictionary_t *dict_ptr, char *filename);
 
 void convertSentenceToTokensArray(token_dictionary_t *token_dictionary, char *sentence, int *sentence_tokens, int *nb_sentence_tokens);
+int *token_dict_convert_text_to_token_list(token_dictionary_t *token_dictionary, char *text, int *nb_tokens);
 
 #endif
 
