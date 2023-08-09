@@ -129,7 +129,7 @@ int main() {
 			// Feed forward the neural network
 			code = NeuralNetworkfeedForwardGPU(&network, input, 1);
 			ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error feeding forward the neural network\n");
-			// FeedForwardCPUSingleThread(&network, input);
+			// FeedForwardCPU(&network, input);
 			},
 			benchmark_name, 1);
 			PRINTER(benchmark_buffer);

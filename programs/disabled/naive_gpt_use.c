@@ -108,7 +108,7 @@ int main() {
 		}
 
 		// Feed forward
-		FeedForwardCPUSingleThread(&network, network.input_layer->activations_values);
+		FeedForwardCPU(&network, network.input_layer->activations_values);
 
 		// While the output is filled with 0, feed forward again
 		INFO_PRINT("main(): Output:\n");
@@ -136,7 +136,7 @@ int main() {
 			memcpy(network.input_layer->activations_values, network.output_layer->activations_values, number_of_bits * sizeof(nn_type));
 
 			// Feed forward
-			FeedForwardCPUSingleThread(&network, network.input_layer->activations_values);
+			FeedForwardCPU(&network, network.input_layer->activations_values);
 		}
 	}
 

@@ -112,13 +112,14 @@ int main() {
 	// Train the neural network
 	char buffer[16];
 	ST_BENCHMARK_SOLO_COUNT(buffer, {
-		code = TrainCPUSingleThread(&network_plus, inputs, expected,
+		code = TrainCPU(&network_plus, inputs, expected,
 			NB_TOTAL_DATA,
 			NB_TEST_DATA_PERCENTAGE,
 			BATCH_SIZE,
 			NB_EPOCHS,
 			ERROR_TARGET,
-			VERBOSE
+			VERBOSE,
+			"SGD"
 		);
 		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
 	}, "", 1, 1);
@@ -129,7 +130,7 @@ int main() {
 	nn_type **test_expected = &expected[NB_TOTAL_DATA - NB_TOTAL_DATA];
 	nn_type **test_outputs;
 	nn_type *test_outputs_flat_matrix = try2DFlatMatrixAllocation((void***)&test_outputs, NB_TOTAL_DATA, network_plus.output_layer->nb_neurons, sizeof(nn_type), "main()");
-	FeedForwardBatchCPUMultiThreads(&network_plus, test_inputs, test_outputs, NB_TOTAL_DATA);
+	FeedForwardBatchCPU(&network_plus, test_inputs, test_outputs, NB_TOTAL_DATA);
 	int nb_errors = 0;
 	for (int i = 0; i < NB_TOTAL_DATA; i++) {
 

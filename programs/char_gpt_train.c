@@ -111,13 +111,14 @@ int main() {
 	// Train the neural network
 	char buffer[16];
 	ST_BENCHMARK_SOLO_COUNT(buffer, {
-		code = TrainCPUSingleThread(&network, xb, yb,
+		code = TrainCPU(&network, xb, yb,
 			nb_chunks,
 			NB_TEST_DATA_PERCENTAGE,
 			BATCH_SIZE,
 			NB_EPOCHS,
 			ERROR_TARGET,
-			VERBOSE
+			VERBOSE,
+			"SGD"
 		);
 		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
 	}, "", 1, 1);

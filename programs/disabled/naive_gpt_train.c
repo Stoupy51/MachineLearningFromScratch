@@ -139,7 +139,7 @@ int main() {
 	#define VERBOSE 1
 	char buffer[16];
 	ST_BENCHMARK_SOLO_COUNT(buffer, {
-		code = TrainCPUSingleThread(&network, inputs, expected,
+		code = TrainCPU(&network, inputs, expected,
 			nb_sentences,
 			NB_TEST_DATA_PERCENTAGE,
 			BATCH_SIZE,
@@ -158,7 +158,7 @@ int main() {
 	nn_type **test_expected = expected;
 	nn_type **test_outputs;
 	nn_type *test_outputs_flat_matrix = try2DFlatMatrixAllocation((void***)&test_outputs, nb_sentences, network.output_layer->nb_neurons, sizeof(nn_type), "main()");
-	FeedForwardBatchCPUSingleThread(&network, test_inputs, test_outputs, nb_sentences, 0);
+	FeedForwardBatchCPU(&network, test_inputs, test_outputs, nb_sentences, 0);
 	int nb_errors = 0;
 	for (int i = 0; i < nb_sentences; i++) {
 
