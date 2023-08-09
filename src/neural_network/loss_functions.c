@@ -8,6 +8,14 @@
  * @param target_value		Value that the neural network should have predicted
 **/
 
+#if NN_TYPE == 0
+#define nn_type_log logf
+#elif NN_TYPE == 1
+#define nn_type_log log
+#else
+#define nn_type_log logl
+#endif
+
 // Calculate the mean absolute error of the neural network
 nn_type mean_absolute_error_f(nn_type prediction, nn_type target_value) {
 	nn_type diff = target_value - prediction;
@@ -44,13 +52,8 @@ nn_type huber_loss_derivative(nn_type prediction, nn_type target_value) {
 
 // Calculate the cross entropy of the neural network / logaritmic loss / log loss / logistic loss
 nn_type cross_entropy_f(nn_type prediction, nn_type target_value) {
-	#if NN_TYPE == 0
-	return -(target_value * logf(prediction) + (1 - target_value) * logf(1 - prediction));
-	#elif NN_TYPE == 1
-	return -(target_value * log(prediction) + (1 - target_value) * log(1 - prediction));
-	#else
-	return -(target_value * logl(prediction) + (1 - target_value) * logl(1 - prediction));
-	#endif
+	return -(target_value * nn_type_log(prediction)
+		+ (1 - target_value) * nn_type_log(1 - prediction));
 }
 
 // Derivative of the cross entropy of the neural network
@@ -60,13 +63,8 @@ nn_type cross_entropy_derivative(nn_type prediction, nn_type target_value) {
 
 // Calculate the relative entropy of the neural network / Kullback-Leibler divergence / KL divergence / KL distance / information divergence / information gain
 nn_type relative_entropy_f(nn_type prediction, nn_type target_value) {
-	#if NN_TYPE == 0
-	return target_value * logf(target_value / prediction) + (1 - target_value) * logf((1 - target_value) / (1 - prediction));
-	#elif NN_TYPE == 1
-	return target_value * log(target_value / prediction) + (1 - target_value) * log((1 - target_value) / (1 - prediction));
-	#else
-	return target_value * logl(target_value / prediction) + (1 - target_value) * logl((1 - target_value) / (1 - prediction));
-	#endif
+	return target_value * nn_type_log(target_value / prediction)
+		+ (1 - target_value) * nn_type_log((1 - target_value) / (1 - prediction));
 }
 
 // Derivative of the relative entropy of the neural network

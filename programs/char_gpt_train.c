@@ -2,6 +2,7 @@
 #include "../src/universal_utils.h"
 #include "../src/neural_network/neural_utils.h"
 #include "../src/neural_network/training_utils.h"
+#include "../src/neural_network/activation_functions.h"
 #include "../src/neural_network/training_cpu.h"
 #include "../src/utils/text_file.h"
 #include "../src/st_benchmark.h"
@@ -70,15 +71,66 @@ int main() {
 	INFO_PRINT("main(): %d characters in the vocabulary: %s\n", vocabulary_size, vocabulary);
 
 	// Convert the list of tokens into chunks of tokens
-	#define NB_TEST_DATA_PERCENTAGE 20
-	#define BATCH_SIZE 2
-	#define NB_EPOCHS 200
+	int chunk_size = 1;	// Maximum context length for the transformer predictions
+	int size_of_char = sizeof(char);
+	int nb_chunks = nb_characters - chunk_size;
+	char **chunks = selectRandomChunksFromCharArray(training_data, nb_characters, nb_chunks, chunk_size);
+	INFO_PRINT("main(): %d chunks of %d characters: [[%d, %d, ...], [%d, %d, ...], ...]\n", nb_chunks, chunk_size, chunks[0][0], chunks[0][1], chunks[1][0], chunks[1][1]);
+
+	// Prepare the training data
+	INFO_PRINT("main(): Preparing training data\n");
+	nn_type **xb;
+	nn_type **yb;
+	nn_type *xb_flat = try2DFlatMatrixAllocation((void***)&xb, nb_chunks, chunk_size * size_of_char, sizeof(nn_type), "main(xb_flat)");
+	nn_type *yb_flat = try2DFlatMatrixAllocation((void***)&yb, nb_chunks, size_of_char, sizeof(nn_type), "main(yb_flat)");
+	for (int i = 0; i < nb_chunks; i++) {
+		for (int j = 0; j < chunk_size; j++) {
+			xb[i][j] = (nn_type)(chunks[i][j]) / vocabulary_size;
+		}
+		yb[i][0] = (nn_type)(chunks[i][chunk_size]) / vocabulary_size;
+	}
+	INFO_PRINT("main(): Training data prepared: [[%.4f, ...] => [%.4f], [%.4f, ...] => [%.4f], ...]\n", (double)xb[0][0], (double)yb[0][0], (double)xb[1][0], (double)yb[1][0]);
+
+	// Create the neural network
+	#define NB_TEST_DATA_PERCENTAGE 10
+	#define BATCH_SIZE 1
+	#define NB_EPOCHS 100
 	#define ERROR_TARGET 0.000001
 	#define VERBOSE 1
-	int chunk_size = 1;	// Maximum context length for the transformer predictions
-	int nb_chunks = nb_characters / chunk_size;
-	char **chunks = selectRandomChunksFromCharArray(training_data, nb_characters, nb_chunks, chunk_size);
-	PRINTER("main(): %d chunks of %d characters: [[%d, %d, ...], [%d, %d, ...], ...]\n", nb_chunks, chunk_size, chunks[0][0], chunks[0][1], chunks[1][0], chunks[1][1]);
+	int input_size = chunk_size * size_of_char;
+	int nb_neurons_per_layer[] = {input_size, 128, size_of_char};
+	char *activation_functions[] = {NULL, "tanh", "softmax"};
+	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
+	NeuralNetwork network;
+	int code = initNeuralNetwork(&network, nb_layers, nb_neurons_per_layer, activation_functions, "MSE", 0.01, 1);
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while initializing the neural network\n");
+
+	// Print the neural network information
+	printNeuralNetwork(network);
+
+	// Train the neural network
+	char buffer[16];
+	ST_BENCHMARK_SOLO_COUNT(buffer, {
+		code = TrainCPUSingleThread(&network, xb, yb,
+			nb_chunks,
+			NB_TEST_DATA_PERCENTAGE,
+			BATCH_SIZE,
+			NB_EPOCHS,
+			ERROR_TARGET,
+			VERBOSE
+		);
+		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
+	}, "", 1, 1);
+	INFO_PRINT("main(): Total training time: "STR_YELLOW_R("%s")"s\n", buffer);
+
+
+
+
+
+
+	// Free the training data
+	free2DFlatMatrix((void**)xb, xb_flat, nb_chunks);
+	free2DFlatMatrix((void**)yb, yb_flat, nb_chunks);
 
 	// Final print and return
 	INFO_PRINT("main(): End of program\n");

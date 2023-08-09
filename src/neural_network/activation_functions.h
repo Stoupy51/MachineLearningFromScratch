@@ -5,14 +5,6 @@
 #include "neural_config.h"
 
 // Activation functions for neurons
-// nn_type sigmoid_f(nn_type x);
-// nn_type sigmoid_derivative_f(nn_type x);
-// nn_type relu_f(nn_type x);
-// nn_type relu_derivative_f(nn_type x);
-// nn_type tanh_f(nn_type x);
-// nn_type tanh_derivative_f(nn_type x);
-// nn_type identity_f(nn_type x);
-// nn_type identity_derivative_f(nn_type x);
 void sigmoid_f(nn_type *values, int n);
 void sigmoid_derivative_f(nn_type *values, int n);
 void relu_f(nn_type *values, int n);

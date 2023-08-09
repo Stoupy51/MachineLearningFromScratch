@@ -67,7 +67,8 @@
 			"mutex": "c",
 			"__mutex_base": "c",
 			"token_dictionary.h": "c",
-			"queue": "c"
+			"queue": "c",
+			"training_utils.h": "c"
 		},
 		"OpenCL.explorer.localizedProperties": false
 	}
