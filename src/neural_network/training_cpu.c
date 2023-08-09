@@ -52,10 +52,8 @@ void freeSimpleCopyForMultiThreadedFeedForward(NeuralNetwork network) {
 
 /**
  * @brief Mini-batch Gradient Descent algorithm of the neural network
- * using a batch of inputs and a batch of target outputs
  * 
  * @param network				Pointer to the neural network
- * @param inputs				Pointer to the inputs array
  * @param predictions		Pointer to the predicted outputs array
  * @param targets		Pointer to the target outputs array
  * @param batch_size			Number of samples in the batch
@@ -126,6 +124,19 @@ void StochasticGradientDescentCPU(NeuralNetwork *network, nn_type **predictions,
 			network->layers[i].biases[j] -= (network->learning_rate * network->layers[i].biases_gradients[j]);
 		}
 	}
+}
+
+/**
+ * @brief Adam algorithm of the neural network
+ * 
+ * @param network				Pointer to the neural network
+ * @param predictions			Pointer to the predicted outputs array
+ * @param targets				Pointer to the target outputs array
+ * @param batch_size			Number of samples in the batch
+ */
+void AdamCPU(NeuralNetwork *network, nn_type **predictions, nn_type **targets, int batch_size) {
+
+	// TODO
 }
 
 
@@ -343,8 +354,8 @@ void epochCPU(NeuralNetwork *network, nn_type **inputs, nn_type **target, int nb
 optimizer_t get_optimizer(const char *optimizer) {
 	if (strcmp(optimizer, "SGD") == 0 || strcmp(optimizer, "StochasticGradientDescent") == 0)
 		return StochasticGradientDescentCPU;
-	// else if (strcmp(optimizer, "Adam") == 0)
-	// 	return AdamCPU;
+	else if (strcmp(optimizer, "Adam") == 0)
+		return AdamCPU;
 	// else if (strcmp(optimizer, "RMSProp") == 0)
 	// 	return RMSPropCPU;
 	else {
