@@ -12,21 +12,14 @@
  * @param nb_layers					Number of layers in the neural network
  * @param nb_neurons_per_layer		Array of int representing the number of neurons per layer
  * @param activation_function_names	Array of strings representing the activation function names of each layer
- * @param loss_function_name		Name of the loss function of the neural network (ex: "MSE", "MAE", "cross_entropy", ...)
- * @param learning_rate				Learning rate of the neural network: how fast the network learns by adjusting the weights
- * 									(0.0 = no learning, 1.0 = full learning)
  * @param has_bias_neurons			1 if the neural network has bias neurons, 0 otherwise
  * 
  * @return int		0 if the neural network was saved successfully, 1 otherwise
  */
-int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_layer[], char **activation_function_names, char *loss_function_name, double learning_rate, int has_bias_neurons) {
+int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_layer[], char **activation_function_names, int has_bias_neurons) {
 
-	// Init easy values
+	// Init easy value
 	network->nb_layers = nb_layers;
-	network->learning_rate = learning_rate;
-	network->loss_function_name = loss_function_name;
-	network->loss_function = get_loss_function(loss_function_name);
-	network->loss_function_derivative = get_loss_function_derivative(loss_function_name);
 
 	// Calculate all required memory size
 	long long required_memory_size = 0;
@@ -44,7 +37,7 @@ int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_
 	if (network->memory_size > 1000000000) {
 
 		// Print a warning message
-		WARNING_PRINT("initNeuralNetwork(): The memory size of the neural network is very big (");
+		WARNING_PRINT("initNeuralNetwork(): The required memory of the neural network is huge (");
 		if (network->memory_size < 1000) { PRINTER("%lld Bytes)\n", network->memory_size); }
 		else if (network->memory_size < 1000000) { PRINTER("%.2Lf KB [%lld])\n", (long double)network->memory_size / 1000, network->memory_size); }
 		else if (network->memory_size < 1000000000) { PRINTER("%.2Lf MB [%lld])\n", (long double)network->memory_size / 1000000, network->memory_size); }
@@ -54,7 +47,7 @@ int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_
 		WARNING_PRINT("initNeuralNetwork(): Do you want to continue? (Y/n) ");
 		char answer = getchar();
 		if (answer != 'Y' && answer != 'y' && answer != '\n') {
-			ERROR_PRINT("initNeuralNetwork(): The user did not confirm the creation of the neural network\n");
+			ERROR_PRINT("initNeuralNetwork(): Cancelled the creation of the neural network\n");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -108,19 +101,6 @@ int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_
 	return 0;
 }
 
-/**
- * @brief Function that initializes the gradients values of a neural network
- * 
- * @param network	Neural network to initialize the gradients values of
- */
-void initGradientsNeuralNetwork(NeuralNetwork *network) {
-	if (network->layers[1].weights_gradients != NULL) return;
-	for (int i = 1; i < network->nb_layers; i++) {
-		network->layers[i].weights_gradients_flat = try2DFlatMatrixAllocation((void***)&network->layers[i].weights_gradients, network->layers[i].nb_neurons, network->layers[i].nb_inputs_per_neuron, sizeof(nn_type), "initGradientsNeuralNetwork()");
-		network->layers[i].biases_gradients = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "initGradientsNeuralNetwork()");
-		network->memory_size += network->layers[i].nb_neurons * (network->layers[i].nb_inputs_per_neuron + 1) * sizeof(nn_type);
-	}
-}
 
 /**
  * @brief Function that prints a neural network
@@ -145,8 +125,6 @@ void printNeuralNetwork(NeuralNetwork network) {
 	}
 
 	// Print other information
-	PRINTER(CYAN"- Loss function:\t"YELLOW"%s\n", network.loss_function_name);
-	PRINTER(CYAN"- Learning rate:\t"YELLOW"%f\n", network.learning_rate);
 	PRINTER(CYAN"- Input layer:\t\t"YELLOW"0x%p"CYAN" (nb_neurons: "YELLOW"%d"CYAN", nb_inputs_per_neuron: "YELLOW"%d"CYAN")\n", (void*)network.input_layer, network.input_layer->nb_neurons, network.input_layer->nb_inputs_per_neuron);
 	PRINTER(CYAN"- Output layer:\t\t"YELLOW"0x%p"CYAN" (nb_neurons: "YELLOW"%d"CYAN", nb_inputs_per_neuron: "YELLOW"%d"CYAN")\n", (void*)network.output_layer, network.output_layer->nb_neurons, network.output_layer->nb_inputs_per_neuron);
 
@@ -219,16 +197,10 @@ void freeNeuralNetwork(NeuralNetwork *network) {
 
 		free2DFlatMatrix((void**)network->layers[i].weights, network->layers[i].weights_flat, network->layers[i].nb_neurons);
 		free(network->layers[i].biases);
-		if (network->layers[i].weights_gradients != NULL)
-			free2DFlatMatrix((void**)network->layers[i].weights_gradients, network->layers[i].weights_gradients_flat, network->layers[i].nb_neurons);
-		if (network->layers[i].biases_gradients != NULL)
-			free(network->layers[i].biases_gradients);
 	}
 
-	// Free the layers array
+	// Free the layers array and memset the network to 0
 	free(network->layers);
-
-	// Memset the network to 0
 	memset(network, 0, sizeof(NeuralNetwork));
 }
 
@@ -248,12 +220,8 @@ int saveNeuralNetwork(NeuralNetwork network, char *filename, int generate_human_
 	FILE *file = fopen(filename, "wb");
 	ERROR_HANDLE_PTR_RETURN_INT(file, "saveNeuralNetwork(): Could not open/create the file '%s'\n", filename);
 
-	// Write the number of layers, the learning rate, the loss function name, and the memory size
+	// Write the number of layers, and the memory size
 	fwrite(&(network.nb_layers), sizeof(int), 1, file);
-	fwrite(&(network.learning_rate), sizeof(double), 1, file);
-	int loss_function_name_length = strlen(network.loss_function_name);
-	fwrite(&loss_function_name_length, sizeof(int), 1, file);
-	fwrite(network.loss_function_name, sizeof(char) * loss_function_name_length, 1, file);
 	fwrite(&(network.memory_size), sizeof(long long), 1, file);
 
 	// For each layer of the neural network,
@@ -291,10 +259,8 @@ int saveNeuralNetwork(NeuralNetwork network, char *filename, int generate_human_
 		file = fopen(new_path, "w");
 		ERROR_HANDLE_PTR_RETURN_INT(file, "saveNeuralNetworkD(): Could not open/create the file '%s'\n", new_path);
 
-		// Write the number of layers, the learning rate, the loss function name, and the memory size
+		// Write the number of layers, and the memory size
 		fprintf(file, "nb_layers: %d\n", network.nb_layers);
-		fprintf(file, "learning_rate: %f\n", network.learning_rate);
-		fprintf(file, "loss_function_name: %s\n", network.loss_function_name);
 		fprintf(file, "memory_size: %lld\n", network.memory_size);
 
 		// For each layer of the neural network,
@@ -310,7 +276,7 @@ int saveNeuralNetwork(NeuralNetwork network, char *filename, int generate_human_
 			fprintf(file, "activation_function_name: %s\n", network.layers[i].activation_function_name);
 			if (i == 0) continue;
 
-			// Write the formula for each neuron of the layer
+			// Write the formula for each neuron of the layer: "neuron[i] = (weight1 * input1) + (weight2 * input2) + ... + (weightN * inputN) + bias"
 			fprintf(file, "formula for each neuron: ");
 			for (int j = 0; j < network.layers[i].nb_neurons; j++) {
 				fprintf(file, "neuron[%d] = (%.2"NN_FORMAT") + (", j, network.layers[i].biases[j]);
@@ -346,19 +312,9 @@ int loadNeuralNetwork(NeuralNetwork *network, char *filename) {
 	FILE *file = fopen(filename, "rb");
 	ERROR_HANDLE_PTR_RETURN_INT(file, "loadNeuralNetwork(): Could not open the file '%s'\n", filename);
 
-	// Read the number of layers, the learning rate, the loss function and the memory size
+	// Read the number of layers, and the memory size
 	fread(&(network->nb_layers), sizeof(int), 1, file);
-	fread(&(network->learning_rate), sizeof(double), 1, file);
-	int loss_function_name_length;
-	fread(&loss_function_name_length, sizeof(int), 1, file);
-	network->loss_function_name = mallocBlocking(sizeof(char) * (loss_function_name_length + 1), "loadNeuralNetwork()");
-	fread(network->loss_function_name, sizeof(char) * loss_function_name_length, 1, file);
-	network->loss_function_name[loss_function_name_length] = '\0';
 	fread(&(network->memory_size), sizeof(long long), 1, file);
-
-	// Get the loss function
-	network->loss_function = get_loss_function(network->loss_function_name);
-	network->loss_function_derivative = get_loss_function_derivative(network->loss_function_name);
 
 	// Allocate memory for the layers
 	long long this_malloc_size = network->nb_layers * sizeof(NeuronLayer);
@@ -436,16 +392,13 @@ void deepCloneNeuralNetwork(NeuralNetwork *network_to_clone, NeuralNetwork *clon
 		// Stop here if it's the first layer (no weights, biases, etc.)
 		if (i == 0) continue;
 
-		// Duplicate the weights_flat, the weights, the biases, the deltas and the errors
+		// Duplicate the weights_flat, the weights, and the biases
 		this_malloc_size = (long long)network_to_clone->layers[i].nb_neurons * (long long)network_to_clone->layers[i].nb_inputs_per_neuron * sizeof(nn_type);
 		cloned_network->layers[i].weights_flat = duplicateMemory(network_to_clone->layers[i].weights_flat, this_malloc_size, "deepCloneNeuralNetwork()");
-		cloned_network->layers[i].weights_gradients_flat = duplicateMemory(network_to_clone->layers[i].weights_gradients_flat, this_malloc_size, "deepCloneNeuralNetwork()");
 		this_malloc_size = network_to_clone->layers[i].nb_neurons * sizeof(nn_type);
 		cloned_network->layers[i].weights = duplicateMemory(network_to_clone->layers[i].weights, this_malloc_size, "deepCloneNeuralNetwork()");
 		cloned_network->layers[i].activations_values = duplicateMemory(network_to_clone->layers[i].activations_values, this_malloc_size, "deepCloneNeuralNetwork()");
 		cloned_network->layers[i].biases = duplicateMemory(network_to_clone->layers[i].biases, this_malloc_size, "deepCloneNeuralNetwork()");
-		cloned_network->layers[i].weights_gradients = duplicateMemory(network_to_clone->layers[i].weights_gradients, this_malloc_size, "deepCloneNeuralNetwork()");
-		cloned_network->layers[i].biases_gradients = duplicateMemory(network_to_clone->layers[i].biases_gradients, this_malloc_size, "deepCloneNeuralNetwork()");
 
 		// Assign the weights_flat addresses to the weights
 		for (int j = 0; j < network_to_clone->layers[i].nb_neurons; j++)

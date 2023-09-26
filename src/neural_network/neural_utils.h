@@ -26,21 +26,7 @@
  * - An activation value:	the value of the neuron after the activation function has been applied to the sum of the weighted inputs
  * - A delta:				the value of the error of the neuron (used for backpropagation)
  * 
- * The activation function is a function that will be applied to the sum of the weighted inputs of a neuron.
- * It is often a sigmoid function (1 / (1 + e^(-x))) but it can be any function.
- * It is used to "activate" the neuron, to give it a value between 0 and 1 (or -1 and 1) depending on the inputs.
- * 
- * The feed forward algorithm is the algorithm that will calculate the outputs of the neural network by feeding the inputs to the neural network.
- * It requires an input array with the same size as the input layer of the neural network.
- * Feeding the inputs means: for each layer of the neural network (except the input layer), calculate the activation values of the neurons.
- * 
- * The backpropagation algorithm is the algorithm that will adjust the weights of the neural network depending on the error of the neural network.
- * It requires an expected output array with the same size as the output layer of the neural network.
- * The error of the neural network is the difference between the expected output and the actual output of the neural network using a loss function.
- * The backpropagation algorithm will calculate the deltas of the neurons of the neural network and adjust the weights of the neural network.
- * 
- * The learning rate is a value between 0 and 1 that will be used to adjust the weights of the neural network.
- * It is used to adjust the weights of the neural network by multiplying the delta of a neuron by the learning rate after the backpropagation algorithm.
+ * ... TODO: finish this description
  * 
  * @author redactor: Stoupy51 (COLLIGNON Alexandre)
 **/
@@ -59,9 +45,6 @@
  * @param weights							Weights of the neurons ( [nb_neurons][nb_inputs_per_neuron] )
  * @param activations_values				Outputs of the neurons when activated ( [nb_neurons] )
  * @param biases							Biases of the neurons ( [nb_neurons] )
- * 
- * @param weights_gradients					Gradients of the weights of the neurons ( [nb_neurons][nb_inputs_per_neuron] )
- * @param biases_gradients					Gradients of the biases of the neurons ( [nb_neurons] )
  */
 typedef struct NeuronLayer {
 	int nb_neurons;				// Arbitrary
@@ -73,16 +56,11 @@ typedef struct NeuronLayer {
 	void (*activation_function)(nn_type*, int);				// Arbitrary, ex: sigmoid, tanh, relu, ...
 	void (*activation_function_derivative)(nn_type*, int);	// Arbitrary, ex: sigmoid_derivative, tanh_derivative, relu_derivative, ...
 
-	// Feed forward variables
+	// Weights, biases and activation values
 	nn_type *weights_flat;		// Single array of weights for better memory management
 	nn_type **weights;
 	nn_type *activations_values;
 	nn_type *biases;
-
-	// Backpropagation gradients variables
-	nn_type *weights_gradients_flat;	// Single array of weights gradients for better memory management
-	nn_type **weights_gradients;
-	nn_type *biases_gradients;
 } NeuronLayer;
 
 
@@ -93,25 +71,16 @@ typedef struct NeuronLayer {
  * @param layers				Array of NeuronLayer representing the layers of the neural network
  * @param input_layer			Pointer to the input layer (For easier access and readability)
  * @param output_layer			Pointer to the output layer (For easier access and readability)
- * @param learning_rate			Learning rate of the neural network: how fast the network learns by adjusting the weights
- * 								(0.0 = no learning, 1.0 = full learning)
- * @param loss_function			Loss function of the neural network: how the network will calculate the error
  */
 typedef struct NeuralNetwork {
 	int nb_layers;											// Arbitrary
 	NeuronLayer *layers;									// Containing the input layer, the hidden layers and the output layer
 	NeuronLayer *input_layer;								// Pointer to the input layer (For easier access and readability)
 	NeuronLayer *output_layer;								// Pointer to the output layer (For easier access and readability)
-	nn_type learning_rate;									// Arbitrary, ex: 1.0, 0.5, 0.1, 0.01, 0.001, ...
-	char *loss_function_name;								// Arbitrary, ex: "MSE", "MAE", "cross_entropy", ...
-	nn_type (*loss_function)(nn_type, nn_type);				// Arbitrary, ex: mean_squared_error, mean_absolute_error, cross_entropy, ...
-	nn_type (*loss_function_derivative)(nn_type, nn_type);	// Arbitrary, ex: mean_squared_error_derivative, mean_absolute_error_derivative, cross_entropy_derivative, ...
-
 	long long memory_size;									// Memory size of the neural network (in bytes)
 } NeuralNetwork;
 
-int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_layer[], char **activation_function_names, char *loss_function_name, double learning_rate, int has_bias_neurons);
-void initGradientsNeuralNetwork(NeuralNetwork *network);
+int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_layer[], char **activation_function_names, int has_bias_neurons);
 void printNeuralNetwork(NeuralNetwork network);
 void printActivationValues(NeuralNetwork network);
 void freeNeuralNetwork(NeuralNetwork *network);
