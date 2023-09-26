@@ -62,26 +62,19 @@ int main() {
 	// Create a neural network to learn the '+' function
 	int nb_neurons_per_layer[] = {64, 48, 48, 48, 32};
 	char *activation_functions[] = {NULL, "sigmoid", "sigmoid", "sigmoid", "sigmoid"};
-	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
-	if (nb_layers != sizeof(activation_functions) / sizeof(char*)) ERROR_HANDLE_INT_RETURN_INT(-1, "main(): Error, the number of layers and the number of activation functions must be the same\n");
 	NeuralNetwork network_plus;
-	int code = initNeuralNetwork(&network_plus, nb_layers, nb_neurons_per_layer, activation_functions, "MSE", 0.1, 0);
+	int code = initNeuralNetwork(&network_plus, 5, nb_neurons_per_layer, activation_functions, 0);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while initializing the neural network\n");
 
 	// Print the neural network information
 	printNeuralNetwork(network_plus);
 
 	// Save the neural network
-	// code = saveNeuralNetwork(network_plus, "bin/basic_plus_operation.nn", 1);
-	// ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while saving the neural network\n");
+	code = saveNeuralNetwork(network_plus, "bin/basic_plus_operation.nn", 1);
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while saving the neural network\n");
 
 	///// Create the training data
 	#define NB_TOTAL_DATA 1000
-	#define NB_TEST_DATA_PERCENTAGE 20
-	#define BATCH_SIZE 1
-	#define NB_EPOCHS 200
-	#define ERROR_TARGET 0.000001
-	#define VERBOSE 1
 	nn_type **inputs;
 	nn_type **expected;
 	nn_type *inputs_flat_matrix = try2DFlatMatrixAllocation((void***)&inputs, NB_TOTAL_DATA, network_plus.input_layer->nb_neurons, sizeof(nn_type), "main()");
@@ -110,17 +103,23 @@ int main() {
 	fclose(file);
 
 	// Train the neural network
+	TrainingData training_data = {
+		.inputs = inputs,
+		.targets = expected,
+		.nb_inputs = NB_TOTAL_DATA,
+		.batch_size = 1,
+		.test_inputs_percentage = 20
+	};
+	TrainingParameters training_parameters = {
+		.nb_epochs = 200,
+		.error_target = 0.000001,
+		.optimizer = "SGD",				// StochasticGradientDescent
+		.loss_function_name = "MSE",	// MeanSquaredError
+		.learning_rate = 0.1
+	};
 	char buffer[16];
 	ST_BENCHMARK_SOLO_COUNT(buffer, {
-		code = TrainCPU(&network_plus, inputs, expected,
-			NB_TOTAL_DATA,
-			NB_TEST_DATA_PERCENTAGE,
-			BATCH_SIZE,
-			NB_EPOCHS,
-			ERROR_TARGET,
-			VERBOSE,
-			"SGD"
-		);
+		code = TrainCPU(&network_plus, training_data, training_parameters, 1);
 		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
 	}, "", 1, 1);
 	INFO_PRINT("main(): Total training time: "STR_YELLOW_R("%s")"s\n", buffer);
@@ -130,7 +129,7 @@ int main() {
 	nn_type **test_expected = &expected[NB_TOTAL_DATA - NB_TOTAL_DATA];
 	nn_type **test_outputs;
 	nn_type *test_outputs_flat_matrix = try2DFlatMatrixAllocation((void***)&test_outputs, NB_TOTAL_DATA, network_plus.output_layer->nb_neurons, sizeof(nn_type), "main()");
-	FeedForwardBatchCPU(&network_plus, test_inputs, test_outputs, NB_TOTAL_DATA);
+	FeedForwardCPU(&network_plus, test_inputs, test_outputs, NB_TOTAL_DATA);
 	int nb_errors = 0;
 	for (int i = 0; i < NB_TOTAL_DATA; i++) {
 

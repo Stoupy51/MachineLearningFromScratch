@@ -47,7 +47,7 @@ model.summary()
 # Compile the model with MSE loss, Adam optimizer and accuracy metric
 model.compile(
 	loss = keras.losses.MeanSquaredError(),
-	optimizer = keras.optimizers.Adam(),
+	optimizer = keras.optimizers.SGD(learning_rate = 0.1),
 	metrics = ["accuracy"],
 )
 

@@ -91,7 +91,7 @@ nn_type squared_hinge_derivative(nn_type prediction, nn_type target_value) {
  * 
  * @return The loss function corresponding to the name
  */
-nn_type (*get_loss_function(char *loss_function_name))(nn_type, nn_type) {
+nn_type (*get_loss_function(const char *loss_function_name))(nn_type, nn_type) {
 	if (strcmp(loss_function_name, "MAE") == 0 || strcmp(loss_function_name, "mean_absolute_error") == 0)
 		return mean_absolute_error_f;
 	else if (strcmp(loss_function_name, "MSE") == 0 || strcmp(loss_function_name, "mean_squared_error") == 0)
@@ -117,7 +117,7 @@ nn_type (*get_loss_function(char *loss_function_name))(nn_type, nn_type) {
  * 
  * @return The derivative of the loss function corresponding to the name
  */
-nn_type (*get_loss_function_derivative(char *loss_function_name))(nn_type, nn_type) {
+nn_type (*get_loss_function_derivative(const char *loss_function_name))(nn_type, nn_type) {
 	if (strcmp(loss_function_name, "MAE") == 0 || strcmp(loss_function_name, "mean_absolute_error") == 0)
 		return mean_absolute_error_derivative;
 	else if (strcmp(loss_function_name, "MSE") == 0 || strcmp(loss_function_name, "mean_squared_error") == 0)

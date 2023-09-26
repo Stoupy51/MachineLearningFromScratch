@@ -32,8 +32,8 @@ nn_type relative_entropy_derivative(nn_type prediction, nn_type target_value);
 nn_type squared_hinge_derivative(nn_type prediction, nn_type target_value);
 
 // Function to get a loss function from its name
-nn_type (*get_loss_function(char *loss_function_name))(nn_type, nn_type);
-nn_type (*get_loss_function_derivative(char *loss_function_name))(nn_type, nn_type);
+nn_type (*get_loss_function(const char *loss_function_name))(nn_type, nn_type);
+nn_type (*get_loss_function_derivative(const char *loss_function_name))(nn_type, nn_type);
 
 #endif
 
