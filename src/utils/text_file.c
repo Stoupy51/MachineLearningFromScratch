@@ -95,6 +95,47 @@ char *readTextFromFolder(char *folder) {
 }
 
 
+// Private function to compare two characters
+int compareChar(const void *a, const void *b) {
+	return *(char*)a - *(char*)b;
+}
+
+/**
+ * @brief Function to generate a char vocabulary from a text.
+ * 
+ * @param text				The text to read.
+ * @param vocabulary_size	[out] The size of the vocabulary generated.
+ * 
+ * @return char*			The sorted vocabulary generated (automatically allocated), ex: ['a', 'b', 'c', ...]
+ */
+char *generateCharVocabularyFromText(const char *text, int *vocabulary_size) {
+
+	// Initialize the vocabulary
+	char *vocabulary = mallocBlocking(256 * sizeof(char), "main(vocabulary)");
+	memset(vocabulary, '\0', 256 * sizeof(char));
+	
+	// Create vocabulary from the text
+	*vocabulary_size = 0;
+	int text_size = strlen(text);
+	for (int i = 0; i < text_size; i++) {
+
+		// Add the character to the vocabulary if it is not already in it
+		char c = text[i];
+		if (strchr(vocabulary, c) == NULL) {
+			vocabulary[*vocabulary_size] = c;
+			(*vocabulary_size)++;
+		}
+	}
+
+	// Sort the vocabulary
+	qsort(vocabulary, *vocabulary_size, sizeof(char), compareChar);
+
+	// Return the vocabulary
+	return vocabulary;
+}
+
+
+
 /**
  * @brief Function to generate sentences from a text file.
  * The sentences can be used to train a neural network such as GPT.

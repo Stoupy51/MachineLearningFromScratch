@@ -103,6 +103,36 @@ void FeedForwardCPU(NeuralNetwork *network, nn_type **inputs, nn_type **outputs,
 	}
 }
 
+/**
+ * @brief Feed forward algorithm of the neural network without inputs (assuming the inputs are already in the input layer)
+ * 
+ * @param network		Pointer to the neural network
+ */
+void FeedForwardCPUNoInput(NeuralNetwork *network) {
+
+	// For each layer of the neural network (except the input layer),
+	for (int i = 1; i < network->nb_layers; i++) {
+
+		// For each neuron of the layer,
+		for (int j = 0; j < network->layers[i].nb_neurons; j++) {
+
+			// Calculate the sum of the inputs multiplied by the weights
+			nn_type input_sum = network->layers[i].biases[j];	// Add the bias to the sum
+			for (int k = 0; k < network->layers[i].nb_inputs_per_neuron; k++)
+				input_sum += network->layers[i - 1].activations_values[k] * network->layers[i].weights[j][k];
+			
+			// Add the bias neuron if there is one
+			if (network->layers[i].has_bias_neuron)
+				input_sum += network->layers[i].weights[j][network->layers[i].nb_inputs_per_neuron];
+
+			// Save the sum of the inputs multiplied by the weights
+			network->layers[i].activations_values[j] = input_sum;
+		}
+
+		// Activate the layer with the activation function
+		network->layers[i].activation_function(network->layers[i].activations_values, network->layers[i].nb_neurons);
+	}
+}
 
 
 
