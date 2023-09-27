@@ -91,17 +91,6 @@ int main() {
 		convertIntToBinaryDoubleArray(c, expected[i], 0);
 	}
 
-	// Save the training data in a file
-	FILE *file = fopen("bin/basic_plus_operation.data", "w");
-	for (int i = 0; i < NB_TOTAL_DATA; i++) {
-		for (int j = 0; j < network_plus.input_layer->nb_neurons; j++)
-			fprintf(file, "%d ", doubleToInt(inputs[i][j]));
-		for (int j = 0; j < network_plus.output_layer->nb_neurons; j++)
-			fprintf(file, "%d ", doubleToInt(expected[i][j]));
-		fprintf(file, "\n");
-	}
-	fclose(file);
-
 	// Train the neural network
 	TrainingData training_data = {
 		.inputs = inputs,
@@ -112,17 +101,17 @@ int main() {
 	};
 	TrainingParameters training_parameters = {
 		.nb_epochs = 200,
-		.error_target = 0.000001,
+		.error_target = 0.00001,
 		.optimizer = "SGD",				// StochasticGradientDescent
 		.loss_function_name = "MSE",	// MeanSquaredError
 		.learning_rate = 0.1
 	};
-	char buffer[16];
-	ST_BENCHMARK_SOLO_COUNT(buffer, {
-		code = TrainCPU(&network_plus, training_data, training_parameters, 1);
-		ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
-	}, "", 1, 1);
-	INFO_PRINT("main(): Total training time: "STR_YELLOW_R("%s")"s\n", buffer);
+	struct timeval start, end;
+	st_gettimeofday(start, NULL);
+	code = TrainCPU(&network_plus, training_data, training_parameters, 1);
+	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
+	st_gettimeofday(end, NULL);
+	INFO_PRINT("main(): Total training time: "STR_YELLOW_R("%.3f")"s\n", (double)(end.tv_sec - start.tv_sec) + (double)(end.tv_usec - start.tv_usec) / 1000000.0);
 
 	///// Test the neural network
 	nn_type **test_inputs = &inputs[NB_TOTAL_DATA - NB_TOTAL_DATA];
@@ -132,8 +121,6 @@ int main() {
 	FeedForwardCPU(&network_plus, test_inputs, test_outputs, NB_TOTAL_DATA);
 	int nb_errors = 0;
 	for (int i = 0; i < NB_TOTAL_DATA; i++) {
-
-		// Print the test results
 		int a = convertBinaryDoubleArrayToInt(test_inputs[i], 0);
 		int b = convertBinaryDoubleArrayToInt(test_inputs[i], 32);
 		int c = convertBinaryDoubleArrayToInt(test_outputs[i], 0);

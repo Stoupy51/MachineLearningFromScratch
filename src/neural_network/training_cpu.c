@@ -257,13 +257,13 @@ int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParamet
 				+ (double)(epoch_end_time.tv_usec - epoch_start_time.tv_usec) / training_data.nb_inputs;
 
 			PRINTER(
-				YELLOW "[CPU TRAINING] " RED "TrainSGD(): Epoch %d/%d, %s: " YELLOW "%.8"NN_FORMAT RED " (" YELLOW "%.2f" RED "us/input) executed in " YELLOW "%.8f" RED "s\n",
+				YELLOW "[CPU TrainSGD] " RED "Epoch %d/%d, %s: " YELLOW "%.8"NN_FORMAT RED " executed in " YELLOW "%.8f" RED "s (" YELLOW "%.2f" RED "us/input)\n" RESET,
 				current_epoch,
 				training_parameters.nb_epochs,
 				training_parameters.loss_function_name,
 				current_error,
-				time_per_step,
-				((double)(epoch_end_time.tv_sec - epoch_start_time.tv_sec) + (double)(epoch_end_time.tv_usec - epoch_start_time.tv_usec) / 1000000.0)
+				((double)(epoch_end_time.tv_sec - epoch_start_time.tv_sec) + (double)(epoch_end_time.tv_usec - epoch_start_time.tv_usec) / 1000000.0),
+				time_per_step
 			);
 		}
 	}
