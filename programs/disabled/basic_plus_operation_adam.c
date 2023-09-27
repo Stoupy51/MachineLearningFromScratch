@@ -32,8 +32,8 @@ int main() {
 	atexit(exitProgram);
 
 	// Create a neural network to learn the '+' function
-	int nb_neurons_per_layer[] = {2, 16, 4, 1};
-	char *activation_functions[] = {NULL, "identity", "relu", "relu"};
+	int nb_neurons_per_layer[] = {2, 1};
+	char *activation_functions[] = {NULL, "relu"};
 	NeuralNetwork network_plus;
 	int code = initNeuralNetwork(&network_plus, sizeof(nb_neurons_per_layer) / sizeof(int), nb_neurons_per_layer, activation_functions, 0);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while initializing the neural network\n");
@@ -42,7 +42,7 @@ int main() {
 	printNeuralNetwork(network_plus);
 
 	///// Create the training data
-	#define NB_TOTAL_DATA 10000
+	#define NB_TOTAL_DATA 1000
 	nn_type **inputs;
 	nn_type **expected;
 	nn_type *inputs_flat_matrix = try2DFlatMatrixAllocation((void***)&inputs, NB_TOTAL_DATA, network_plus.input_layer->nb_neurons, sizeof(nn_type), "main()");
@@ -68,7 +68,7 @@ int main() {
 		.test_inputs_percentage = 20
 	};
 	TrainingParameters training_parameters = {
-		.nb_epochs = 10,
+		.nb_epochs = 100,
 		.error_target = 0.00001,
 		.optimizer = "Adam",			// Adaptive Moment Estimation
 		.loss_function_name = "MSE",	// Mean Squared Error

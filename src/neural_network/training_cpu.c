@@ -267,7 +267,7 @@ int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParamet
 				+ (double)(epoch_end_time.tv_usec - epoch_start_time.tv_usec) / training_data.nb_inputs;
 
 			PRINTER(
-				YELLOW "[CPU TrainSGD] " RED "Epoch %3d/%3d, %s: " YELLOW "%.8"NN_FORMAT RED " executed in " YELLOW "%.8f" RED "s (" YELLOW "%.2f" RED "us/input)\n" RESET,
+				YELLOW "[CPU TrainSGD] " RED "Epoch %3d /%d, %s: " YELLOW "%.8"NN_FORMAT RED " executed in " YELLOW "%.8f" RED "s (" YELLOW "%.2f" RED "us/input)\n" RESET,
 				current_epoch,
 				training_parameters.nb_epochs,
 				training_parameters.loss_function_name,
@@ -495,7 +495,7 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 				+ (double)(epoch_end_time.tv_usec - epoch_start_time.tv_usec) / training_data.nb_inputs;
 
 			PRINTER(
-				YELLOW "[CPU TrainAdam] " RED "Epoch %3d/%3d, %s: " YELLOW "%.8"NN_FORMAT RED " executed in " YELLOW "%.8f" RED "s (" YELLOW "%.2f" RED "us/input)\n" RESET,
+				YELLOW "[CPU TrainAdam] " RED "Epoch %3d/%d, %s: " YELLOW "%.8"NN_FORMAT RED " executed in " YELLOW "%.8f" RED "s (" YELLOW "%.2f" RED "us/input)\n" RESET,
 				current_epoch,
 				training_parameters.nb_epochs,
 				training_parameters.loss_function_name,

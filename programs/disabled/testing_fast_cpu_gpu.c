@@ -68,7 +68,7 @@ int main() {
 		// Benchmark multiple CPU threads
 		ST_BENCHMARK_SOLO_TIME(buffer,
 			{
-				fillRandomFloatArrayCPUThreads(array, sizes[i], min, max);
+				fillRandomFloatArrayCPUThreads((nn_type*)array, sizes[i], min, max);
 			},
 			"multipleCpuThreads", 5	// 5 seconds at least
 		);
