@@ -63,15 +63,11 @@ int main() {
 	int nb_neurons_per_layer[] = {64, 48, 48, 48, 32};
 	char *activation_functions[] = {NULL, "sigmoid", "sigmoid", "sigmoid", "sigmoid"};
 	NeuralNetwork network_plus;
-	int code = initNeuralNetwork(&network_plus, 5, nb_neurons_per_layer, activation_functions, 0);
+	int code = initNeuralNetwork(&network_plus, sizeof(nb_neurons_per_layer) / sizeof(int), nb_neurons_per_layer, activation_functions, 0);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while initializing the neural network\n");
 
 	// Print the neural network information
 	printNeuralNetwork(network_plus);
-
-	// Save the neural network
-	code = saveNeuralNetwork(network_plus, "bin/basic_plus_operation.nn", 1);
-	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while saving the neural network\n");
 
 	///// Create the training data
 	#define NB_TOTAL_DATA 1000
@@ -125,10 +121,8 @@ int main() {
 		int b = convertBinaryDoubleArrayToInt(test_inputs[i], 32);
 		int c = convertBinaryDoubleArrayToInt(test_outputs[i], 0);
 		int d = convertBinaryDoubleArrayToInt(test_expected[i], 0);
-		if (c != d) {
-			nb_errors++;
+		if (c != d && nb_errors++ < 5)
 			ERROR_PRINT("main(): Error for %d + %d = %d (expected %d)\n", a, b, c, d);
-		}
 	}
 	INFO_PRINT("main(): Success rate: %d/%d (%.2f%%)\n", NB_TOTAL_DATA - nb_errors, NB_TOTAL_DATA, (double)(NB_TOTAL_DATA - nb_errors) / NB_TOTAL_DATA * 100.0);
 
