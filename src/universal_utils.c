@@ -7,6 +7,40 @@
 #include "universal_utils.h"
 
 /**
+ * @brief Print characters in the stderr with errno handling.
+ */
+void print_errno_stderr(const char* format, ...) {
+
+	// Get the arguments
+	va_list args;
+	va_start(args, format);
+
+	// Print the message with errno handling
+	if (errno != 0) {
+
+		// Prepare buffer
+		char buffer[16384];
+		vsprintf(buffer, format, args);
+
+		// Remove the last \n to replace it with the error message
+		int err_pos = strlen(buffer);
+		while (err_pos > 0 && buffer[err_pos] != '\n') err_pos--;
+		buffer[err_pos] = '\0';
+
+		// Print the message with the error message and reset errno
+		fprintf(stderr, "%s: %s\n", buffer, strerror(errno));
+		errno = 0;
+	}
+	else {
+
+		// Print the message
+		vfprintf(stderr, format, args);
+	}
+	va_end(args);
+}
+
+
+/**
  * @brief This function initializes the main program by
  * printing the header
  * 

@@ -73,11 +73,12 @@ typedef unsigned char byte;
 // #define WARNING_PRINT(...) : For warnings, always print in stderr
 // #define ERROR_PRINT(...) : For errors, always print in stderr
 // #define PRINTER(...) : For printing in the console, without any default color or level
-#define PRINT_ERRNO_STDERR(...) { if (errno != 0) { char buffer[16384]; sprintf(buffer, __VA_ARGS__); int err_pos = strlen(buffer); while (err_pos > 0 && buffer[err_pos] != '\n') err_pos--; buffer[err_pos] = '\0'; fprintf(stderr, "%s: %s\n", buffer, strerror(errno)); errno = 0; } else { fprintf(stderr, __VA_ARGS__); } fflush(stderr); }
+void print_errno_stderr(const char* format, ...);
+#define PRINT_ERRNO_STDERR(...) print_errno_stderr(__VA_ARGS__)
 #if DEVELOPMENT_MODE
 	#define PRINTER(...) PRINT_ERRNO_STDERR(__VA_ARGS__)
 #else
-	#define PRINTER(...) { printf(__VA_ARGS__); }
+	#define PRINTER(...) printf(__VA_ARGS__)
 #endif
 #if IS_INFO_LEVEL
 	#define INFO_PRINT(...) PRINTER(GREEN "[INFO] " RESET __VA_ARGS__)
