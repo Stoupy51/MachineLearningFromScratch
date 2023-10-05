@@ -74,7 +74,7 @@ int main() {
 
 		// Generate text until the neural network outputs a '\0' character
 		#define generation_limit 512
-		char generated_text[generation_limit] = {'\0'};
+		char generated_text[generation_limit] = "";
 		int generated_text_index = 0;
 		while (generated_text_index < generation_limit) {
 
@@ -82,7 +82,7 @@ int main() {
 			memset(network.input_layer->activations_values, 0, context_size * sizeof(nn_type));
 			for (int i = 0; i < context_size; i++) {
 				if (context[i] == '\0') break;
-				network.input_layer->activations_values[i] = (nn_type)(context[i]);
+				network.input_layer->activations_values[i] = (nn_type)context[i];
 			}
 
 			// Compute the neural network
@@ -108,6 +108,7 @@ int main() {
 				context[context_size - 1] = next_char;
 			}
 		}
+		(void)generated_text[0];
 		printf("\n");
 	}
 

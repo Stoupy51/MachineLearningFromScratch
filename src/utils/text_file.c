@@ -121,7 +121,7 @@ char *generateCharVocabularyFromText(const char *text, int *vocabulary_size) {
 
 		// Add the character to the vocabulary if it is not already in it
 		char c = text[i];
-		if (strchr(vocabulary, c) == NULL) {
+		if (strchr(vocabulary + 1, c) == NULL) {
 			vocabulary[*vocabulary_size] = c;
 			(*vocabulary_size)++;
 		}

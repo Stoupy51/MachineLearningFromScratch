@@ -51,9 +51,9 @@ int main() {
 	INFO_PRINT("main(): %d chunks of %d characters: [[%d, %d, ...], [%d, %d, ...], ...]\n", nb_chunks, chunk_size, chunks[0][0], chunks[0][1], chunks[1][0], chunks[1][1]);
 
 	// Create the neural network
-	int nb_neurons_per_layer[] = {chunk_size, 384, vocabulary_size};
+	int nb_neurons_per_layer[] = {chunk_size, 384, 384, vocabulary_size};
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
-	char *activation_functions[] = {NULL, "relu", "softmax"};
+	char *activation_functions[] = {NULL, "relu", "relu", "softmax"};
 	NeuralNetwork network;
 	int code = initNeuralNetwork(&network, nb_layers, nb_neurons_per_layer, activation_functions, 0);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while initializing the neural network\n");
@@ -94,7 +94,7 @@ int main() {
 		.error_target = 0.00001,
 		.optimizer = "Adam",			// Adaptive Moment Estimation
 		.loss_function_name = "MSE",	// Mean Squared Error
-		.learning_rate = 0.001
+		.learning_rate = 0.01
 	};
 
 	struct timeval start, end;
@@ -114,7 +114,7 @@ int main() {
 		int predicted_char_index = getIndexOfMaxFromDoubleArray(predictions[i], vocabulary_size);
 		int targeted_char_index = getIndexOfMaxFromDoubleArray(targets[i], vocabulary_size);
 		if (predicted_char_index != targeted_char_index && nb_errors++ < 10)
-			ERROR_PRINT("main(): Input '%s', predicted '%c' instead of '%c'\n", chunks[i], predicted_char_index == 0 ? '0' : vocabulary[predicted_char_index], targeted_char_index == 0 ? '0' : vocabulary[targeted_char_index]);
+			ERROR_PRINT("main(): Input '%8s', predicted '%c' instead of '%c'\n", chunks[i], predicted_char_index == 0 ? '0' : vocabulary[predicted_char_index], targeted_char_index == 0 ? '0' : vocabulary[targeted_char_index]);
 	}
 	INFO_PRINT("main(): Success rate: %d/%d (%.2f%%)\n", nb_chunks - nb_errors, nb_chunks, (double)(nb_chunks - nb_errors) / (double)nb_chunks * 100.0);
 
