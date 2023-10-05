@@ -41,8 +41,7 @@ int main() {
 	// Create vocabulary from the training data (list of characters)
 	int vocabulary_size = 0;
 	char *vocabulary = generateCharVocabularyFromText(training_text, &vocabulary_size);
-	INFO_PRINT("main(): %d characters in the vocabulary: %s\n", vocabulary_size, vocabulary);
-	vocabulary_size++; // Add the '\0' character
+	INFO_PRINT("main(): %d characters in the vocabulary: \\0%s\n", vocabulary_size, vocabulary + 1);
 
 	// Convert the list of tokens into chunks of tokens
 	int chunk_size = 8;	// Maximum context length
@@ -99,6 +98,20 @@ int main() {
 	st_gettimeofday(end, NULL);
 	INFO_PRINT("main(): Total training time: "STR_YELLOW_R("%.3f")"s\n", (double)(end.tv_sec - start.tv_sec) + (double)(end.tv_usec - start.tv_usec) / 1000000.0);
 
+	// Test the neural network
+	INFO_PRINT("main(): Testing the neural network\n");
+	nn_type **predictions;
+	nn_type *predictions_flat = try2DFlatMatrixAllocation((void***)&predictions, nb_chunks, vocabulary_size, sizeof(nn_type), "main()");
+	FeedForwardCPU(&network, inputs, predictions, nb_chunks);
+	int nb_errors = 0;
+	for (int i = 0; i < nb_chunks; i++) {
+		int predicted_char_index = getIndexOfMaxFromDoubleArray(predictions[i], vocabulary_size);
+		int targeted_char_index = getIndexOfMaxFromDoubleArray(targets[i], vocabulary_size);
+		if (predicted_char_index != targeted_char_index && nb_errors++ < 10)
+			ERROR_PRINT("main(): Input '%s', predicted '%c' instead of '%c'\n", chunks[i], predicted_char_index == 0 ? '0' : vocabulary[predicted_char_index], targeted_char_index == 0 ? '0' : vocabulary[targeted_char_index]);
+	}
+	INFO_PRINT("main(): Success rate: %d/%d (%.2f%%)\n", nb_chunks - nb_errors, nb_chunks, (double)(nb_chunks - nb_errors) / (double)nb_chunks * 100.0);
+
 	// Save the neural network
 	code = saveNeuralNetwork(network, NEURAL_NETWORK_PATH, 1);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while saving the neural network\n");
@@ -107,7 +120,9 @@ int main() {
 	free(training_text);
 	free2DFlatMatrix((void**)inputs, inputs_flat_matrix, nb_chunks);
 	free2DFlatMatrix((void**)targets, targets_flat_matrix, nb_chunks);
+	free2DFlatMatrix((void**)predictions, predictions_flat, nb_chunks);
 	free(vocabulary);
+	free(chunks);
 
 	// Final print and return
 	INFO_PRINT("main(): End of program\n");

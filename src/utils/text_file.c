@@ -110,12 +110,12 @@ int compareChar(const void *a, const void *b) {
  */
 char *generateCharVocabularyFromText(const char *text, int *vocabulary_size) {
 
-	// Initialize the vocabulary
-	char *vocabulary = mallocBlocking(256 * sizeof(char), "main(vocabulary)");
-	memset(vocabulary, '\0', 256 * sizeof(char));
+	// Initialize the vocabulary (257 instead of 256 to add another '\0' at the end)
+	char *vocabulary = mallocBlocking(257 * sizeof(char), "main(vocabulary)");
+	memset(vocabulary, '\0', 257 * sizeof(char));
 	
 	// Create vocabulary from the text
-	*vocabulary_size = 0;
+	*vocabulary_size = 1;
 	int text_size = strlen(text);
 	for (int i = 0; i < text_size; i++) {
 

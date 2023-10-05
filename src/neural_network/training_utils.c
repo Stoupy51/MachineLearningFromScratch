@@ -41,6 +41,26 @@ int convertBinaryDoubleArrayToXbInt(nn_type *binary, int number_of_bits) {
 	return n;
 }
 
+/**
+ * @brief Get the index of the maximum value in a double array
+ * 
+ * @param array			The array to search in
+ * @param array_size	The size of the array
+ * 
+ * @return int			The index of the maximum value
+ */
+int getIndexOfMaxFromDoubleArray(nn_type *array, int array_size) {
+	int index = 0;
+	nn_type max = array[0];
+	for (int i = 1; i < array_size; i++) {
+		if (array[i] > max) {
+			index = i;
+			max = array[i];
+		}
+	}
+	return index;
+}
+
 
 /**
  * @brief Links an array of random character chunks of a given size from a given array
