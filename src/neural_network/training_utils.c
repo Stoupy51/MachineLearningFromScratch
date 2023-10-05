@@ -63,6 +63,24 @@ int getIndexOfMaxFromDoubleArray(nn_type *array, int array_size) {
 
 
 /**
+ * @brief Create an array of correspondance between a vocabulary and its indexes
+ * 
+ * @param vocabulary		The vocabulary to create the correspondance array from
+ * @param vocabulary_size	The size of the vocabulary
+ * 
+ * @return int*				256 indexes corresponding to the vocabulary indexes
+ */
+int* correspondanceArrayWithVocabularyIndex(char* vocabulary, int vocabulary_size) {
+	int *array = mallocBlocking(sizeof(int) * 256, "correspondanceArrayWithVocabularyIndex()");
+	memset(array, 0, sizeof(int) * 256);
+	for (int i = 0; i < vocabulary_size; i++)
+		array[(int)vocabulary[i]] = i;
+	return array;
+}
+
+
+
+/**
  * @brief Links an array of random character chunks of a given size from a given array
  * 
  * @param array				The array to select chunks from

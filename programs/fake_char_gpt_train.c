@@ -51,14 +51,18 @@ int main() {
 	INFO_PRINT("main(): %d chunks of %d characters: [[%d, %d, ...], [%d, %d, ...], ...]\n", nb_chunks, chunk_size, chunks[0][0], chunks[0][1], chunks[1][0], chunks[1][1]);
 
 	// Create the neural network
-	int nb_neurons_per_layer[] = {chunk_size, 256, vocabulary_size};
+	int nb_neurons_per_layer[] = {chunk_size, 384, vocabulary_size};
+	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 	char *activation_functions[] = {NULL, "relu", "softmax"};
 	NeuralNetwork network;
-	int code = initNeuralNetwork(&network, sizeof(nb_neurons_per_layer) / sizeof(int), nb_neurons_per_layer, activation_functions, 0);
+	int code = initNeuralNetwork(&network, nb_layers, nb_neurons_per_layer, activation_functions, 0);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while initializing the neural network\n");
 
 	// Print the neural network information
 	printNeuralNetwork(network);
+
+	// Prepare the vocabulary correspondance array for optimization
+	int *vocabulary_correspondance_array = correspondanceArrayWithVocabularyIndex(vocabulary, vocabulary_size);
 
 	// Prepare the training data
 	nn_type **inputs;
@@ -70,9 +74,11 @@ int main() {
 		for (int j = 0; j < chunk_size; j++)
 			inputs[i][j] = (nn_type)(chunks[i][j]);
 
+		// Use the correspondance array to get the index of the chracter in the vocabulary
+		// Example: 'a' -> 97 -> 1 (in the vocabulary)
 		memset(targets[i], 0, vocabulary_size * sizeof(nn_type));
-		int targeted_char_index = (int)(chunks[i][chunk_size - 1]);
-		targets[i][targeted_char_index] = 1;
+		int targeted_char_index = vocabulary_correspondance_array[(int)chunks[i][chunk_size]];
+		targets[i][targeted_char_index] = 1.0;
 	}
 
 	// Train the neural network
