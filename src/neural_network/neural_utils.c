@@ -105,7 +105,7 @@ void printNeuralNetwork(NeuralNetwork network) {
 	// Print Layers information
 	PRINTER(CYAN"- Number of layers: "YELLOW"%d"CYAN"\n", network.nb_layers);
 	for (int i = 0; i < network.nb_layers; i++) {
-		PRINTER("  - Layer "YELLOW"%d"CYAN":\t"YELLOW"%d"CYAN" neurons\t[Parameters: "YELLOW"%d"CYAN" weights, "YELLOW"%d"CYAN" biases]\t(Activation function: %s)\n",
+		PRINTER("  - Layer "YELLOW"%2d"CYAN":\t"YELLOW"%4d"CYAN" neurons\t[Parameters: "YELLOW"%8d"CYAN" weights, "YELLOW"%4d"CYAN" biases]\t(Activation function: %s)\n",
 			i,
 			network.layers[i].nb_neurons,
 			network.layers[i].nb_neurons * network.layers[i].nb_inputs_per_neuron,
@@ -115,8 +115,8 @@ void printNeuralNetwork(NeuralNetwork network) {
 	}
 
 	// Print other information
-	PRINTER(CYAN"- Input layer:\t\t"YELLOW"0x%p"CYAN" (nb_neurons: "YELLOW"%d"CYAN", nb_inputs_per_neuron: "YELLOW"%d"CYAN")\n", (void*)network.input_layer, network.input_layer->nb_neurons, network.input_layer->nb_inputs_per_neuron);
-	PRINTER(CYAN"- Output layer:\t\t"YELLOW"0x%p"CYAN" (nb_neurons: "YELLOW"%d"CYAN", nb_inputs_per_neuron: "YELLOW"%d"CYAN")\n", (void*)network.output_layer, network.output_layer->nb_neurons, network.output_layer->nb_inputs_per_neuron);
+	PRINTER(CYAN"- Input layer:\t\t"YELLOW"0x%p"CYAN" (nb_neurons: "YELLOW"%4d"CYAN", nb_inputs_per_neuron: "YELLOW"%4d"CYAN")\n", (void*)network.input_layer, network.input_layer->nb_neurons, network.input_layer->nb_inputs_per_neuron);
+	PRINTER(CYAN"- Output layer:\t\t"YELLOW"0x%p"CYAN" (nb_neurons: "YELLOW"%4d"CYAN", nb_inputs_per_neuron: "YELLOW"%4d"CYAN")\n", (void*)network.output_layer, network.output_layer->nb_neurons, network.output_layer->nb_inputs_per_neuron);
 
 	// Print total neurons and weights
 	long long total_neurons = 0;
@@ -130,21 +130,21 @@ void printNeuralNetwork(NeuralNetwork network) {
 	if (total_weights < 1000)
 		{ PRINTER(YELLOW"%lld"CYAN"\n", total_weights); }
 	else if (total_weights < 1000000)
-		{ PRINTER(YELLOW"%.2Lf"CYAN" K ("YELLOW"%lld"CYAN" weights)\n", (long double)total_weights / 1000, total_weights); }
+		{ PRINTER(YELLOW"%5.2Lf"CYAN" K  ("YELLOW"%lld"CYAN" weights)\n", (long double)total_weights / 1000, total_weights); }
 	else if (total_weights < 1000000000)
-		{ PRINTER(YELLOW"%.2Lf"CYAN" M ("YELLOW"%lld"CYAN" weights)\n", (long double)total_weights / 1000000, total_weights); }
+		{ PRINTER(YELLOW"%5.2Lf"CYAN" M  ("YELLOW"%lld"CYAN" weights)\n", (long double)total_weights / 1000000, total_weights); }
 	else
-		{ PRINTER(YELLOW"%.2Lf"CYAN" B ("YELLOW"%lld"CYAN" weights)\n", (long double)total_weights / 1000000000, total_weights); }
+		{ PRINTER(YELLOW"%5.2Lf"CYAN" B  ("YELLOW"%lld"CYAN" weights)\n", (long double)total_weights / 1000000000, total_weights); }
 
 	// Print memory size
 	if (network.memory_size < 1000)
 		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%lld"CYAN" Bytes\n", network.memory_size); }
 	else if (network.memory_size < 1000000)
-		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" KB ("YELLOW"%lld"CYAN" bytes)\n", (long double)network.memory_size / 1000, network.memory_size); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%5.2Lf"CYAN" KB ("YELLOW"%lld"CYAN" bytes)\n", (long double)network.memory_size / 1000, network.memory_size); }
 	else if (network.memory_size < 1000000000)
-		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" MB ("YELLOW"%lld"CYAN" bytes)\n", (long double)network.memory_size / 1000000, network.memory_size); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%5.2Lf"CYAN" MB ("YELLOW"%lld"CYAN" bytes)\n", (long double)network.memory_size / 1000000, network.memory_size); }
 	else
-		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%.2Lf"CYAN" GB ("YELLOW"%lld"CYAN" bytes)\n", (long double)network.memory_size / 1000000000, network.memory_size); }
+		{ PRINTER(CYAN"- Memory size:\t\t"YELLOW"%5.2Lf"CYAN" GB ("YELLOW"%lld"CYAN" bytes)\n", (long double)network.memory_size / 1000000000, network.memory_size); }
 
 	// End of the function
 	PRINTER(RESET"\n");

@@ -121,14 +121,14 @@ char *generateCharVocabularyFromText(const char *text, int *vocabulary_size) {
 
 		// Add the character to the vocabulary if it is not already in it
 		char c = text[i];
-		if (strchr(vocabulary + 1, c) == NULL) {
+		if (strchr(vocabulary + 1, c) == NULL && c != '\0') {
 			vocabulary[*vocabulary_size] = c;
 			(*vocabulary_size)++;
 		}
 	}
 
 	// Sort the vocabulary
-	qsort(vocabulary, *vocabulary_size, sizeof(char), compareChar);
+	qsort(vocabulary + 1, *vocabulary_size - 1, sizeof(char), compareChar);
 
 	// Return the vocabulary
 	return vocabulary;

@@ -41,7 +41,17 @@ int main() {
 	// Create vocabulary from the training data (list of characters)
 	int vocabulary_size = 0;
 	char *vocabulary = generateCharVocabularyFromText(training_text, &vocabulary_size);
-	INFO_PRINT("main(): %d characters in the vocabulary: \\0%s\n", vocabulary_size, vocabulary + 1);
+	INFO_PRINT("main(): %d characters in the vocabulary: ", vocabulary_size);
+	for (int i = 0; i < vocabulary_size; i++) {
+		switch (vocabulary[i]) {
+			case '\n': PRINTER("\\n"); break;
+			case '\t': PRINTER("\\t"); break;
+			case '\r': PRINTER("\\r"); break;
+			case '\0': PRINTER("\\0"); break;
+			default: PRINTER("%c", vocabulary[i]);
+		}
+	}
+	PRINTER("\n");
 
 	// Convert the list of tokens into chunks of tokens
 	int chunk_size = 8;	// Maximum context length
@@ -51,7 +61,7 @@ int main() {
 	INFO_PRINT("main(): %d chunks of %d characters: [[%d, %d, ...], [%d, %d, ...], ...]\n", nb_chunks, chunk_size, chunks[0][0], chunks[0][1], chunks[1][0], chunks[1][1]);
 
 	// Create the neural network
-	int nb_neurons_per_layer[] = {chunk_size, 384, 384, vocabulary_size};
+	int nb_neurons_per_layer[] = {chunk_size, 2048, 2048, vocabulary_size};
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 	char *activation_functions[] = {NULL, "relu", "relu", "softmax"};
 	NeuralNetwork network;
