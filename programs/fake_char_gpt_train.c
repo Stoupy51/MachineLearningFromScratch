@@ -87,7 +87,8 @@ int main() {
 		// Use the correspondance array to get the index of the chracter in the vocabulary
 		// Example: 'a' -> 97 -> 1 (in the vocabulary)
 		memset(targets[i], 0, vocabulary_size * sizeof(nn_type));
-		int targeted_char_index = vocabulary_correspondance_array[(int)chunks[i][chunk_size]];
+		unsigned char targeted_char = chunks[i][chunk_size]; // Cast to unsigned char to avoid negative indexes
+		int targeted_char_index = vocabulary_correspondance_array[(int)targeted_char];
 		targets[i][targeted_char_index] = 1.0;
 	}
 

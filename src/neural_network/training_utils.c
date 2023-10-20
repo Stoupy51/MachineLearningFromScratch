@@ -73,8 +73,10 @@ int getIndexOfMaxFromDoubleArray(nn_type *array, int array_size) {
 int* correspondanceArrayWithVocabularyIndex(char* vocabulary, int vocabulary_size) {
 	int *array = mallocBlocking(sizeof(int) * 256, "correspondanceArrayWithVocabularyIndex()");
 	memset(array, 0, sizeof(int) * 256);
-	for (int i = 0; i < vocabulary_size; i++)
-		array[(int)vocabulary[i]] = i;
+	for (int i = 0; i < vocabulary_size; i++) {
+		unsigned char c = vocabulary[i]; // Cast to unsigned char to avoid negative indexes
+		array[(int)c] = i;
+	}
 	return array;
 }
 
