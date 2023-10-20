@@ -481,7 +481,7 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 			}
 
 			///// Update the weights and the biases along with the Adam optimizer parameters
-			// For each layer of the neural network (except the input layer), for each weight
+			// For each layer of the neural network (except the input layer), for each weight and bias
 			for (int i = 1; i < network->nb_layers; i++) {
 				for (int j = 0; j < network->layers[i].nb_neurons; j++) {
 					for (int k = 0; k < network->layers[i].nb_inputs_per_neuron; k++) {
@@ -502,13 +502,26 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 						// weight -= (alpha * m_hat) / (nn_sqrt(v_hat) + epsilon)
 						network->layers[i].weights[j][k] -= (alpha * m_hat) / (nn_sqrt(v_hat) + epsilon);
 					}
+
+					// Update the first moment vector (m) and the second moment vector (v)
+					m = beta1 * m + (minus_beta1) * gradients_per_layer[i].biases_gradients[j];
+					v = beta2 * v + (minus_beta2) * gradients_per_layer[i].biases_gradients[j] * gradients_per_layer[i].biases_gradients[j];
+
+					// Calculate the bias-corrected first moment vector (m_hat) and the bias-corrected second moment vector (v_hat)
+					m_hat = m / (minus_beta1_t);
+					v_hat = v / (minus_beta2_t);
+
+					// Update the bias
+					network->layers[i].biases[j] -= (alpha * m_hat) / (nn_sqrt(v_hat) + epsilon);
 				}
 			}
 
-			// Update the iteration counter (t), and the beta1 and beta2 powers (beta1_t and beta2_t)
+			// Update the parameters of the Adam optimizer
 			t++;
 			beta1_t *= beta1;
 			beta2_t *= beta2;
+			minus_beta1_t = 1.0 - beta1_t;
+			minus_beta2_t = 1.0 - beta2_t;
 		}
 
 		///// Use the test inputs to calculate the error

@@ -101,7 +101,7 @@ int main() {
 		.inputs = inputs,
 		.targets = targets,
 		.nb_inputs = nb_chunks,
-		.batch_size = 4,
+		.batch_size = 8,
 		.test_inputs_percentage = 20
 	};
 	TrainingParameters training_parameters = {
