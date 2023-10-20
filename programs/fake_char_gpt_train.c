@@ -55,7 +55,7 @@ int main() {
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 	char *activation_functions[] = {NULL, "relu", "relu", "softmax"};
 	NeuralNetwork network;
-	int code = initNeuralNetwork(&network, nb_layers, nb_neurons_per_layer, activation_functions, 0);
+	int code = initNeuralNetwork(&network, nb_layers, nb_neurons_per_layer, activation_functions);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while initializing the neural network\n");
 
 	// Print the neural network information

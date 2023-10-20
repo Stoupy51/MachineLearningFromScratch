@@ -63,7 +63,7 @@ int main() {
 	int nb_neurons_per_layer[] = {64, 48, 48, 48, 32};
 	char *activation_functions[] = {NULL, "sigmoid", "sigmoid", "sigmoid", "sigmoid"};
 	NeuralNetwork network_plus;
-	int code = initNeuralNetwork(&network_plus, sizeof(nb_neurons_per_layer) / sizeof(int), nb_neurons_per_layer, activation_functions, 0);
+	int code = initNeuralNetwork(&network_plus, sizeof(nb_neurons_per_layer) / sizeof(int), nb_neurons_per_layer, activation_functions);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while initializing the neural network\n");
 
 	// Print the neural network information

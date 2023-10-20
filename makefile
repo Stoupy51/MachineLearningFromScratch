@@ -22,7 +22,7 @@
 
 # Variables (Linking flags are only used for 'programs/*.c' files, because it only matters when cooking executables)
 ADDITIONAL_FLAGS = -Wall -Wextra -Wpedantic -Werror -O3
-LINKING_FLAGS = -L\"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/lib/x64\" -I\"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/include\" -lOpenCL C:/Windows/System32/OpenCL.dll
+LINKING_FLAGS = -Llibs -Ilibs/CL -lOpenCL libs/OpenCL.dll
 
 # Parallel compilation: create a thread for each compilation command (0 = no, 1 = yes)
 PARALLEL_COMPILATION = 1
