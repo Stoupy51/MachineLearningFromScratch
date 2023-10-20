@@ -150,17 +150,23 @@ int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParamet
 	nn_type **target_tests = &training_data.targets[training_data.nb_inputs];
 	if (verbose > 0)
 		INFO_PRINT("TrainSGD(): %d inputs, %d test inputs\n", training_data.nb_inputs, nb_test_inputs);
+	
+	// Set the batch size to the number of inputs if it is not set or if it's higher
+	if (training_data.batch_size == -1 || training_data.batch_size > training_data.nb_inputs)
+		training_data.batch_size = training_data.nb_inputs;
 
 	// Local variables
 	int current_epoch = 0;
 	nn_type current_error = 100.0;
-	int nb_batches = training_data.nb_inputs / training_data.batch_size + (training_data.nb_inputs % training_data.batch_size != 0);
+	int nb_batches =
+		training_data.nb_inputs / training_data.batch_size				// integer division so some digits may be lost
+		+ (training_data.nb_inputs % training_data.batch_size != 0);	// if there is a remainder, add 1 to the number of batches
 	struct timeval epoch_start_time, epoch_end_time;
 	memset(&epoch_start_time, 0, sizeof(struct timeval));
 
 	// Prepare allocations for predictions (same size as the greatest batch size or the number of test inputs to avoid reallocations)
 	nn_type **predictions;
-	nn_type *predictions_flat_matrix = try2DFlatMatrixAllocation((void***)&predictions, nb_batches > nb_test_inputs ? nb_batches : nb_test_inputs, network->output_layer->nb_neurons, sizeof(nn_type), "TrainSGD(predictions)");
+	nn_type *predictions_flat_matrix = try2DFlatMatrixAllocation((void***)&predictions, training_data.batch_size > nb_test_inputs ? training_data.batch_size : nb_test_inputs, network->output_layer->nb_neurons, sizeof(nn_type), "TrainSGD(predictions)");
 
 	// Initialize biases and weights gradients for hidden and output layers
 	struct gradients_per_layer_t *gradients_per_layer = mallocBlocking(network->nb_layers * sizeof(struct gradients_per_layer_t), "TrainSGD(gradients_per_layer)");
@@ -337,16 +343,23 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 	if (verbose > 0)
 		INFO_PRINT("TrainAdam(): %d inputs, %d test inputs\n", training_data.nb_inputs, nb_test_inputs);
 
+	// Set the batch size to the number of inputs if it is not set or if it's higher
+	if (training_data.batch_size == -1 || training_data.batch_size > training_data.nb_inputs)
+		training_data.batch_size = training_data.nb_inputs;
+	DEBUG_PRINT("TrainAdam(): Batch size: %d\n", training_data.batch_size);
+
 	// Local variables
 	int current_epoch = 0;
 	nn_type current_error = 100.0;
-	int nb_batches = training_data.nb_inputs / training_data.batch_size + (training_data.nb_inputs % training_data.batch_size != 0);
+	int nb_batches =
+		training_data.nb_inputs / training_data.batch_size				// integer division so some digits may be lost
+		+ (training_data.nb_inputs % training_data.batch_size != 0);	// if there is a remainder, add 1 to the number of batches
 	struct timeval epoch_start_time, epoch_end_time;
 	memset(&epoch_start_time, 0, sizeof(struct timeval));
 
 	// Prepare allocations for predictions (same size as the greatest batch size or the number of test inputs to avoid reallocations)
 	nn_type **predictions;
-	nn_type *predictions_flat_matrix = try2DFlatMatrixAllocation((void***)&predictions, nb_batches > nb_test_inputs ? nb_batches : nb_test_inputs, network->output_layer->nb_neurons, sizeof(nn_type), "TrainSGD(predictions)");
+	nn_type *predictions_flat_matrix = try2DFlatMatrixAllocation((void***)&predictions, training_data.batch_size > nb_test_inputs ? training_data.batch_size : nb_test_inputs, network->output_layer->nb_neurons, sizeof(nn_type), "TrainSGD(predictions)");
 
 	// Initialize some Adam optimizer parameters
 	nn_type alpha = training_parameters.learning_rate;	// Learning rate
@@ -374,7 +387,7 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 	// Verbose
 	if (verbose > 0)
 		INFO_PRINT("TrainAdam(): Starting training loop...\n");
-	
+
 	// Training loop until the number of epochs or the error target is reached
 	while (current_epoch < training_parameters.nb_epochs && current_error > training_parameters.error_target) {
 
@@ -575,19 +588,29 @@ int TrainCPU(NeuralNetwork *network, TrainingData training_data, TrainingParamet
 	int boolean_parameters = training_parameters.nb_epochs != -1 || training_parameters.error_target != 0.0;	// 0 when none of the two parameters is specified, 1 otherwise
 	ERROR_HANDLE_INT_RETURN_INT(boolean_parameters - 1, "TrainCPU(): At least the number of epochs or the error target must be specified!\n");
 
+	// Make new training data pointers as the training data may be shuffled
+	training_data.inputs = duplicateMemory(training_data.inputs, training_data.nb_inputs * sizeof(nn_type*), "TrainCPU(copy training_data.inputs)");
+	training_data.targets = duplicateMemory(training_data.targets, training_data.nb_inputs * sizeof(nn_type*), "TrainCPU(copy training_data.targets)");
+
 	// Launch the training depending on the chosen optimizer
+	int code;
 	if (strcmp(training_parameters.optimizer, "SGD") == 0 || strcmp(training_parameters.optimizer, "StochasticGradientDescent") == 0)
-		return TrainSGD(network, training_data, training_parameters, verbose);
+		code = TrainSGD(network, training_data, training_parameters, verbose);
 
 	else if (strcmp(training_parameters.optimizer, "Adam") == 0 || strcmp(training_parameters.optimizer, "ADAM") == 0)
-		return TrainAdam(network, training_data, training_parameters, verbose);
+		code = TrainAdam(network, training_data, training_parameters, verbose);
 
 	// else if (strcmp(training_parameters.optimizer, "RMSProp") == 0 || strcmp(training_parameters.optimizer, "RMS") == 0)
 	// 	return TrainRMSProp(network, training_data, training_parameters, verbose);
 
 	else {
 		ERROR_PRINT("TrainCPU(): Unknown optimizer: '%s'\n", training_parameters.optimizer);
-		return -1;
+		code = -1;
 	}
+
+	// Free the training data copy pointers and return
+	free(training_data.inputs);
+	free(training_data.targets);
+	return code;
 }
 

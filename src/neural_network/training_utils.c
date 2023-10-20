@@ -51,13 +51,9 @@ int convertBinaryDoubleArrayToXbInt(nn_type *binary, int number_of_bits) {
  */
 int getIndexOfMaxFromDoubleArray(nn_type *array, int array_size) {
 	int index = 0;
-	nn_type max = array[0];
-	for (int i = 1; i < array_size; i++) {
-		if (array[i] > max) {
+	for (int i = 1; i < array_size; i++)
+		if (array[i] > array[index])
 			index = i;
-			max = array[i];
-		}
-	}
 	return index;
 }
 
@@ -67,15 +63,24 @@ int getIndexOfMaxFromDoubleArray(nn_type *array, int array_size) {
  * 
  * @param vocabulary		The vocabulary to create the correspondance array from
  * @param vocabulary_size	The size of the vocabulary
+ * @param verbose			Whether to print debug messages or not
  * 
  * @return int*				256 indexes corresponding to the vocabulary indexes
  */
-int* correspondanceArrayWithVocabularyIndex(char* vocabulary, int vocabulary_size) {
+int* correspondanceArrayWithVocabularyIndex(char* vocabulary, int vocabulary_size, int verbose) {
+	if (verbose)
+		DEBUG_PRINT("correspondanceArrayWithVocabularyIndex(): Creating correspondance array for vocabulary of size %d\n", vocabulary_size);
+
+	// Allocate the array
 	int *array = mallocBlocking(sizeof(int) * 256, "correspondanceArrayWithVocabularyIndex()");
 	memset(array, 0, sizeof(int) * 256);
+
+	// For each character in the vocabulary, set the index of the character in the array
 	for (int i = 0; i < vocabulary_size; i++) {
 		unsigned char c = vocabulary[i]; // Cast to unsigned char to avoid negative indexes
 		array[(int)c] = i;
+		if (verbose)
+			DEBUG_PRINT("%d == '%c' -> %d\n", (int)c, c, i);
 	}
 	return array;
 }

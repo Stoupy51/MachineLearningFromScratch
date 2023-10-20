@@ -21,6 +21,17 @@ void exitProgram() {
 	exit(0);
 }
 
+// Utility function for printing a character
+void printChar(char c) {
+	switch (c) {
+		case '\n': PRINTER("\\n"); break;
+		case '\t': PRINTER("\\t"); break;
+		case '\r': PRINTER("\\r"); break;
+		case '\0': PRINTER("\\0"); break;
+		default: PRINTER("%c", c);
+	}
+}
+
 /**
  * This program is a try to mimic GPT (Generative Pre-trained Transformer).
  * 
@@ -42,15 +53,8 @@ int main() {
 	int vocabulary_size = 0;
 	char *vocabulary = generateCharVocabularyFromText(training_text, &vocabulary_size);
 	INFO_PRINT("main(): %d characters in the vocabulary: ", vocabulary_size);
-	for (int i = 0; i < vocabulary_size; i++) {
-		switch (vocabulary[i]) {
-			case '\n': PRINTER("\\n"); break;
-			case '\t': PRINTER("\\t"); break;
-			case '\r': PRINTER("\\r"); break;
-			case '\0': PRINTER("\\0"); break;
-			default: PRINTER("%c", vocabulary[i]);
-		}
-	}
+	for (int i = 0; i < vocabulary_size; i++)
+		printChar(vocabulary[i]);
 	PRINTER("\n");
 
 	// Convert the list of tokens into chunks of tokens
@@ -61,9 +65,9 @@ int main() {
 	INFO_PRINT("main(): %d chunks of %d characters: [[%d, %d, ...], [%d, %d, ...], ...]\n", nb_chunks, chunk_size, chunks[0][0], chunks[0][1], chunks[1][0], chunks[1][1]);
 
 	// Create the neural network
-	int nb_neurons_per_layer[] = {chunk_size, 2048, 2048, vocabulary_size};
+	int nb_neurons_per_layer[] = {chunk_size, 512, 512, vocabulary_size};
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
-	char *activation_functions[] = {NULL, "relu", "relu", "softmax"};
+	char *activation_functions[] = {NULL, "sigmoid", "sigmoid", "softmax"};
 	NeuralNetwork network;
 	int code = initNeuralNetwork(&network, nb_layers, nb_neurons_per_layer, activation_functions);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while initializing the neural network\n");
@@ -72,7 +76,7 @@ int main() {
 	printNeuralNetwork(network);
 
 	// Prepare the vocabulary correspondance array for optimization
-	int *vocabulary_correspondance_array = correspondanceArrayWithVocabularyIndex(vocabulary, vocabulary_size);
+	int *vocabulary_correspondance_array = correspondanceArrayWithVocabularyIndex(vocabulary, vocabulary_size, 0);
 
 	// Prepare the training data
 	nn_type **inputs;
@@ -97,7 +101,7 @@ int main() {
 		.inputs = inputs,
 		.targets = targets,
 		.nb_inputs = nb_chunks,
-		.batch_size = 1,
+		.batch_size = 4,
 		.test_inputs_percentage = 20
 	};
 	TrainingParameters training_parameters = {
@@ -105,7 +109,7 @@ int main() {
 		.error_target = 0.00001,
 		.optimizer = "Adam",			// Adaptive Moment Estimation
 		.loss_function_name = "MSE",	// Mean Squared Error
-		.learning_rate = 0.01
+		.learning_rate = 0.001
 	};
 
 	struct timeval start, end;
@@ -124,8 +128,16 @@ int main() {
 	for (int i = 0; i < nb_chunks; i++) {
 		int predicted_char_index = getIndexOfMaxFromDoubleArray(predictions[i], vocabulary_size);
 		int targeted_char_index = getIndexOfMaxFromDoubleArray(targets[i], vocabulary_size);
-		if (predicted_char_index != targeted_char_index && nb_errors++ < 10)
-			ERROR_PRINT("main(): Input '%8s', predicted '%c' instead of '%c'\n", chunks[i], predicted_char_index == 0 ? '0' : vocabulary[predicted_char_index], targeted_char_index == 0 ? '0' : vocabulary[targeted_char_index]);
+		if (predicted_char_index != targeted_char_index && nb_errors++ < 16) {
+			ERROR_PRINT("main(): Input %3d: \"", i);
+			for (int j = 0; j < chunk_size; j++)
+				printChar(chunks[i][j]);
+			PRINTER("\", predicted '");
+			printChar(vocabulary[predicted_char_index]);
+			PRINTER("' instead of '");
+			printChar(vocabulary[targeted_char_index]);
+			PRINTER("'\n");
+		}
 	}
 	INFO_PRINT("main(): Success rate: %d/%d (%.2f%%)\n", nb_chunks - nb_errors, nb_chunks, (double)(nb_chunks - nb_errors) / (double)nb_chunks * 100.0);
 
