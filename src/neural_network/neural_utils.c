@@ -11,11 +11,10 @@
  * @param nb_layers					Number of layers in the neural network
  * @param nb_neurons_per_layer		Array of int representing the number of neurons per layer
  * @param activation_function_names	Array of strings representing the activation function names of each layer
- * @param has_bias_neurons			1 if the neural network has bias neurons, 0 otherwise
  * 
  * @return int		0 if the neural network was saved successfully, 1 otherwise
  */
-int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_layer[], char **activation_function_names, int has_bias_neurons) {
+int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_layer[], char **activation_function_names) {
 
 	// Init easy value
 	network->nb_layers = nb_layers;
@@ -71,20 +70,13 @@ int initNeuralNetwork(NeuralNetwork *network, int nb_layers, int nb_neurons_per_
 		// Stop here if it's the first layer (no weights, biases, etc.)
 		if (i == 0) continue;
 
-		// Set the has_bias_neuron value if specified
-		network->layers[i].has_bias_neuron = has_bias_neurons ? 1 : 0;
-
 		// Assign the activation function
 		network->layers[i].activation_function = get_activation_function(activation_function_names[i]);
 		network->layers[i].activation_function_derivative = get_activation_function_derivative(activation_function_names[i]);
 
 		///// Allocate memory for the weights (nb_neurons * nb_inputs_per_neuron * sizeof(nn_type))
-		network->layers[i].weights_flat = try2DFlatMatrixAllocation((void***)&network->layers[i].weights, network->layers[i].nb_neurons, network->layers[i].nb_inputs_per_neuron + network->layers[i].has_bias_neuron, sizeof(nn_type), "initNeuralNetwork()");
+		network->layers[i].weights_flat = try2DFlatMatrixAllocation((void***)&network->layers[i].weights, network->layers[i].nb_neurons, network->layers[i].nb_inputs_per_neuron, sizeof(nn_type), "initNeuralNetwork()");
 		fillRandomFloatArray(network->layers[i].weights_flat, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron, -1.0, 1.0);
-
-		// Set the bias neuron to 1.0
-		if (network->layers[i].has_bias_neuron)
-			network->layers[i].weights[network->layers[i].nb_neurons - 1][network->layers[i].nb_inputs_per_neuron] = 1.0;
 
 		///// Allocate memory for the biases, and the deltas (nb_neurons * sizeof(nn_type))
 		this_malloc_size = network->layers[i].nb_neurons * sizeof(nn_type);
@@ -113,13 +105,12 @@ void printNeuralNetwork(NeuralNetwork network) {
 	// Print Layers information
 	PRINTER(CYAN"- Number of layers: "YELLOW"%d"CYAN"\n", network.nb_layers);
 	for (int i = 0; i < network.nb_layers; i++) {
-		PRINTER("  - Layer "YELLOW"%d"CYAN":\t"YELLOW"%d"CYAN" neurons\t[Parameters: "YELLOW"%d"CYAN" weights, "YELLOW"%d"CYAN" biases]\t(Activation function: %s)%s\n",
+		PRINTER("  - Layer "YELLOW"%d"CYAN":\t"YELLOW"%d"CYAN" neurons\t[Parameters: "YELLOW"%d"CYAN" weights, "YELLOW"%d"CYAN" biases]\t(Activation function: %s)\n",
 			i,
 			network.layers[i].nb_neurons,
 			network.layers[i].nb_neurons * network.layers[i].nb_inputs_per_neuron,
 			network.layers[i].nb_neurons,
-			network.layers[i].activation_function_name,
-			(i != network.nb_layers - 1) && network.layers[i + 1].has_bias_neuron ? " (with bias neuron)" : ""
+			network.layers[i].activation_function_name
 		);
 	}
 

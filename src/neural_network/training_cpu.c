@@ -85,10 +85,6 @@ void FeedForwardCPU(NeuralNetwork *network, nn_type **inputs, nn_type **outputs,
 				nn_type input_sum = network->layers[i].biases[j];	// Add the bias to the sum
 				for (int k = 0; k < network->layers[i].nb_inputs_per_neuron; k++)
 					input_sum += network->layers[i - 1].activations_values[k] * network->layers[i].weights[j][k];
-				
-				// Add the bias neuron if there is one
-				if (network->layers[i].has_bias_neuron)
-					input_sum += network->layers[i].weights[j][network->layers[i].nb_inputs_per_neuron];
 
 				// Save the sum of the inputs multiplied by the weights
 				network->layers[i].activations_values[j] = input_sum;
@@ -120,10 +116,6 @@ void FeedForwardCPUNoInput(NeuralNetwork *network) {
 			nn_type input_sum = network->layers[i].biases[j];	// Add the bias to the sum
 			for (int k = 0; k < network->layers[i].nb_inputs_per_neuron; k++)
 				input_sum += network->layers[i - 1].activations_values[k] * network->layers[i].weights[j][k];
-			
-			// Add the bias neuron if there is one
-			if (network->layers[i].has_bias_neuron)
-				input_sum += network->layers[i].weights[j][network->layers[i].nb_inputs_per_neuron];
 
 			// Save the sum of the inputs multiplied by the weights
 			network->layers[i].activations_values[j] = input_sum;
