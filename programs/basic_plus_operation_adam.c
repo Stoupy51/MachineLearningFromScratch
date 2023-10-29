@@ -76,7 +76,7 @@ int main() {
 	};
 	struct timeval start, end;
 	st_gettimeofday(start, NULL);
-	code = TrainCPU(&network_plus, training_data, training_parameters, 1);
+	code = TrainCPU(&network_plus, training_data, training_parameters, NULL, 1);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
 	st_gettimeofday(end, NULL);
 	INFO_PRINT("main(): Total training time: "STR_YELLOW_R("%.3f")"s\n", (double)(end.tv_sec - start.tv_sec) + (double)(end.tv_usec - start.tv_usec) / 1000000.0);

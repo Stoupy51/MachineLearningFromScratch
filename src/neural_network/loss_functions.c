@@ -9,11 +9,20 @@
 **/
 
 #if NN_TYPE == 0
+
 #define nn_type_log logf
+#define nn_epsilon 1e-7f
+
 #elif NN_TYPE == 1
+
 #define nn_type_log log
+#define nn_epsilon 1e-15
+
 #else
+
 #define nn_type_log logl
+#define nn_epsilon 1e-15l
+
 #endif
 
 // Calculate the mean absolute error of the neural network
@@ -50,25 +59,32 @@ nn_type huber_loss_derivative(nn_type prediction, nn_type target_value) {
 	return diff < 1 ? -diff : -1;
 }
 
-// Calculate the cross entropy of the neural network / logaritmic loss / log loss / logistic loss
-nn_type cross_entropy_f(nn_type prediction, nn_type target_value) {
+// Calculate the binary cross entropy of the neural network / logaritmic loss / log loss / logistic loss
+nn_type binary_cross_entropy_f(nn_type prediction, nn_type target_value) {
+	prediction = prediction < nn_epsilon ? nn_epsilon : (prediction > 1 - nn_epsilon ? 1 - nn_epsilon : prediction);
 	return -(target_value * nn_type_log(prediction)
 		+ (1 - target_value) * nn_type_log(1 - prediction));
 }
 
 // Derivative of the cross entropy of the neural network
-nn_type cross_entropy_derivative(nn_type prediction, nn_type target_value) {
+nn_type binary_cross_entropy_derivative(nn_type prediction, nn_type target_value) {
+	prediction = prediction == 0 ? nn_epsilon : (prediction == 1 ? 1 - nn_epsilon : prediction);
 	return (prediction - target_value) / (prediction * (1 - prediction));
 }
 
 // Calculate the relative entropy of the neural network / Kullback-Leibler divergence / KL divergence / KL distance / information divergence / information gain
 nn_type relative_entropy_f(nn_type prediction, nn_type target_value) {
-	return target_value * nn_type_log(target_value / prediction)
-		+ (1 - target_value) * nn_type_log((1 - target_value) / (1 - prediction));
+	if (prediction == target_value)
+		return 0;
+	prediction = prediction == 0 ? nn_epsilon : (prediction == 1 ? 1 - nn_epsilon : prediction);
+	nn_type one_minus_target = 1 - target_value;
+	return target_value * nn_type_log(target_value / prediction + nn_epsilon)
+		+ one_minus_target * nn_type_log(one_minus_target / (1 - prediction));
 }
 
 // Derivative of the relative entropy of the neural network
 nn_type relative_entropy_derivative(nn_type prediction, nn_type target_value) {
+	prediction = prediction == 0 ? nn_epsilon : (prediction == 1 ? 1 - nn_epsilon : prediction);
 	return (prediction - target_value) / (prediction * (1 - prediction));
 }
 
@@ -98,8 +114,8 @@ nn_type (*get_loss_function(const char *loss_function_name))(nn_type, nn_type) {
 		return mean_squared_error_f;
 	else if (strcmp(loss_function_name, "huber_loss") == 0)
 		return huber_loss_f;
-	else if (strcmp(loss_function_name, "cross_entropy") == 0)
-		return cross_entropy_f;
+	else if (strcmp(loss_function_name, "binary_cross_entropy") == 0)
+		return binary_cross_entropy_f;
 	else if (strcmp(loss_function_name, "relative_entropy") == 0)
 		return relative_entropy_f;
 	else if (strcmp(loss_function_name, "squared_hinge") == 0)
@@ -124,8 +140,8 @@ nn_type (*get_loss_function_derivative(const char *loss_function_name))(nn_type,
 		return mean_squared_error_derivative;
 	else if (strcmp(loss_function_name, "huber_loss") == 0)
 		return huber_loss_derivative;
-	else if (strcmp(loss_function_name, "cross_entropy") == 0)
-		return cross_entropy_derivative;
+	else if (strcmp(loss_function_name, "binary_cross_entropy") == 0)
+		return binary_cross_entropy_derivative;
 	else if (strcmp(loss_function_name, "relative_entropy") == 0)
 		return relative_entropy_derivative;
 	else if (strcmp(loss_function_name, "squared_hinge") == 0)
@@ -135,5 +151,4 @@ nn_type (*get_loss_function_derivative(const char *loss_function_name))(nn_type,
 		exit(EXIT_FAILURE);
 	}
 }
-
 

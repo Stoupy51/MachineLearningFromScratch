@@ -72,7 +72,8 @@
 			"functional": "c",
 			"__functional_03": "c",
 			"target": "c",
-			"random_array_values.h": "c"
+			"random_array_values.h": "c",
+			"training_structs.h": "c"
 		},
 		"OpenCL.explorer.localizedProperties": false
 	}

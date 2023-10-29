@@ -4,6 +4,7 @@
 #include "../src/neural_network/training_utils.h"
 #include "../src/neural_network/training_cpu.h"
 #include "../src/utils/text_file.h"
+#include "../src/utils/plots.h"
 #include "../src/st_benchmark.h"
 
 #define TRAINING_FOLDER_PATH "data/words/"
@@ -65,7 +66,7 @@ int main() {
 	INFO_PRINT("main(): %d chunks of %d characters: [[%d, %d, ...], [%d, %d, ...], ...]\n", nb_chunks, chunk_size, chunks[0][0], chunks[0][1], chunks[1][0], chunks[1][1]);
 
 	// Create the neural network
-	int nb_neurons_per_layer[] = {chunk_size, 512, 512, vocabulary_size};
+	int nb_neurons_per_layer[] = {chunk_size, 1024, 1024, vocabulary_size};
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
 	char *activation_functions[] = {NULL, "sigmoid", "sigmoid", "softmax"};
 	NeuralNetwork network;
@@ -96,7 +97,8 @@ int main() {
 		targets[i][targeted_char_index] = 1.0;
 	}
 
-	// Train the neural network
+	///// Train the neural network
+	// Prepare the training data
 	TrainingData training_data = {
 		.inputs = inputs,
 		.targets = targets,
@@ -104,20 +106,36 @@ int main() {
 		.batch_size = 8,
 		.test_inputs_percentage = 20
 	};
+
+	// Prepare the training parameters
 	TrainingParameters training_parameters = {
-		.nb_epochs = 100,
+		.nb_epochs = 1000,
 		.error_target = 0.00001,
 		.optimizer = "Adam",			// Adaptive Moment Estimation
 		.loss_function_name = "MSE",	// Mean Squared Error
-		.learning_rate = 0.001
+		.learning_rate = 0.0001
 	};
 
+	// Prepare the error per epoch array
+	nn_type *error_per_epoch = mallocBlocking(training_parameters.nb_epochs * sizeof(nn_type), "main(error_per_epoch)");
+
+	// Train the neural network and measure the time
 	struct timeval start, end;
 	st_gettimeofday(start, NULL);
-	code = TrainCPU(&network, training_data, training_parameters, 1);
+	code = TrainCPU(&network, training_data, training_parameters, error_per_epoch, 1);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
 	st_gettimeofday(end, NULL);
 	INFO_PRINT("main(): Total training time: "STR_YELLOW_R("%.3f")"s\n", (double)(end.tv_sec - start.tv_sec) + (double)(end.tv_usec - start.tv_usec) / 1000000.0);
+
+	///// Plot the error per epoch
+	#define SAVE_PATH "data/error_per_epoch"
+	FILE *data_file = fopen(SAVE_PATH".txt", "w");
+	ERROR_HANDLE_PTR_RETURN_INT(data_file, "main(): Error while opening data file '%s'\n", SAVE_PATH".txt");
+	for (int i = 0; i < training_parameters.nb_epochs; i++)
+		fprintf(data_file, "%d %"NN_FORMAT"\n", i, error_per_epoch[i]);
+	fclose(data_file);
+	ERROR_HANDLE_INT_RETURN_INT(generateLinesPlot(SAVE_PATH".jpg", SAVE_PATH".txt", "Error per epoch", "Epoch", "Error"), "main(): Error while generating the plot\n");
+	INFO_PRINT("main(): Plot saved in '"STR_YELLOW_R(SAVE_PATH)".jpg'\n");
 
 	// Test the neural network
 	INFO_PRINT("main(): Testing the neural network\n");
@@ -126,12 +144,20 @@ int main() {
 	FeedForwardCPU(&network, inputs, predictions, nb_chunks);
 	int nb_errors = 0;
 	for (int i = 0; i < nb_chunks; i++) {
+
+		// Get the index of the predicted and targeted characters
 		int predicted_char_index = getIndexOfMaxFromDoubleArray(predictions[i], vocabulary_size);
 		int targeted_char_index = getIndexOfMaxFromDoubleArray(targets[i], vocabulary_size);
+
+		// If the predicted character is not the targeted character,
 		if (predicted_char_index != targeted_char_index && nb_errors++ < 16) {
+
+			// Print the input chunk char per char
 			ERROR_PRINT("main(): Input %3d: \"", i);
 			for (int j = 0; j < chunk_size; j++)
 				printChar(chunks[i][j]);
+			
+			// Print the predicted and targeted characters
 			PRINTER("\", predicted '");
 			printChar(vocabulary[predicted_char_index]);
 			PRINTER("' instead of '");

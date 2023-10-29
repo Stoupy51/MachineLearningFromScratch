@@ -25,6 +25,7 @@ int TrainCPU(
 	NeuralNetwork *network,
 	TrainingData training_data,
 	TrainingParameters training_parameters,
+	nn_type *error_per_epoch,
 	int verbose
 );
 

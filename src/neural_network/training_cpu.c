@@ -137,11 +137,12 @@ void FeedForwardCPUNoInput(NeuralNetwork *network) {
  * @param network					Pointer to the neural network
  * @param training_data				Training data structure (inputs, target outputs, number of inputs, batch size, test inputs percentage)
  * @param training_parameters		Training parameters structure (number of epochs, error target, optimizer, loss function, learning rate)
+ * @param error_per_epoch			Pointer to the error per epoch array (to be filled) (can be NULL)
  * @param verbose					Verbose level (0: no verbose, 1: verbose, 2: very verbose, 3: all)
  * 
  * @return int						Number of epochs done, -1 if there is an error
  */
-int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParameters training_parameters, int verbose) {
+int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParameters training_parameters, nn_type *error_per_epoch, int verbose) {
 
 	// Prepare the test inputs (Taking the last inputs as test inputs depending on the percentage)
 	int nb_test_inputs = training_data.nb_inputs * training_data.test_inputs_percentage / 100;
@@ -304,6 +305,10 @@ int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParamet
 				time_per_step
 			);
 		}
+
+		// Save the error of the epoch
+		if (error_per_epoch != NULL)
+			error_per_epoch[current_epoch - 1] = current_error;
 	}
 
 	// Free the predictions
@@ -333,7 +338,7 @@ int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParamet
  * 
  * @return int						Number of epochs done, -1 if there is an error
  */
-int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParameters training_parameters, int verbose) {
+int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParameters training_parameters, nn_type *error_per_epoch, int verbose) {
 
 	// Prepare the test inputs (Taking the last inputs as test inputs depending on the percentage)
 	int nb_test_inputs = training_data.nb_inputs * training_data.test_inputs_percentage / 100;
@@ -552,6 +557,10 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 				time_per_step
 			);
 		}
+
+		// Save the error of the epoch
+		if (error_per_epoch != NULL)
+			error_per_epoch[current_epoch - 1] = current_error;
 	}
 
 	// Free the predictions
@@ -591,11 +600,12 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
  * @param network					Pointer to the neural network
  * @param training_data				Training data structure (inputs, target outputs, number of inputs, batch size, test inputs percentage)
  * @param training_parameters		Training parameters structure (number of epochs, error target, optimizer, loss function, learning rate)
+ * @param error_per_epoch			Pointer to the array of errors per epoch (can be NULL)
  * @param verbose					Verbose level (0: no verbose, 1: verbose, 2: very verbose, 3: all)
  * 
  * @return int						Number of epochs done, -1 if there is an error
  */
-int TrainCPU(NeuralNetwork *network, TrainingData training_data, TrainingParameters training_parameters, int verbose) {
+int TrainCPU(NeuralNetwork *network, TrainingData training_data, TrainingParameters training_parameters, nn_type *error_per_epoch, int verbose) {
 
 	// Check if at least one of the two parameters is specified
 	int boolean_parameters = training_parameters.nb_epochs != -1 || training_parameters.error_target != 0.0;	// 0 when none of the two parameters is specified, 1 otherwise
@@ -608,10 +618,10 @@ int TrainCPU(NeuralNetwork *network, TrainingData training_data, TrainingParamet
 	// Launch the training depending on the chosen optimizer
 	int code;
 	if (strcmp(training_parameters.optimizer, "SGD") == 0 || strcmp(training_parameters.optimizer, "StochasticGradientDescent") == 0)
-		code = TrainSGD(network, training_data, training_parameters, verbose);
+		code = TrainSGD(network, training_data, training_parameters, error_per_epoch, verbose);
 
 	else if (strcmp(training_parameters.optimizer, "Adam") == 0 || strcmp(training_parameters.optimizer, "ADAM") == 0)
-		code = TrainAdam(network, training_data, training_parameters, verbose);
+		code = TrainAdam(network, training_data, training_parameters, error_per_epoch, verbose);
 
 	// else if (strcmp(training_parameters.optimizer, "RMSProp") == 0 || strcmp(training_parameters.optimizer, "RMS") == 0)
 	// 	return TrainRMSProp(network, training_data, training_parameters, verbose);
