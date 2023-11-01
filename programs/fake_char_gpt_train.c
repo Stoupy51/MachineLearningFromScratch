@@ -109,7 +109,7 @@ int main() {
 
 	// Prepare the training parameters
 	TrainingParameters training_parameters = {
-		.nb_epochs = 1000,
+		.nb_epochs = 100,
 		.error_target = 0.00001,
 		.optimizer = "Adam",			// Adaptive Moment Estimation
 		.loss_function_name = "MSE",	// Mean Squared Error
@@ -131,11 +131,17 @@ int main() {
 	#define SAVE_PATH "data/error_per_epoch"
 	FILE *data_file = fopen(SAVE_PATH".txt", "w");
 	ERROR_HANDLE_PTR_RETURN_INT(data_file, "main(): Error while opening data file '%s'\n", SAVE_PATH".txt");
+
+	fprintf(data_file, "\"Values\"\n");
 	for (int i = 0; i < training_parameters.nb_epochs; i++)
 		fprintf(data_file, "%d %"NN_FORMAT"\n", i, error_per_epoch[i]);
+	fprintf(data_file, "\n\n\"Values*0.9\"\n");
+	for (int i = 0; i < training_parameters.nb_epochs; i++)
+		fprintf(data_file, "%d %"NN_FORMAT"\n", i, error_per_epoch[i] * 0.9);
 	fclose(data_file);
-	ERROR_HANDLE_INT_RETURN_INT(generateLinesPlot(SAVE_PATH".jpg", SAVE_PATH".txt", "Error per epoch", "Epoch", "Error"), "main(): Error while generating the plot\n");
-	INFO_PRINT("main(): Plot saved in '"STR_YELLOW_R(SAVE_PATH)".jpg'\n");
+
+	ERROR_HANDLE_INT_RETURN_INT(generate2DLinesPlot(SAVE_PATH".jpg", SAVE_PATH".txt", "Error per epoch", "Epoch", "Error"), "main(): Error while generating the plot\n");
+	INFO_PRINT("main(): Plot saved in \""STR_YELLOW_R(SAVE_PATH ".jpg")"\"\n");
 
 	// Test the neural network
 	INFO_PRINT("main(): Testing the neural network\n");
