@@ -2,6 +2,7 @@
 #include "../src/universal_utils.h"
 #include "../src/neural_network/neural_utils.h"
 #include "../src/neural_network/training_cpu.h"
+#include "../src/neural_network/training_utils.h"
 #include "../src/st_benchmark.h"
 
 /**
@@ -14,10 +15,6 @@ void exitProgram() {
 	INFO_PRINT("exitProgram(): End of program, press enter to exit\n");
 	getchar();
 	exit(0);
-}
-
-int doubleToInt(nn_type d) {
-	return (int)(d + 0.5);
 }
 
 /**

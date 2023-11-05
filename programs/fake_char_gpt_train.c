@@ -113,7 +113,8 @@ int main() {
 		.error_target = 0.00001,
 		.optimizer = "Adam",			// Adaptive Moment Estimation
 		.loss_function_name = "MSE",	// Mean Squared Error
-		.learning_rate = 0.0001
+		.learning_rate = 0.0001,
+		.dropout_percentage = 0
 	};
 
 	// Prepare the error per epoch array

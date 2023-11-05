@@ -1,6 +1,7 @@
 
 #include "training_cpu.h"
 #include "loss_functions.h"
+#include "training_utils.h"
 #include "../universal_utils.h"
 #include "../st_benchmark.h"
 
@@ -13,47 +14,6 @@
 #elif NN_TYPE == 2
 	#define nn_sqrt sqrtl
 #endif
-
-/**
- * @brief Utility function to shuffle the training data
- * 
- * @param inputs			Pointer to the inputs array
- * @param targets	Pointer to the target outputs array
- * @param batch_size		Number of samples in the batch
- */
-void shuffleTrainingData(nn_type **inputs, nn_type **targets, int batch_size) {
-
-	// Prepare a new array of pointers to the inputs and the target outputs
-	nn_type **new_inputs = mallocBlocking(batch_size * sizeof(nn_type *), "shuffleTrainingData()");
-	nn_type **new_targets = mallocBlocking(batch_size * sizeof(nn_type *), "shuffleTrainingData()");
-	int new_size = 0;
-
-	// While there are samples in the batch,
-	int nb_samples = batch_size;
-	while (nb_samples > 0) {
-
-		// Select a random sample
-		int random_index = rand() % nb_samples;
-
-		// Add the random sample to the new array
-		new_inputs[new_size] = inputs[random_index];
-		new_targets[new_size] = targets[random_index];
-		new_size++;
-
-		// Remove the random sample from the old array by replacing it with the last sample
-		inputs[random_index] = inputs[nb_samples - 1];
-		targets[random_index] = targets[nb_samples - 1];
-		nb_samples--;
-	}
-
-	// Copy the new array to the old array
-	memcpy(inputs, new_inputs, batch_size * sizeof(nn_type *));
-	memcpy(targets, new_targets, batch_size * sizeof(nn_type *));
-
-	// Free the new array
-	free(new_inputs);
-	free(new_targets);
-}
 
 /**
  * @brief Feed forward algorithm of the neural network using a batch of inputs
@@ -70,10 +30,10 @@ void FeedForwardCPU(NeuralNetwork *network, nn_type **inputs, nn_type **outputs,
 	size_t output_layer_size = network->output_layer->nb_neurons * sizeof(nn_type);
 
 	// For each sample of the batch,
-	for (int i = 0; i < batch_size; i++) {
+	for (int sample = 0; sample < batch_size; sample++) {
 
 		// Copy the inputs to the input layer of the neural network
-		memcpy(network->input_layer->activations_values, inputs[i], input_layer_size);
+		memcpy(network->input_layer->activations_values, inputs[sample], input_layer_size);
 
 		// For each layer of the neural network (except the input layer),
 		for (int i = 1; i < network->nb_layers; i++) {
@@ -95,7 +55,62 @@ void FeedForwardCPU(NeuralNetwork *network, nn_type **inputs, nn_type **outputs,
 		}
 
 		// Copy the outputs of the neural network to the outputs array
-		memcpy(outputs[i], network->output_layer->activations_values, output_layer_size);
+		memcpy(outputs[sample], network->output_layer->activations_values, output_layer_size);
+	}
+}
+
+/**
+ * @brief Feed forward algorithm of the neural network using a batch of inputs and dropout
+ * 
+ * @param network				Pointer to the neural network
+ * @param inputs				Pointer to the inputs array
+ * @param outputs				Pointer to the outputs array
+ * @param batch_size			Number of samples in the batch
+ * @param dropout_mask			Pointer to the dropout mask array
+ * @param dropout_scale			Scale of the dropout (1.0 / (1.0 - dropout_percentage))
+ */
+void FeedForwardCPUWithDropout(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, int batch_size, nn_type **dropout_mask, nn_type dropout_scale) {
+
+	// Local variables
+	size_t input_layer_size = network->input_layer->nb_neurons * sizeof(nn_type);
+	size_t output_layer_size = network->output_layer->nb_neurons * sizeof(nn_type);
+
+	// For each sample of the batch,
+	for (int sample = 0; sample < batch_size; sample++) {
+
+		// Copy the inputs to the input layer of the neural network
+		memcpy(network->input_layer->activations_values, inputs[sample], input_layer_size);
+
+		// For each layer of the neural network (except the input layer),
+		for (int i = 1; i < network->nb_layers; i++) {
+
+			// For each neuron of the layer,
+			for (int j = 0; j < network->layers[i].nb_neurons; j++) {
+
+				// Calculate the sum of the inputs multiplied by the weights
+				nn_type input_sum = network->layers[i].biases[j];	// Add the bias to the sum
+				for (int k = 0; k < network->layers[i].nb_inputs_per_neuron; k++)
+					input_sum += network->layers[i - 1].activations_values[k] * network->layers[i].weights[j][k];
+
+				// Save the sum of the inputs multiplied by the weights
+				network->layers[i].activations_values[j] = input_sum;
+			}
+
+			// Activate the layer with the activation function
+			network->layers[i].activation_function(network->layers[i].activations_values, network->layers[i].nb_neurons);
+
+			// Multiply the layer with the dropout mask
+			if (i != network->nb_layers - 1)	// Do not apply dropout on the output layer
+				for (int j = 0; j < network->layers[i].nb_neurons; j++) {
+					if (dropout_mask[i - 1][j] == 0.0)
+						network->layers[i].activations_values[j] = 0.0;
+					else
+						network->layers[i].activations_values[j] *= dropout_scale;
+				}
+		}
+
+		// Copy the outputs of the neural network to the outputs array
+		memcpy(outputs[sample], network->output_layer->activations_values, output_layer_size);
 	}
 }
 
@@ -125,9 +140,6 @@ void FeedForwardCPUNoInput(NeuralNetwork *network) {
 		network->layers[i].activation_function(network->layers[i].activations_values, network->layers[i].nb_neurons);
 	}
 }
-
-
-
 
 
 
@@ -180,6 +192,15 @@ int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParamet
 	nn_type (*loss_function)(nn_type, nn_type) = get_loss_function(training_parameters.loss_function_name);
 	nn_type (*loss_function_derivative)(nn_type, nn_type) = get_loss_function_derivative(training_parameters.loss_function_name);
 
+	// Prepare the dropout mask for hidden layers
+	nn_type **dropout_mask = NULL;
+	nn_type dropout_scale = 1.0 / (1.0 - training_parameters.dropout_percentage / 100.0);
+	if (network->nb_layers > 2 && training_parameters.dropout_percentage > 0) {
+		dropout_mask = mallocBlocking((network->nb_layers - 2) * sizeof(nn_type*), "TrainSGD(dropout_mask)");
+		for (int i = 1; i < network->nb_layers - 1; i++)
+			dropout_mask[i - 1] = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "TrainSGD(dropout_mask)");
+	}
+
 	// Verbose
 	if (verbose > 0)
 		INFO_PRINT("TrainSGD(): Starting training loop...\n");
@@ -199,6 +220,12 @@ int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParamet
 		// Shuffle the training data
 		shuffleTrainingData(training_data.inputs, training_data.targets, training_data.nb_inputs);
 
+		// Setup the dropout mask for the hidden layers
+		if (dropout_mask != NULL)
+			for (int i = 1; i < network->nb_layers - 1; i++)
+				for (int j = 0; j < network->layers[i].nb_neurons; j++)
+					dropout_mask[i - 1][j] = (rand() % 100) < training_parameters.dropout_percentage ? 0.0 : 1.0;
+
 		// For each batch of the training data,
 		for (int batch = 0; batch < nb_batches; batch++) {
 
@@ -211,7 +238,10 @@ int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParamet
 			nn_type **targets = &training_data.targets[first_sample];
 
 			// Feed forward algorithm from the first sample to the last sample
-			FeedForwardCPU(network, &training_data.inputs[first_sample], predictions, nb_samples);
+			if (dropout_mask == NULL)
+				FeedForwardCPU(network, &training_data.inputs[first_sample], predictions, nb_samples);
+			else
+				FeedForwardCPUWithDropout(network, &training_data.inputs[first_sample], predictions, nb_samples, dropout_mask, dropout_scale);
 
 			///// Backpropagation stuff
 			// Initialize the gradients of the weights and the biases to 0
@@ -248,6 +278,10 @@ int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParamet
 
 				// For each neuron of the layer,
 				for (int j = 0; j < network->layers[i].nb_neurons; j++) {
+
+					// Drop the neuron if needed
+					if (dropout_mask != NULL && dropout_mask[i - 1][j] == 0.0)
+						continue;
 
 					// Calculate the gradient by summing the gradients of the next layer multiplied by the weights
 					nn_type gradient = 0.0;
@@ -321,6 +355,13 @@ int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParamet
 	}
 	free(gradients_per_layer);
 
+	// Free the dropout mask
+	if (dropout_mask != NULL) {
+		for (int i = 1; i < network->nb_layers - 1; i++)
+			free(dropout_mask[i - 1]);
+		free(dropout_mask);
+	}
+
 	// Verbose
 	if (verbose > 0)
 		DEBUG_PRINT("TrainSGD(): Training done!\n");
@@ -365,6 +406,15 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 	// Prepare allocations for predictions (same size as the greatest batch size or the number of test inputs to avoid reallocations)
 	nn_type **predictions;
 	nn_type *predictions_flat_matrix = try2DFlatMatrixAllocation((void***)&predictions, training_data.batch_size > nb_test_inputs ? training_data.batch_size : nb_test_inputs, network->output_layer->nb_neurons, sizeof(nn_type), "TrainSGD(predictions)");
+
+	// Prepare the dropout mask for hidden layers
+	nn_type **dropout_mask = NULL;
+	nn_type dropout_scale = 1.0 / (1.0 - training_parameters.dropout_percentage / 100.0);
+	if (network->nb_layers > 2 && training_parameters.dropout_percentage > 0) {
+		dropout_mask = mallocBlocking((network->nb_layers - 2) * sizeof(nn_type*), "TrainSGD(dropout_mask)");
+		for (int i = 1; i < network->nb_layers - 1; i++)
+			dropout_mask[i - 1] = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "TrainSGD(dropout_mask)");
+	}
 
 	// Initialize some Adam optimizer parameters
 	nn_type alpha = training_parameters.learning_rate;	// Learning rate
@@ -417,6 +467,12 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 		// Shuffle the training data
 		shuffleTrainingData(training_data.inputs, training_data.targets, training_data.nb_inputs);
 
+		// Setup the dropout mask for the hidden layers
+		if (dropout_mask != NULL)
+			for (int i = 1; i < network->nb_layers - 1; i++)
+				for (int j = 0; j < network->layers[i].nb_neurons; j++)
+					dropout_mask[i - 1][j] = (rand() % 100) < training_parameters.dropout_percentage ? 0.0 : 1.0;
+
 		// For each batch of the training data,
 		for (int batch = 0; batch < nb_batches; batch++) {
 
@@ -429,7 +485,10 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 			nn_type **targets = &training_data.targets[first_sample];
 
 			// Feed forward algorithm from the first sample to the last sample
-			FeedForwardCPU(network, &training_data.inputs[first_sample], predictions, nb_samples);
+			if (dropout_mask == NULL)
+				FeedForwardCPU(network, &training_data.inputs[first_sample], predictions, nb_samples);
+			else
+				FeedForwardCPUWithDropout(network, &training_data.inputs[first_sample], predictions, nb_samples, dropout_mask, dropout_scale);
 
 			///// Backpropagation stuff using the Adam optimizer (Adaptive Moment Estimation)
 			// Initialize the gradients of the weights and the biases to 0
@@ -466,6 +525,10 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 
 				// For each neuron of the layer,
 				for (int j = 0; j < network->layers[i].nb_neurons; j++) {
+
+					// Dropout
+					if (dropout_mask != NULL && dropout_mask[i - 1][j] == 0.0)
+						continue;
 
 					// Calculate the gradient by summing the gradients of the next layer multiplied by the weights
 					nn_type gradient = 0.0;
@@ -572,6 +635,13 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 		free2DFlatMatrix((void**)gradients_per_layer[i].weights_gradients, gradients_per_layer[i].weights_gradients_flat, network->layers[i].nb_neurons);
 	}
 	free(gradients_per_layer);
+
+	// Free the dropout mask
+	if (dropout_mask != NULL) {
+		for (int i = 1; i < network->nb_layers - 1; i++)
+			free(dropout_mask[i - 1]);
+		free(dropout_mask);
+	}
 
 	// Verbose
 	if (verbose > 0)

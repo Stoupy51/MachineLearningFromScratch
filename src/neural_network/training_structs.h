@@ -33,6 +33,7 @@ typedef struct {
  * @param optimizer					Optimizer to use ("SGD", "Adam", "RMSProp", ...)
  * @param loss_function_name		Loss function to use ("MSE", "MAE", "cross_entropy", ...)
  * @param learning_rate				Learning rate to use (0.1, 0.01, 0.001, ...)
+ * @param dropout_percentage		Percentage of neurons to drop during training (0 to disable)
  */
 typedef struct {
 
@@ -42,6 +43,7 @@ typedef struct {
 	const char *optimizer;
 	const char *loss_function_name;
 	nn_type learning_rate;
+	int dropout_percentage;
 
 } TrainingParameters;
 

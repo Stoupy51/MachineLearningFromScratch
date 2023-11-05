@@ -19,6 +19,7 @@ struct gradients_per_layer_t {
 
 void shuffleTrainingData(nn_type **inputs, nn_type **target_outputs, int batch_size);
 void FeedForwardCPU(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, int batch_size);
+void FeedForwardCPUWithDropout(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, int batch_size, nn_type **dropout_mask, nn_type dropout_scale);
 void FeedForwardCPUNoInput(NeuralNetwork *network);
 
 int TrainCPU(
