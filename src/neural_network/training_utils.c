@@ -190,3 +190,44 @@ int** selectRandomChunksFromIntArray(int *array, int array_size, int number_of_c
 	return chunks;
 }
 
+
+/**
+ * @brief Replace a string in a source string
+ * 
+ * @param source		The source string
+ * @param source_size	The size of the source string
+ * @param old			The string to replace
+ * @param new			The string to replace with
+ * 
+ * @throw EXIT_FAILURE	If the source string is too small
+ */
+void replaceString(char *source, size_t source_size, char *old, char *new) {
+	
+	// Get the size of the old and new strings
+	size_t old_size = strlen(old);
+	size_t new_size = strlen(new);
+	size_t difference = new_size - old_size;
+	size_t source_length = strlen(source);
+
+	// While the old string is found in the source string
+	char *old_string_position = strstr(source, old);
+	while (old_string_position != NULL) {
+
+		// If the source string is too small, exit
+		if (source_length + difference >= source_size) {
+			ERROR_PRINT("replaceString(): Source string is too small\n");
+			exit(EXIT_FAILURE);
+		}
+
+		// Replace the old string with the new string
+		memmove(old_string_position + new_size, old_string_position + old_size, strlen(old_string_position + old_size) + 1);
+		memcpy(old_string_position, new, new_size);
+
+		// Update the source length
+		source_length += difference;
+
+		// Search for the old string again
+		old_string_position = strstr(old_string_position + new_size, old);
+	}
+}
+

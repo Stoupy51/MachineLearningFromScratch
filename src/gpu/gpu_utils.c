@@ -146,14 +146,11 @@ struct opencl_context_t setupOpenCL(cl_device_type type_of_device) {
 	struct opencl_context_t oc;
 	cl_int code;
 
-	// Get a platform
-	cl_platform_id platform_id;
-	code = clGetPlatformIDs(1, &platform_id, NULL);
-	WARNING_HANDLE_INT(code, "setupOpenCL(): Cannot get a platform with code %d / %s\n", code, getOpenCLErrorString(code));
+	// Get the best device available
+	code = getBestDeviceOnAllPlatforms(type_of_device, &oc.device_id);
+	WARNING_HANDLE_INT(code, "setupOpenCL(): Cannot get best device with code %d / %s\n", code, getOpenCLErrorString(code));
 
-	// Get a device, create a context and a command queue
-	code = clGetDeviceIDs(platform_id, type_of_device, 1, &oc.device_id, NULL);
-	WARNING_HANDLE_INT(code, "setupOpenCL(): Cannot get a device with code %d / %s\n", code, getOpenCLErrorString(code));
+	// Create a context and a command queue
 	oc.context = clCreateContext(NULL, 1, &oc.device_id, NULL, NULL, &code);
 	WARNING_HANDLE_INT(code, "setupOpenCL(): Cannot create a context with code %d / %s\n", code, getOpenCLErrorString(code));
 	oc.command_queue = clCreateCommandQueueWithProperties(oc.context, oc.device_id, NULL, &code);
@@ -164,7 +161,7 @@ struct opencl_context_t setupOpenCL(cl_device_type type_of_device) {
 }
 
 /**
- * @brief This function gets every GPU device, and returns it.
+ * @brief This function gets every device of given type, and returns it.
  * 
  * @param type_of_device Type of device to use (CL_DEVICE_TYPE_GPU or CL_DEVICE_TYPE_CPU)
  * 
@@ -204,6 +201,71 @@ cl_device_id* getAllDevicesOfType(cl_device_type type_of_device, cl_uint* num_de
 	free(platform_id);
 	*num_devices = num_devices_of_type;
 	return devices;
+}
+
+/**
+ * @brief This function gets every device of given type, and returns the best one.
+ * 
+ * @param type_of_device	Type of device to use (CL_DEVICE_TYPE_GPU or CL_DEVICE_TYPE_CPU)
+ * @param device_id			Pointer to the device ID to fill
+ * 
+ * @return int	0 if success, -1 otherwise
+ */
+int getBestDeviceOnAllPlatforms(cl_device_type type_of_device, cl_device_id* device_id) {
+	
+	// Variables
+	cl_int code;
+	cl_ulong max_clock_frequency = 0;
+	*device_id = NULL;
+
+	// Get all platforms
+	cl_uint num_platforms;
+	code = clGetPlatformIDs(0, NULL, &num_platforms);
+	ERROR_HANDLE_INT_RETURN_INT(code, "getBestDeviceOnAllPlatforms(): Cannot get platform count with code %d / %s\n", code, getOpenCLErrorString(code));
+	cl_platform_id* platform_id_array = mallocBlocking(sizeof(cl_platform_id) * num_platforms, "getBestDeviceOnAllPlatforms()");
+	code = clGetPlatformIDs(num_platforms, platform_id_array, NULL);
+	ERROR_HANDLE_INT_RETURN_INT(code, "getBestDeviceOnAllPlatforms(): Cannot get platforms with code %d / %s\n", code, getOpenCLErrorString(code));
+
+	// For each platform,
+	for (cl_uint i = 0; i < num_platforms; i++) {
+
+		// Get devices count on platform i
+		cl_uint num_devices;
+		code = clGetDeviceIDs(platform_id_array[i], type_of_device, 0, NULL, &num_devices);
+		ERROR_HANDLE_INT_RETURN_INT(code, "getBestDeviceOnAllPlatforms(): Cannot get device count with code %d / %s\n", code, getOpenCLErrorString(code));
+
+		// Get devices on platform i
+		cl_device_id* device_id_array = mallocBlocking(sizeof(cl_device_id) * num_devices, "getBestDeviceOnAllPlatforms()");
+		code = clGetDeviceIDs(platform_id_array[i], type_of_device, num_devices, device_id_array, NULL);
+		ERROR_HANDLE_INT_RETURN_INT(code, "getBestDeviceOnAllPlatforms(): Cannot get devices with code %d / %s\n", code, getOpenCLErrorString(code));
+
+		// For each device,
+		for (cl_uint j = 0; j < num_devices; j++) {
+
+			// Get the clock frequency
+			cl_ulong clock_frequency;
+			code = clGetDeviceInfo(device_id_array[j], CL_DEVICE_MAX_CLOCK_FREQUENCY, sizeof(cl_ulong), &clock_frequency, NULL);
+			ERROR_HANDLE_INT_RETURN_INT(code, "getBestDeviceOnAllPlatforms(): Cannot get device info with code %d / %s\n", code, getOpenCLErrorString(code));
+
+			// If the clock frequency is higher than the current max,
+			if (clock_frequency > max_clock_frequency) {
+
+				// Update the max clock frequency and the best device
+				max_clock_frequency = clock_frequency;
+				*device_id = device_id_array[j];
+			}
+		}
+
+		// Free device_id_array
+		free(device_id_array);
+	}
+
+	// Free platform_id_array
+	free(platform_id_array);
+
+	// If no device was found, return an error
+	ERROR_HANDLE_PTR_RETURN_INT(*device_id, "getBestDeviceOnAllPlatforms(): No device of type '%s' found\n", type_of_device == CL_DEVICE_TYPE_GPU ? "CL_DEVICE_TYPE_GPU" : "CL_DEVICE_TYPE_CPU");
+	return 0;
 }
 
 /**

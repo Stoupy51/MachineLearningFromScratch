@@ -105,14 +105,28 @@ void print_errno_stderr(const char* format, ...);
 #define PREFIX_PRINT(print_level) { switch (print_level) { case INFO_LEVEL: INFO_PRINT(""); break; case DEBUG_LEVEL: DEBUG_PRINT(""); break; case WARNING_LEVEL: WARNING_PRINT(""); break; case ERROR_LEVEL: ERROR_PRINT(""); break; default: PRINTER(""); break; } }
 
 // Utils for error handling
-#define ERROR_HANDLE_INT_RETURN_INT(error, ...) { if (error < 0) { ERROR_PRINT(__VA_ARGS__); return error; } }
-#define ERROR_HANDLE_INT_RETURN_NULL(error, ...) { if (error < 0) { ERROR_PRINT(__VA_ARGS__); return NULL; } }
-#define ERROR_HANDLE_PTR_RETURN_INT(ptr, ...) { if (ptr == NULL) { ERROR_PRINT(__VA_ARGS__); return -1; } }
-#define ERROR_HANDLE_PTR_RETURN_NULL(ptr, ...) { if (ptr == NULL) { ERROR_PRINT(__VA_ARGS__); return NULL; } }
+#define ENABLE_ERROR_HANDLING 1
+#if ENABLE_ERROR_HANDLING == 1
+	#define ERROR_HANDLE_INT_RETURN_INT(error, ...) { if (error < 0) { ERROR_PRINT(__VA_ARGS__); return error; } }
+	#define ERROR_HANDLE_INT_RETURN_NULL(error, ...) { if (error < 0) { ERROR_PRINT(__VA_ARGS__); return NULL; } }
+	#define ERROR_HANDLE_PTR_RETURN_INT(ptr, ...) { if (ptr == NULL) { ERROR_PRINT(__VA_ARGS__); return -1; } }
+	#define ERROR_HANDLE_PTR_RETURN_NULL(ptr, ...) { if (ptr == NULL) { ERROR_PRINT(__VA_ARGS__); return NULL; } }
+#else
+	#define ERROR_HANDLE_INT_RETURN_INT(error, ...) {}
+	#define ERROR_HANDLE_INT_RETURN_NULL(error, ...) {}
+	#define ERROR_HANDLE_PTR_RETURN_INT(ptr, ...) {}
+	#define ERROR_HANDLE_PTR_RETURN_NULL(ptr, ...) {}
+#endif
 
 // Utils for warning handling
-#define WARNING_HANDLE_INT(error, ...) { if (error < 0) { WARNING_PRINT(__VA_ARGS__); } }
-#define WARNING_HANDLE_PTR(ptr, ...) { if (ptr == NULL) { WARNING_PRINT(__VA_ARGS__); } }
+#define ENABLE_WARNING_HANDLING 1
+#if ENABLE_WARNING_HANDLING == 1
+	#define WARNING_HANDLE_INT(error, ...) { if (error < 0) { WARNING_PRINT(__VA_ARGS__); } }
+	#define WARNING_HANDLE_PTR(ptr, ...) { if (ptr == NULL) { WARNING_PRINT(__VA_ARGS__); } }
+#else
+	#define WARNING_HANDLE_INT(error, ...) {}
+	#define WARNING_HANDLE_PTR(ptr, ...) {}
+#endif
 
 ///// Structures
 typedef struct simple_string_t {

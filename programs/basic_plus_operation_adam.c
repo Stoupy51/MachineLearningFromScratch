@@ -2,6 +2,7 @@
 #include "../src/universal_utils.h"
 #include "../src/neural_network/neural_utils.h"
 #include "../src/neural_network/training_cpu.h"
+#include "../src/neural_network/training_gpu.h"
 #include "../src/neural_network/training_utils.h"
 #include "../src/st_benchmark.h"
 
@@ -83,7 +84,7 @@ int main() {
 	nn_type **test_expected = &expected[NB_TOTAL_DATA - NB_TOTAL_DATA];
 	nn_type **test_outputs;
 	nn_type *test_outputs_flat_matrix = try2DFlatMatrixAllocation((void***)&test_outputs, NB_TOTAL_DATA, network_plus.output_layer->nb_neurons, sizeof(nn_type), "main()");
-	FeedForwardCPU(&network_plus, test_inputs, test_outputs, NB_TOTAL_DATA);
+	FeedForwardGPU(&network_plus, test_inputs, test_outputs, NB_TOTAL_DATA);
 	int nb_errors = 0;
 	for (int i = 0; i < NB_TOTAL_DATA; i++) {
 		int a = doubleToInt(test_inputs[i][0]);

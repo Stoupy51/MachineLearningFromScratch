@@ -4,6 +4,8 @@
 
 #include "neural_config.h"
 
+#include <stdlib.h>
+
 void shuffleTrainingData(nn_type **inputs, nn_type **targets, int batch_size);
 
 int doubleToInt(nn_type d);
@@ -15,6 +17,8 @@ int* correspondanceArrayWithVocabularyIndex(char* vocabulary, int vocabulary_siz
 
 char** selectRandomChunksFromCharArray(char *array, int array_size, int number_of_chunks, int chunk_size);
 int** selectRandomChunksFromIntArray(int *array, int array_size, int number_of_chunks, int chunk_size);
+
+void replaceString(char *source, size_t source_size, char *old, char *new);
 
 #endif
 

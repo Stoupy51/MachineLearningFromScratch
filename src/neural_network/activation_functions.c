@@ -126,17 +126,13 @@ void identity_derivative_f(nn_type *values, int n) {
  * @param n			Number of values
  */
 void softmax_f(nn_type *values, int n) {
-	nn_type max_val = values[0];
-	for (int i = 1; i < n; i++)
-		if (values[i] > max_val)
-			max_val = values[i];
-	nn_type sum_exp = 0.0;
+	nn_type sum = 0.0;
 	for (int i = 0; i < n; i++) {
-		values[i] = nn_type_exp(values[i] - max_val);
-		sum_exp += values[i];
+		values[i] = nn_type_exp(values[i]);
+		sum += values[i];
 	}
 	for (int i = 0; i < n; i++)
-		values[i] /= sum_exp;
+		values[i] /= sum;
 }
 
 /**

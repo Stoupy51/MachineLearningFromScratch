@@ -8,16 +8,19 @@
 
 typedef float nn_type;
 #define NN_FORMAT "f"
+#define NN_STRING "float"
 
 #elif NN_TYPE == 1
 
 typedef double nn_type;
 #define NN_FORMAT "lf"
+#define NN_STRING "double"
 
 #else
 
 typedef long double nn_type;
 #define NN_FORMAT "Lf"
+#define NN_STRING "long double"
 
 #endif
 

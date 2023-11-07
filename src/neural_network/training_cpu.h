@@ -17,7 +17,6 @@ struct gradients_per_layer_t {
 	nn_type *weights_gradients_flat;
 };
 
-void shuffleTrainingData(nn_type **inputs, nn_type **target_outputs, int batch_size);
 void FeedForwardCPU(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, int batch_size);
 void FeedForwardCPUWithDropout(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, int batch_size, nn_type **dropout_mask, nn_type dropout_scale);
 void FeedForwardCPUNoInput(NeuralNetwork *network);
@@ -31,10 +30,4 @@ int TrainCPU(
 );
 
 #endif
-
-/*
-	nn_type (*loss_function)(nn_type, nn_type);				// Arbitrary, ex: mean_squared_error, mean_absolute_error, cross_entropy, ...
-	nn_type (*loss_function_derivative)(nn_type, nn_type);	// Arbitrary, ex: mean_squared_error_derivative, mean_absolute_error_derivative, cross_entropy_derivative, ...
-*/
-
 
