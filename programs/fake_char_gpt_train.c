@@ -128,20 +128,10 @@ int main() {
 	st_gettimeofday(end, NULL);
 	INFO_PRINT("main(): Total training time: "STR_YELLOW_R("%.3f")"s\n", (double)(end.tv_sec - start.tv_sec) + (double)(end.tv_usec - start.tv_usec) / 1000000.0);
 
-	///// Plot the error per epoch
+	// Plot the error per epoch
 	#define SAVE_PATH "data/error_per_epoch"
-	FILE *data_file = fopen(SAVE_PATH".txt", "w");
-	ERROR_HANDLE_PTR_RETURN_INT(data_file, "main(): Error while opening data file '%s'\n", SAVE_PATH".txt");
-
-	fprintf(data_file, "\"Values\"\n");
-	for (int i = 0; i < training_parameters.nb_epochs; i++)
-		fprintf(data_file, "%d %"NN_FORMAT"\n", i, error_per_epoch[i]);
-	fprintf(data_file, "\n\n\"Values*0.9\"\n");
-	for (int i = 0; i < training_parameters.nb_epochs; i++)
-		fprintf(data_file, "%d %"NN_FORMAT"\n", i, error_per_epoch[i] * 0.9);
-	fclose(data_file);
-
-	ERROR_HANDLE_INT_RETURN_INT(generate2DLinesPlot(SAVE_PATH".jpg", SAVE_PATH".txt", "Error per epoch", "Epoch", "Error"), "main(): Error while generating the plot\n");
+	char *name = "Adam at 0.0001";
+	ERROR_HANDLE_INT_RETURN_INT(generate2DLinesPlotFromFloatArray(SAVE_PATH".jpg", SAVE_PATH".txt", &error_per_epoch, &name, 1, code, "Error per epoch", "Epoch", "Error"), "main(): Error while generating the plot\n");
 	INFO_PRINT("main(): Plot saved in \""STR_YELLOW_R(SAVE_PATH ".jpg")"\"\n");
 
 	// Test the neural network

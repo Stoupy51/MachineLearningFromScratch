@@ -51,3 +51,43 @@ int generate2DLinesPlot(char *output_image_path, char *data_filepath, char *titl
 	return 0;
 }
 
+/**
+ * @brief Generate a plot with lines from a data matrix using gnuplot.
+ * 
+ * @param output_image_path		Path to the output image
+ * @param data_filepath			Path to the data file
+ * @param data					Data matrix
+ * @param names					Names of the lines
+ * @param nb_lines				Number of lines
+ * @param nb_points_per_line	Number of points per line (length of data[0] for example)
+ * @param title					Title of the plot
+ * @param xlabel				Label of the x axis
+ * @param ylabel				Label of the y axis
+ * 
+ * @return int					0 if success, -1 otherwise
+ */
+int generate2DLinesPlotFromFloatArray(char *output_image_path, char *data_filepath, nn_type **data, char **names, int nb_lines, int nb_points_per_line, char *title, char *xlabel, char *ylabel) {
+
+	// Open the data file
+	FILE *data_file = fopen(data_filepath, "w");
+	ERROR_HANDLE_PTR_RETURN_INT(data_file, "generate2DLinesPlotFromFloatArray(): Error while opening data file '%s'\n", data_filepath);
+
+	// Write the data file
+	for (int i = 0; i < nb_lines; i++) {
+
+		// Write the name of the line
+		fprintf(data_file, "\"%s\"\n", names[i]);
+
+		// Write the 2D data
+		for (int j = 0; j < nb_points_per_line; j++)
+			fprintf(data_file, "%d %"NN_FORMAT"\n", j + 1, data[i][j]);
+		fprintf(data_file, "\n\n");
+	}
+
+	// Close the data file
+	ERROR_HANDLE_INT_RETURN_INT(fclose(data_file), "generate2DLinesPlotFromFloatArray(): Error while closing data file '%s'\n", data_filepath);
+
+	// Generate the plot
+	return generate2DLinesPlot(output_image_path, data_filepath, title, xlabel, ylabel);
+}
+
