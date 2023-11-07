@@ -311,3 +311,73 @@ int FeedForwardGPU(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, 
 	return 0;
 }
 
+
+
+/**
+ * @brief Train the neural network using the Adam algorithm (Adaptive Moment Estimation)
+ * 
+ * @param network					Pointer to the neural network
+ * @param training_data				Training data structure (inputs, target outputs, number of inputs, batch size, test inputs percentage)
+ * @param training_parameters		Training parameters structure (number of epochs, error target, optimizer, loss function, learning rate)
+ * @param verbose					Verbose level (0: no verbose, 1: verbose, 2: very verbose, 3: all)
+ * 
+ * @return int						Number of epochs done, -1 if there is an error
+ */
+int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParameters training_parameters, nn_type *error_per_epoch, int verbose) {
+
+	// TODO
+}
+
+
+
+
+
+
+/**
+ * @brief Train the neural network with the GPU by using
+ * a batch of inputs and a batch of target outputs,
+ * a number of epochs and a target error value
+ * 
+ * @param network					Pointer to the neural network
+ * @param training_data				Training data structure (inputs, target outputs, number of inputs, batch size, test inputs percentage)
+ * @param training_parameters		Training parameters structure (number of epochs, error target, optimizer, loss function, learning rate)
+ * @param error_per_epoch			Pointer to the array of errors per epoch (can be NULL)
+ * @param verbose					Verbose level (0: no verbose, 1: verbose, 2: very verbose, 3: all)
+ * 
+ * @return int						Number of epochs done, -1 if there is an error
+ */
+int TrainGPU(NeuralNetwork *network, TrainingData training_data, TrainingParameters training_parameters, nn_type *error_per_epoch, int verbose) {
+
+	// Check if at least one of the two parameters is specified
+	int boolean_parameters = training_parameters.nb_epochs != -1 || training_parameters.error_target != 0.0;	// 0 when none of the two parameters is specified, 1 otherwise
+	ERROR_HANDLE_INT_RETURN_INT(boolean_parameters - 1, "TrainGPU(): At least the number of epochs or the error target must be specified!\n");
+
+	// Make new training data pointers as the training data may be shuffled
+	training_data.inputs = duplicateMemory(training_data.inputs, training_data.nb_inputs * sizeof(nn_type*), "TrainGPU(copy training_data.inputs)");
+	training_data.targets = duplicateMemory(training_data.targets, training_data.nb_inputs * sizeof(nn_type*), "TrainGPU(copy training_data.targets)");
+
+	// Setup OpenCL
+	setupOpenCLGPU();
+
+	// Launch the training depending on the chosen optimizer
+	int code;
+	if (strcmp(training_parameters.optimizer, "SGD") == 0 || strcmp(training_parameters.optimizer, "StochasticGradientDescent") == 0)
+		code = TrainSGD(network, training_data, training_parameters, error_per_epoch, verbose);
+
+	else if (strcmp(training_parameters.optimizer, "Adam") == 0 || strcmp(training_parameters.optimizer, "ADAM") == 0)
+		code = TrainAdam(network, training_data, training_parameters, error_per_epoch, verbose);
+
+	// else if (strcmp(training_parameters.optimizer, "RMSProp") == 0 || strcmp(training_parameters.optimizer, "RMS") == 0)
+	// 	return TrainRMSProp(network, training_data, training_parameters, verbose);
+
+	else {
+		ERROR_PRINT("TrainGPU(): Unknown optimizer: '%s'\n", training_parameters.optimizer);
+		code = -1;
+	}
+
+	// Free the training data copy pointers and return
+	free(training_data.inputs);
+	free(training_data.targets);
+	return code;
+}
+

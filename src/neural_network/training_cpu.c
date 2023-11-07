@@ -16,6 +16,19 @@
 #endif
 
 /**
+ * @brief Gradients per layer structure.
+ * 
+ * @param biases_gradients			Pointer to the biases gradients array
+ * @param weights_gradients			Pointer to the weights gradients matrix
+ * @param weights_gradients_flat	Pointer to the weights gradients flat array
+ */
+struct gradients_per_layer_t {
+	nn_type *biases_gradients;
+	nn_type **weights_gradients;
+	nn_type *weights_gradients_flat;
+};
+
+/**
  * @brief Feed forward algorithm of the neural network using a batch of inputs
  * 
  * @param network		Pointer to the neural network
