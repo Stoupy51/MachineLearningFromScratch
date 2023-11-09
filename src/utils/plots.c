@@ -47,7 +47,8 @@ int generate2DLinesPlot(char *output_image_path, char *data_filepath, char *titl
 	}
 
 	// Close the pipe and return
-	ERROR_HANDLE_INT_RETURN_INT(pclose(gnuplot_pipe), "generate2DLinesPlot(): Error while closing gnuplot pipe\n");
+	int code = pclose(gnuplot_pipe);
+	ERROR_HANDLE_INT_RETURN_INT(code, "generate2DLinesPlot(): Error while closing gnuplot pipe\n");
 	return 0;
 }
 
@@ -85,7 +86,8 @@ int generate2DLinesPlotFromFloatArray(char *output_image_path, char *data_filepa
 	}
 
 	// Close the data file
-	ERROR_HANDLE_INT_RETURN_INT(fclose(data_file), "generate2DLinesPlotFromFloatArray(): Error while closing data file '%s'\n", data_filepath);
+	int code = fclose(data_file);
+	ERROR_HANDLE_INT_RETURN_INT(code, "generate2DLinesPlotFromFloatArray(): Error while closing data file '%s'\n", data_filepath);
 
 	// Generate the plot
 	return generate2DLinesPlot(output_image_path, data_filepath, title, xlabel, ylabel);

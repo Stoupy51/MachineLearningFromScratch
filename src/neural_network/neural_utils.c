@@ -303,8 +303,10 @@ int loadNeuralNetwork(NeuralNetwork *network, char *filename) {
 	ERROR_HANDLE_PTR_RETURN_INT(file, "loadNeuralNetwork(): Could not open the file '%s'\n", filename);
 
 	// Read the number of layers, and the memory size
-	fread(&(network->nb_layers), sizeof(int), 1, file);
-	fread(&(network->memory_size), sizeof(long long), 1, file);
+	int code = fread(&(network->nb_layers), sizeof(int), 1, file);
+	ERROR_HANDLE_INT_RETURN_INT(code - 1, "loadNeuralNetwork(): Could not read the number of layers\n");
+	code = fread(&(network->memory_size), sizeof(long long), 1, file);
+	ERROR_HANDLE_INT_RETURN_INT(code - 1, "loadNeuralNetwork(): Could not read the memory size\n");
 
 	// Allocate memory for the layers
 	long long this_malloc_size = network->nb_layers * sizeof(NeuronLayer);
@@ -315,15 +317,19 @@ int loadNeuralNetwork(NeuralNetwork *network, char *filename) {
 	for (int i = 0; i < network->nb_layers; i++) {
 
 		// Read the number of neurons and the number of inputs per neuron
-		fread(&(network->layers[i].nb_neurons), sizeof(int), 1, file);
-		fread(&(network->layers[i].nb_inputs_per_neuron), sizeof(int), 1, file);
+		code = fread(&(network->layers[i].nb_neurons), sizeof(int), 1, file);
+		ERROR_HANDLE_INT_RETURN_INT(code - 1, "loadNeuralNetwork(): Could not read the number of neurons of layer %d\n", i);
+		code = fread(&(network->layers[i].nb_inputs_per_neuron), sizeof(int), 1, file);
+		ERROR_HANDLE_INT_RETURN_INT(code - 1, "loadNeuralNetwork(): Could not read the number of inputs per neuron of layer %d\n", i);
 		network->layers[i].activations_values = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "loadNeuralNetwork()");
 		
 		// Read the activation function name
 		int activation_function_name_length;
-		fread(&activation_function_name_length, sizeof(int), 1, file);
+		code = fread(&activation_function_name_length, sizeof(int), 1, file);
+		ERROR_HANDLE_INT_RETURN_INT(code - 1, "loadNeuralNetwork(): Could not read the activation function name length of layer %d\n", i);
 		network->layers[i].activation_function_name = mallocBlocking(sizeof(char) * (activation_function_name_length + 1), "loadNeuralNetwork()");
-		fread(network->layers[i].activation_function_name, sizeof(char) * activation_function_name_length, 1, file);
+		code = fread(network->layers[i].activation_function_name, sizeof(char) * activation_function_name_length, 1, file);
+		ERROR_HANDLE_INT_RETURN_INT(code - 1, "loadNeuralNetwork(): Could not read the activation function name of layer %d\n", i);
 		network->layers[i].activation_function_name[activation_function_name_length] = '\0';
 		if (i == 0) continue;
 
@@ -334,8 +340,10 @@ int loadNeuralNetwork(NeuralNetwork *network, char *filename) {
 		network->layers[i].biases = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "loadNeuralNetwork()");
 
 		// Read the weights_flat, and the biases
-		fread(network->layers[i].weights_flat, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(nn_type), 1, file);
-		fread(network->layers[i].biases, network->layers[i].nb_neurons * sizeof(nn_type), 1, file);
+		code = fread(network->layers[i].weights_flat, network->layers[i].nb_neurons * network->layers[i].nb_inputs_per_neuron * sizeof(nn_type), 1, file);
+		ERROR_HANDLE_INT_RETURN_INT(code - 1, "loadNeuralNetwork(): Could not read the weights_flat of layer %d\n", i);
+		code = fread(network->layers[i].biases, network->layers[i].nb_neurons * sizeof(nn_type), 1, file);
+		ERROR_HANDLE_INT_RETURN_INT(code - 1, "loadNeuralNetwork(): Could not read the biases of layer %d\n", i);
 
 		// Assign the weights_flat addresses to the weights
 		for (int j = 0; j < network->layers[i].nb_neurons; j++)

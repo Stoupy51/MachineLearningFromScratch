@@ -3,7 +3,8 @@
 #define __NEURAL_UTILS_H__
 
 #include "neural_config.h"
-#include "../universal_pthread.h"
+#include "activation_functions.h"
+#include "loss_functions.h"
 
 /**
  * @file Utils for neural networks

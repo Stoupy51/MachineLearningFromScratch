@@ -22,10 +22,10 @@
 
 # Variables (Linking flags are only used for 'programs/*.c' files, because it only matters when cooking executables)
 ADDITIONAL_FLAGS = -Wall -Wextra -Wpedantic -Werror -O3
-LINKING_FLAGS = -Llibs -Ilibs/CL -lOpenCL libs/OpenCL.dll
+LINKING_FLAGS = -Llibs -Ilibs/CL -lOpenCL libs/OpenCL.dll -lm
 
 # Parallel compilation: create a thread for each compilation command (0 = no, 1 = yes)
-PARALLEL_COMPILATION = 1
+PARALLEL_COMPILATION = 0
 
 all:
 	@./maker.exe "$(ADDITIONAL_FLAGS)" "$(LINKING_FLAGS)" "$(PARALLEL_COMPILATION)"

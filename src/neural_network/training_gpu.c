@@ -1,8 +1,10 @@
 
+#include <math.h>
+
 #include "training_gpu.h"
+#include "training_utils.h"
 #include "activation_functions.h"
 #include "loss_functions.h"
-#include "training_utils.h"
 #include "../universal_utils.h"
 #include "../st_benchmark.h"
 

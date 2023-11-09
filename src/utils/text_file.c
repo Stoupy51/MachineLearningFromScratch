@@ -19,7 +19,8 @@ char *readTextFromFile(FILE *file) {
 	memset(buffer, 0, file_size * sizeof(char));
 
 	// Read the file and return the buffer
-	fread(buffer, sizeof(char), file_size, file);
+	int code = fread(buffer, sizeof(char), file_size, file);
+	WARNING_HANDLE_INT(code - 1, "readTextFromFile(): Error while reading the file\n");
 	return buffer;
 }
 

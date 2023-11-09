@@ -300,8 +300,11 @@ int token_dict_load(token_dictionary_t *dict_ptr, char *filename) {
 	ERROR_HANDLE_PTR_RETURN_INT(file, "token_dict_load(): Error while opening the file\n");
 
 	// Read size and hash table size
-	fread(&dict_ptr->size, sizeof(int), 1, file);
-	fread(&dict_ptr->hash_table_size, sizeof(int), 1, file);
+	int code = 0;
+	code = fread(&dict_ptr->size, sizeof(int), 1, file);
+	ERROR_HANDLE_INT_RETURN_INT(code - 1, "token_dict_load(): Error while reading the size\n");
+	code = fread(&dict_ptr->hash_table_size, sizeof(int), 1, file);
+	ERROR_HANDLE_INT_RETURN_INT(code - 1, "token_dict_load(): Error while reading the hash table size\n");
 
 	// Allocate the table
 	dict_ptr->table = mallocBlocking(dict_ptr->hash_table_size * sizeof(token_list_t), "token_dict_load()");
@@ -313,10 +316,13 @@ int token_dict_load(token_dictionary_t *dict_ptr, char *filename) {
 
 		// Read the token
 		token_t token;
-		fread(&token.token_id, sizeof(int), 1, file);
-		fread(&token.size, sizeof(int), 1, file);
+		code = fread(&token.token_id, sizeof(int), 1, file);
+		ERROR_HANDLE_INT_RETURN_INT(code - 1, "token_dict_load(): Error while reading the token id\n");
+		code = fread(&token.size, sizeof(int), 1, file);
+		ERROR_HANDLE_INT_RETURN_INT(code - 1, "token_dict_load(): Error while reading the token size\n");
 		token.str = mallocBlocking((token.size + 1) * sizeof(char), "token_dict_load()");
-		fread(token.str, sizeof(char), token.size, file);
+		code = fread(token.str, sizeof(char), token.size, file);
+		ERROR_HANDLE_INT_RETURN_INT(code - token.size, "token_dict_load(): Error while reading the token string\n");
 		token.str[token.size] = '\0';
 
 		// Add the token directly to the table
