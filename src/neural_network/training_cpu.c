@@ -299,8 +299,7 @@ int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParamet
 					// Calculate the gradient by summing the gradients of the next layer multiplied by the weights
 					nn_type gradient = 0.0;
 					for (int k = 0; k < network->layers[i + 1].nb_neurons; k++)
-						gradient += network->layers[i + 1].weights[k][j]
-							* gradients_per_layer[i + 1].biases_gradients[k];
+						gradient += network->layers[i + 1].weights[k][j];
 
 					// Multiply the gradient by the derivative of the activation function of the neuron
 					gradient *= network->layers[i].activations_values[j];
@@ -434,10 +433,17 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 	nn_type beta1 = 0.9;								// 0.9 is recommended by the original paper
 	nn_type beta2 = 0.999;								// 0.999 is recommended by the original paper
 	nn_type epsilon = 1e-8;								// To avoid division by 0 in the bias-corrected moment estimates
-	nn_type m = 0.0;									// First moment vector
-	nn_type v = 0.0;									// Second moment vector
-	nn_type m_hat;										// Bias-corrected first moment vector
-	nn_type v_hat;										// Bias-corrected second moment vector
+	// m and v are first and second moment vectors, m_hat and v_hat are bias-corrected first and second moment vectors
+	nn_type **m = mallocBlocking((network->nb_layers - 1) * sizeof(nn_type*), "TrainAdam(m)");
+	nn_type **v = mallocBlocking((network->nb_layers - 1) * sizeof(nn_type*), "TrainAdam(v)");
+	nn_type **m_hat = mallocBlocking((network->nb_layers - 1) * sizeof(nn_type*), "TrainAdam(m_hat)");
+	nn_type **v_hat = mallocBlocking((network->nb_layers - 1) * sizeof(nn_type*), "TrainAdam(v_hat)");
+	for (int i = 1; i < network->nb_layers; i++) {
+		m[i - 1] = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "TrainAdam(m[i])");
+		v[i - 1] = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "TrainAdam(v[i])");
+		m_hat[i - 1] = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "TrainAdam(m_hat[i])");
+		v_hat[i - 1] = mallocBlocking(network->layers[i].nb_neurons * sizeof(nn_type), "TrainAdam(v_hat[i])");
+	}
 	nn_type minus_beta1 = 1.0 - beta1;					// 1 - beta1 (to avoid calculating it at each iteration)
 	nn_type minus_beta2 = 1.0 - beta2;					// 1 - beta2 (to avoid calculating it at each iteration)
 
@@ -464,11 +470,13 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 		current_epoch++;
 
 		// Initialize more Adam optimizer parameters
-		nn_type t = 1.0;						// Iteration counter
 		nn_type beta1_t = beta1;				// beta1 to the power of t (to avoid calculating it at each iteration)
 		nn_type beta2_t = beta2;				// beta2 to the power of t (to avoid calculating it at each iteration)
-		m = 0.0;								// First moment vector
-		v = 0.0;								// Second moment vector
+		// Initialize the first and second moment vectors to 0
+		for (int i = 1; i < network->nb_layers; i++) {
+			memset(m[i - 1], 0, network->layers[i].nb_neurons * sizeof(nn_type));
+			memset(v[i - 1], 0, network->layers[i].nb_neurons * sizeof(nn_type));
+		}
 		nn_type minus_beta1_t = 1.0 - beta1_t;	// 1 - (beta1 to the power of t (to avoid calculating it at each iteration))
 		nn_type minus_beta2_t = 1.0 - beta2_t;	// 1 - (beta2 to the power of t (to avoid calculating it at each iteration))
 
@@ -546,8 +554,7 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 					// Calculate the gradient by summing the gradients of the next layer multiplied by the weights
 					nn_type gradient = 0.0;
 					for (int k = 0; k < network->layers[i + 1].nb_neurons; k++)
-						gradient += network->layers[i + 1].weights[k][j]
-							* gradients_per_layer[i + 1].biases_gradients[k];
+						gradient += network->layers[i + 1].weights[k][j];
 
 					// Multiply the gradient by the derivative of the activation function of the neuron
 					gradient *= network->layers[i].activations_values[j];
@@ -570,35 +577,34 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 						// Update the first moment vector (m) and the second moment vector (v)
 						// m = beta1 * m + (1.0 - beta1) * gradients
 						// v = beta2 * v + (1.0 - beta2) * gradients²
-						m = beta1 * m + (minus_beta1) * gradients_per_layer[i].weights_gradients[j][k];
-						v = beta2 * v + (minus_beta2) * gradients_per_layer[i].weights_gradients[j][k] * gradients_per_layer[i].weights_gradients[j][k];
+						m[i - 1][j] = beta1 * m[i - 1][j] + minus_beta1 * gradients_per_layer[i].weights_gradients[j][k];
+						v[i - 1][j] = beta2 * v[i - 1][j] + minus_beta2 * gradients_per_layer[i].weights_gradients[j][k] * gradients_per_layer[i].weights_gradients[j][k];
 
 						// Calculate the bias-corrected first moment vector (m_hat) and the bias-corrected second moment vector (v_hat)
 						// m_hat = m / (1.0 - beta1_t)
 						// v_hat = v / (1.0 - beta2_t)
-						m_hat = m / (minus_beta1_t);
-						v_hat = v / (minus_beta2_t);
+						m_hat[i - 1][j] = m[i - 1][j] / minus_beta1_t;
+						v_hat[i - 1][j] = v[i - 1][j] / minus_beta2_t;
 
 						// Update the weight
 						// weight -= (alpha * m_hat) / (nn_sqrt(v_hat) + epsilon)
-						network->layers[i].weights[j][k] -= (alpha * m_hat) / (nn_sqrt(v_hat) + epsilon);
+						network->layers[i].weights[j][k] -= (alpha * m_hat[i - 1][j]) / (nn_sqrt(v_hat[i - 1][j]) + epsilon);
 					}
 
 					// Update the first moment vector (m) and the second moment vector (v)
-					m = beta1 * m + (minus_beta1) * gradients_per_layer[i].biases_gradients[j];
-					v = beta2 * v + (minus_beta2) * gradients_per_layer[i].biases_gradients[j] * gradients_per_layer[i].biases_gradients[j];
+					m[i - 1][j] = beta1 * m[i - 1][j] + minus_beta1 * gradients_per_layer[i].biases_gradients[j];
+					v[i - 1][j] = beta2 * v[i - 1][j] + minus_beta2 * gradients_per_layer[i].biases_gradients[j] * gradients_per_layer[i].biases_gradients[j];
 
 					// Calculate the bias-corrected first moment vector (m_hat) and the bias-corrected second moment vector (v_hat)
-					m_hat = m / (minus_beta1_t);
-					v_hat = v / (minus_beta2_t);
+					m_hat[i - 1][j] = m[i - 1][j] / minus_beta1_t;
+					v_hat[i - 1][j] = v[i - 1][j] / minus_beta2_t;
 
 					// Update the bias
-					network->layers[i].biases[j] -= (alpha * m_hat) / (nn_sqrt(v_hat) + epsilon);
+					network->layers[i].biases[j] -= (alpha * m_hat[i - 1][j]) / (nn_sqrt(v_hat[i - 1][j]) + epsilon);
 				}
 			}
 
 			// Update the parameters of the Adam optimizer
-			t++;
 			beta1_t *= beta1;
 			beta2_t *= beta2;
 			minus_beta1_t = 1.0 - beta1_t;
@@ -655,6 +661,18 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 			free(dropout_mask[i - 1]);
 		free(dropout_mask);
 	}
+
+	// Free the Adam optimizer parameters
+	for (int i = 1; i < network->nb_layers; i++) {
+		free(m[i - 1]);
+		free(v[i - 1]);
+		free(m_hat[i - 1]);
+		free(v_hat[i - 1]);
+	}
+	free(m);
+	free(v);
+	free(m_hat);
+	free(v_hat);
 
 	// Verbose
 	if (verbose > 0)

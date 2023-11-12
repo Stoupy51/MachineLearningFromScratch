@@ -5,15 +5,15 @@
 /**
  * @brief Utility function to shuffle the training data
  * 
- * @param inputs			Pointer to the inputs array
- * @param targets	Pointer to the target outputs array
- * @param batch_size		Number of samples in the batch
+ * @param inputs		Pointer to the inputs array
+ * @param targets		Pointer to the target outputs array
+ * @param batch_size	Number of samples in the batch
  */
-void shuffleTrainingData(nn_type **inputs, nn_type **targets, int batch_size) {
+void shuffleTrainingData(void **inputs, void **targets, int batch_size) {
 
 	// Prepare a new array of pointers to the inputs and the target outputs
-	nn_type **new_inputs = mallocBlocking(batch_size * sizeof(nn_type *), "shuffleTrainingData()");
-	nn_type **new_targets = mallocBlocking(batch_size * sizeof(nn_type *), "shuffleTrainingData()");
+	void **new_inputs = mallocBlocking(batch_size * sizeof(void *), "shuffleTrainingData()");
+	void **new_targets = mallocBlocking(batch_size * sizeof(void *), "shuffleTrainingData()");
 	int new_size = 0;
 
 	// While there are samples in the batch,
@@ -35,8 +35,8 @@ void shuffleTrainingData(nn_type **inputs, nn_type **targets, int batch_size) {
 	}
 
 	// Copy the new array to the old array
-	memcpy(inputs, new_inputs, batch_size * sizeof(nn_type *));
-	memcpy(targets, new_targets, batch_size * sizeof(nn_type *));
+	memcpy(inputs, new_inputs, batch_size * sizeof(void *));
+	memcpy(targets, new_targets, batch_size * sizeof(void *));
 
 	// Free the new array
 	free(new_inputs);

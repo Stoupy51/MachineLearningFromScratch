@@ -50,7 +50,7 @@ nn_type mean_squared_error_derivative(nn_type prediction, nn_type target_value) 
 // Calculate the huber loss of the neural network: a combination of the mean absolute error and the mean squared error
 nn_type huber_loss_f(nn_type prediction, nn_type target_value) {
 	nn_type diff = target_value - prediction;
-	return diff < 1 ? diff * diff / 2 : diff - 0.5;
+	return diff < -1 ? 1 - 2 * diff : (diff < 1 ? diff * diff : 2 * diff - 1);
 }
 
 // Derivative of the huber loss of the neural network
@@ -68,22 +68,6 @@ nn_type binary_cross_entropy_f(nn_type prediction, nn_type target_value) {
 
 // Derivative of the cross entropy of the neural network
 nn_type binary_cross_entropy_derivative(nn_type prediction, nn_type target_value) {
-	prediction = prediction == 0 ? nn_epsilon : (prediction == 1 ? 1 - nn_epsilon : prediction);
-	return (prediction - target_value) / (prediction * (1 - prediction));
-}
-
-// Calculate the relative entropy of the neural network / Kullback-Leibler divergence / KL divergence / KL distance / information divergence / information gain
-nn_type relative_entropy_f(nn_type prediction, nn_type target_value) {
-	if (prediction == target_value)
-		return 0;
-	prediction = prediction == 0 ? nn_epsilon : (prediction == 1 ? 1 - nn_epsilon : prediction);
-	nn_type one_minus_target = 1 - target_value;
-	return target_value * nn_type_log(target_value / prediction + nn_epsilon)
-		+ one_minus_target * nn_type_log(one_minus_target / (1 - prediction));
-}
-
-// Derivative of the relative entropy of the neural network
-nn_type relative_entropy_derivative(nn_type prediction, nn_type target_value) {
 	prediction = prediction == 0 ? nn_epsilon : (prediction == 1 ? 1 - nn_epsilon : prediction);
 	return (prediction - target_value) / (prediction * (1 - prediction));
 }
@@ -116,8 +100,6 @@ nn_type (*get_loss_function(const char *loss_function_name))(nn_type, nn_type) {
 		return huber_loss_f;
 	else if (strcmp(loss_function_name, "binary_cross_entropy") == 0)
 		return binary_cross_entropy_f;
-	else if (strcmp(loss_function_name, "relative_entropy") == 0)
-		return relative_entropy_f;
 	else if (strcmp(loss_function_name, "squared_hinge") == 0)
 		return squared_hinge_f;
 	else {
@@ -142,8 +124,6 @@ nn_type (*get_loss_function_derivative(const char *loss_function_name))(nn_type,
 		return huber_loss_derivative;
 	else if (strcmp(loss_function_name, "binary_cross_entropy") == 0)
 		return binary_cross_entropy_derivative;
-	else if (strcmp(loss_function_name, "relative_entropy") == 0)
-		return relative_entropy_derivative;
 	else if (strcmp(loss_function_name, "squared_hinge") == 0)
 		return squared_hinge_derivative;
 	else {

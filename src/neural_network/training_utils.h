@@ -6,7 +6,7 @@
 
 #include <stdlib.h>
 
-void shuffleTrainingData(nn_type **inputs, nn_type **targets, int batch_size);
+void shuffleTrainingData(void **inputs, void **targets, int batch_size);
 
 int doubleToInt(nn_type d);
 void convertXbIntToBinaryDoubleArray(int n, nn_type *binary, int number_of_bits);

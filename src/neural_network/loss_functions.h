@@ -19,16 +19,14 @@
 nn_type mean_absolute_error_f(nn_type prediction, nn_type target_value);
 nn_type mean_squared_error_f(nn_type prediction, nn_type target_value);
 nn_type huber_loss_f(nn_type prediction, nn_type target_value);
-nn_type cross_entropy_f(nn_type prediction, nn_type target_value);
-nn_type relative_entropy_f(nn_type prediction, nn_type target_value);
+nn_type binary_cross_entropy_f(nn_type prediction, nn_type target_value);
 nn_type squared_hinge_f(nn_type prediction, nn_type target_value);
 
 // Derivatives of loss functions for neural networks
 nn_type mean_absolute_error_derivative(nn_type prediction, nn_type target_value);
 nn_type mean_squared_error_derivative(nn_type prediction, nn_type target_value);
 nn_type huber_loss_derivative(nn_type prediction, nn_type target_value);
-nn_type cross_entropy_derivative(nn_type prediction, nn_type target_value);
-nn_type relative_entropy_derivative(nn_type prediction, nn_type target_value);
+nn_type binary_cross_entropy_derivative(nn_type prediction, nn_type target_value);
 nn_type squared_hinge_derivative(nn_type prediction, nn_type target_value);
 
 // Function to get a loss function from its name
