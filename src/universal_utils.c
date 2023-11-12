@@ -4,6 +4,11 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#ifndef _WIN32
+	#include <stdarg.h>
+	#include <limits.h>
+#endif
+
 #include "universal_utils.h"
 
 /**

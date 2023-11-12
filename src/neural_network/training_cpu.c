@@ -1,11 +1,12 @@
 
+#include <math.h>
+
 #include "training_cpu.h"
-#include "loss_functions.h"
 #include "training_utils.h"
+#include "activation_functions.h"
+#include "loss_functions.h"
 #include "../universal_utils.h"
 #include "../st_benchmark.h"
-
-#include <math.h>
 
 #if NN_TYPE == 0
 	#define nn_sqrt sqrtf
