@@ -85,20 +85,20 @@
 
 // Adam
 #define GC_UPDATE_WEIGHTS_AND_BIASES_ADAM \
-"kernel void update_weights_and_biases(global "NN_STRING"* weights, global "NN_STRING"* biases, global "NN_STRING"* weights_gradients, global "NN_STRING"* biases_gradients, global "NN_STRING"* m, global "NN_STRING"* v, global "NN_STRING"* m_hat, global "NN_STRING"* v_hat, "NN_STRING" minus_beta1_t, "NN_STRING" minus_beta2_t, int nb_inputs_per_neuron) {" \
+"kernel void update_weights_and_biases(global "NN_STRING"* weights, global "NN_STRING"* biases, global "NN_STRING"* weights_gradients, global "NN_STRING"* biases_gradients, global "NN_STRING"* m, global "NN_STRING"* v, global "NN_STRING"* m_hat, global "NN_STRING"* v_hat, global "NN_STRING"* minus_beta1_t, global "NN_STRING"* minus_beta2_t, int nb_inputs_per_neuron) {" \
 	"int index = get_global_id(0);" \
 	"int weight_index = index * nb_inputs_per_neuron;" \
 	"for (int i = 0; i < nb_inputs_per_neuron; i++) {" \
 		"m[index] = 0.9 * m[index] + 0.1 * weights_gradients[weight_index + i];" \
 		"v[index] = 0.999 * v[index] + 0.001 * weights_gradients[weight_index + i] * weights_gradients[weight_index + i];" \
-		"m_hat[index] = m[index] / minus_beta1_t;" \
-		"v_hat[index] = v[index] / minus_beta2_t;" \
+		"m_hat[index] = m[index] / minus_beta1_t[0];" \
+		"v_hat[index] = v[index] / minus_beta2_t[0];" \
 		"weights[weight_index + i] -= (__LEARNING_RATE__ * m_hat[index]) / (sqrt(v_hat[index]) + 1e-8);" \
 	"}" \
 	"m[index] = 0.9 * m[index] + 0.1 * biases_gradients[index];" \
 	"v[index] = 0.999 * v[index] + 0.001 * biases_gradients[index] * biases_gradients[index];" \
-	"m_hat[index] = m[index] / minus_beta1_t;" \
-	"v_hat[index] = v[index] / minus_beta2_t;" \
+	"m_hat[index] = m[index] / minus_beta1_t[0];" \
+	"v_hat[index] = v[index] / minus_beta2_t[0];" \
 	"biases[index] -= (__LEARNING_RATE__ * m_hat[index]) / (sqrt(v_hat[index]) + 1e-8);" \
 "}\0"
 #define GC_UPDATE_PARAMETERS_ADAM \

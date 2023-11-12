@@ -730,9 +730,9 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 		ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 6 for the weights and biases update for layer %d with code %d / %s\n", i, error, getOpenCLErrorString(error));
 		error = clSetKernelArg(update_kernels[i - 1], 7, sizeof(cl_mem), &v_hat[i - 1]);
 		ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 7 for the weights and biases update for layer %d with code %d / %s\n", i, error, getOpenCLErrorString(error));
-		error = clSetKernelArg(update_kernels[i - 1], 8, sizeof(nn_type), &minus_beta1_t);
+		error = clSetKernelArg(update_kernels[i - 1], 8, sizeof(cl_mem), &minus_beta1_t);
 		ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 8 for the weights and biases update for layer %d with code %d / %s\n", i, error, getOpenCLErrorString(error));
-		error = clSetKernelArg(update_kernels[i - 1], 9, sizeof(nn_type), &minus_beta2_t);
+		error = clSetKernelArg(update_kernels[i - 1], 9, sizeof(cl_mem), &minus_beta2_t);
 		ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 9 for the weights and biases update for layer %d with code %d / %s\n", i, error, getOpenCLErrorString(error));
 		error = clSetKernelArg(update_kernels[i - 1], 10, sizeof(int), &network->layers[i].nb_inputs_per_neuron);
 		ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 10 for the weights and biases update for layer %d with code %d / %s\n", i, error, getOpenCLErrorString(error));
@@ -755,9 +755,9 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 	ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 0 for the Adam optimizer parameters update with code %d / %s\n", error, getOpenCLErrorString(error));
 	error = clSetKernelArg(update_parameters_kernel, 1, sizeof(cl_mem), &beta2_t);
 	ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 1 for the Adam optimizer parameters update with code %d / %s\n", error, getOpenCLErrorString(error));
-	error = clSetKernelArg(update_parameters_kernel, 2, sizeof(nn_type), &minus_beta1_t);
+	error = clSetKernelArg(update_parameters_kernel, 2, sizeof(cl_mem), &minus_beta1_t);
 	ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 2 for the Adam optimizer parameters update with code %d / %s\n", error, getOpenCLErrorString(error));
-	error = clSetKernelArg(update_parameters_kernel, 3, sizeof(nn_type), &minus_beta2_t);
+	error = clSetKernelArg(update_parameters_kernel, 3, sizeof(cl_mem), &minus_beta2_t);
 	ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 3 for the Adam optimizer parameters update with code %d / %s\n", error, getOpenCLErrorString(error));
 
 	// Create the program and the kernel for the error calculation
@@ -854,6 +854,7 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 			///// Feed forward
 			error = FeedForwardGPUWithPreparedBuffers(network, &inputs_buffers[first_sample], &outputs_buffers[first_sample], nb_samples, events, &events_count, layers);
 			ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while feeding forward with code %d / %s\n", error, getOpenCLErrorString(error));
+			int last_feed_forward_event = events_count - 1;
 
 			///// Backpropagation stuff using the Adam optimizer (Adaptive Moment Estimation)
 			// Initialize the gradients of the weights and the biases to 0
@@ -863,6 +864,10 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 				error = clEnqueueFillBuffer(oc.command_queue, layers[layer].biases_gradients, &zero, sizeof(nn_type), 0, network->layers[layer].nb_neurons * sizeof(nn_type), 0, NULL, &events[events_count++]);
 				ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while filling the biases_gradients buffer for layer %d with code %d / %s\n", layer, error, getOpenCLErrorString(error));
 			}
+
+			// Copy the first activation values resulting of the feed forward to the actual activation values buffers
+			error = clEnqueueCopyBuffer(oc.command_queue, outputs_buffers[first_sample], layers[network->nb_layers - 1].activation_values, 0, 0, network->output_layer->nb_neurons * sizeof(nn_type), 1, &events[last_feed_forward_event], &events[events_count++]);
+			ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while copying the activation values of the output layer with code %d / %s\n", error, getOpenCLErrorString(error));
 
 			// Calculate the derivative of activation functions for the output layer
 			size_t deri_dimensions[] = { network->output_layer->nb_neurons, 0, 0 };
@@ -909,6 +914,10 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 			// Update the weights and the biases
 			int backpropagation_last_event = events_count - 1;
 			for (int layer = 1; layer < network->nb_layers; layer++) {
+
+				// Set the missing arguments of the kernel
+
+				// Launch the kernel
 				size_t global_dimensions[] = { network->layers[layer].nb_neurons, 0, 0 };
 				error = clEnqueueNDRangeKernel(oc.command_queue, update_kernels[layer - 1], 1, NULL, global_dimensions, NULL, 1, &events[backpropagation_last_event], &events[events_count]);
 				events_count++;
@@ -1014,6 +1023,10 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 	free(inputs_buffers);
 	free(target_outputs_buffers);
 	free(outputs_buffers);
+	error = clReleaseMemObject(tests_target_buffer);
+	ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while releasing the tests target buffer with code %d / %s\n", error, getOpenCLErrorString(error));
+	error = clReleaseMemObject(tests_outputs_buffer);
+	ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while releasing the tests outputs buffer with code %d / %s\n", error, getOpenCLErrorString(error));
 	for (int layer = 1; layer < network->nb_layers; layer++) {
 		error = clReleaseMemObject(layers[layer].activation_values);
 		ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while releasing the activation values buffer for layer %d with code %d / %s\n", layer, error, getOpenCLErrorString(error));
