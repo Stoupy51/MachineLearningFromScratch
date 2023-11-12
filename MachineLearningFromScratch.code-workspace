@@ -74,7 +74,18 @@
 			"target": "c",
 			"random_array_values.h": "c",
 			"training_structs.h": "c",
-			"loss_functions.h": "c"
+			"loss_functions.h": "c",
+			"deque": "c",
+			"ranges": "c",
+			"span": "c",
+			"compare": "c",
+			"memory": "c",
+			"tuple": "c",
+			"xtr1common": "c",
+			"__functional_base": "c",
+			"__functional_base_03": "c",
+			"__tuple": "c",
+			"forward_list": "c"
 		},
 		"OpenCL.explorer.localizedProperties": false
 	}

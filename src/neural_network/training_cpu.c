@@ -232,7 +232,7 @@ int TrainSGD(NeuralNetwork *network, TrainingData training_data, TrainingParamet
 		
 		///// Epoch stuff
 		// Shuffle the training data
-		shuffleTrainingData(training_data.inputs, training_data.targets, training_data.nb_inputs);
+		shuffleTrainingData(training_data.inputs, training_data.targets, training_data.nb_inputs, nn_type*);
 
 		// Setup the dropout mask for the hidden layers
 		if (dropout_mask != NULL)
@@ -487,7 +487,7 @@ int TrainAdam(NeuralNetwork *network, TrainingData training_data, TrainingParame
 		
 		///// Epoch stuff
 		// Shuffle the training data
-		shuffleTrainingData(training_data.inputs, training_data.targets, training_data.nb_inputs);
+		shuffleTrainingData(training_data.inputs, training_data.targets, training_data.nb_inputs, nn_type*);
 
 		// Setup the dropout mask for the hidden layers
 		if (dropout_mask != NULL)

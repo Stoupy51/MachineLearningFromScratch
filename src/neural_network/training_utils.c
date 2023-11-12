@@ -3,48 +3,6 @@
 #include "../universal_utils.h"
 
 /**
- * @brief Utility function to shuffle the training data
- * 
- * @param inputs		Pointer to the inputs array
- * @param targets		Pointer to the target outputs array
- * @param batch_size	Number of samples in the batch
- */
-void shuffleTrainingData(void **inputs, void **targets, int batch_size) {
-
-	// Prepare a new array of pointers to the inputs and the target outputs
-	void **new_inputs = mallocBlocking(batch_size * sizeof(void *), "shuffleTrainingData()");
-	void **new_targets = mallocBlocking(batch_size * sizeof(void *), "shuffleTrainingData()");
-	int new_size = 0;
-
-	// While there are samples in the batch,
-	int nb_samples = batch_size;
-	while (nb_samples > 0) {
-
-		// Select a random sample
-		int random_index = rand() % nb_samples;
-
-		// Add the random sample to the new array
-		new_inputs[new_size] = inputs[random_index];
-		new_targets[new_size] = targets[random_index];
-		new_size++;
-
-		// Remove the random sample from the old array by replacing it with the last sample
-		inputs[random_index] = inputs[nb_samples - 1];
-		targets[random_index] = targets[nb_samples - 1];
-		nb_samples--;
-	}
-
-	// Copy the new array to the old array
-	memcpy(inputs, new_inputs, batch_size * sizeof(void *));
-	memcpy(targets, new_targets, batch_size * sizeof(void *));
-
-	// Free the new array
-	free(new_inputs);
-	free(new_targets);
-}
-
-
-/**
  * @brief Convert a double to an int (rounding to the nearest integer)
  * 
  * @param d		The double to convert
@@ -215,7 +173,7 @@ void replaceString(char *source, size_t source_size, char *old, char *new) {
 
 		// If the source string is too small, exit
 		if (source_length + difference >= source_size) {
-			ERROR_PRINT("replaceString(): Source string is too small\n");
+			ERROR_PRINT("replaceString(): Source string is too small for replacing '%s' with '%s'\n", old, new);
 			exit(EXIT_FAILURE);
 		}
 
