@@ -3,6 +3,7 @@
 #include "../src/neural_network/neural_utils.h"
 #include "../src/neural_network/training_utils.h"
 #include "../src/neural_network/training_cpu.h"
+#include "../src/neural_network/training_gpu.h"
 #include "../src/utils/text_file.h"
 #include "../src/utils/plots.h"
 #include "../src/st_benchmark.h"
@@ -123,7 +124,7 @@ int main() {
 	// Train the neural network and measure the time
 	struct timeval start, end;
 	st_gettimeofday(start, NULL);
-	code = TrainCPU(&network, training_data, training_parameters, error_per_epoch, 1);
+	code = TrainGPU(&network, training_data, training_parameters, error_per_epoch, 1);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
 	st_gettimeofday(end, NULL);
 	INFO_PRINT("main(): Total training time: "STR_YELLOW_R("%.3f")"s\n", (double)(end.tv_sec - start.tv_sec) + (double)(end.tv_usec - start.tv_usec) / 1000000.0);
@@ -138,7 +139,7 @@ int main() {
 	INFO_PRINT("main(): Testing the neural network\n");
 	nn_type **predictions;
 	nn_type *predictions_flat = try2DFlatMatrixAllocation((void***)&predictions, nb_chunks, vocabulary_size, sizeof(nn_type), "main()");
-	FeedForwardCPU(&network, inputs, predictions, nb_chunks);
+	FeedForwardGPU(&network, inputs, predictions, nb_chunks);
 	int nb_errors = 0;
 	for (int i = 0; i < nb_chunks; i++) {
 

@@ -220,15 +220,16 @@ int FeedForwardGPUWithPreparedBuffers(NeuralNetwork *network, cl_mem *inputs_buf
 	for (int sample = 0; sample < batch_size; sample++) {
 
 		// Set the arguments of the kernel (input and output buffers)
+		// TODO fix : error for sample "185"
 		cl_int error = clSetKernelArg(layers[1].kernel, 0, sizeof(cl_mem), &inputs_buffers[sample]);
 		ERROR_HANDLE_INT_RETURN_INT(error, "FeedForwardGPU(): Error while setting the kernel argument 0 for sample %d with code %d / %s\n", sample, error, getOpenCLErrorString(error));
 		error = clSetKernelArg(layers[network->nb_layers - 1].kernel, 3, sizeof(cl_mem), &outputs_buffers[sample]);
-		ERROR_HANDLE_INT_RETURN_INT(error, "FeedForwardGPU(): Error while setting the kernel argument 0 for sample %d with code %d / %s\n", sample, error, getOpenCLErrorString(error));
+		ERROR_HANDLE_INT_RETURN_INT(error, "FeedForwardGPU(): Error while setting the kernel argument 3 for sample %d with code %d / %s\n", sample, error, getOpenCLErrorString(error));
 
 		// If the final activation function is softmax, use the output buffer as input
 		if (layers[network->nb_layers - 1].optionnal_2nd_kernel != NULL) {
 			error = clSetKernelArg(layers[network->nb_layers - 1].optionnal_2nd_kernel, 0, sizeof(cl_mem), &outputs_buffers[sample]);
-			ERROR_HANDLE_INT_RETURN_INT(error, "FeedForwardGPU(): Error while setting the kernel argument 0 for sample %d with code %d / %s\n", sample, error, getOpenCLErrorString(error));
+			ERROR_HANDLE_INT_RETURN_INT(error, "FeedForwardGPU(): Error while setting the optionnal_2nd_kernel argument 0 for sample %d with code %d / %s\n", sample, error, getOpenCLErrorString(error));
 		}
 
 		// Launch the feed forward kernel for each layer
@@ -245,6 +246,7 @@ int FeedForwardGPUWithPreparedBuffers(NeuralNetwork *network, cl_mem *inputs_buf
 
 			// If the final activation function is softmax, launch the softmax kernel
 			if (layers[layer].optionnal_2nd_kernel != NULL) {
+				global_dimensions[0] = 1;
 				error = clEnqueueNDRangeKernel(oc.command_queue, layers[layer].optionnal_2nd_kernel, 1, NULL, global_dimensions, NULL, 1, &events[*events_count - 1], &events[*events_count]);
 				(*events_count)++;
 				ERROR_HANDLE_INT_RETURN_INT(error, "FeedForwardGPU(): Error while launching the softmax kernel for layer %d with code %d / %s\n", layer, error, getOpenCLErrorString(error));
@@ -306,6 +308,11 @@ int FeedForwardGPU(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, 
 		ERROR_HANDLE_INT_RETURN_INT(error, "FeedForwardGPU(): Error while writing the weights buffer for layer %d with code %d / %s\n", layer, error, getOpenCLErrorString(error));
 		error = clEnqueueWriteBuffer(oc.command_queue, layers[layer].biases, CL_FALSE, 0, network->layers[layer].nb_neurons * sizeof(nn_type), network->layers[layer].biases, 0, NULL, &events[events_count++]);
 		ERROR_HANDLE_INT_RETURN_INT(error, "FeedForwardGPU(): Error while writing the biases buffer for layer %d with code %d / %s\n", layer, error, getOpenCLErrorString(error));
+	}
+
+	// Details: the loop is cut in two parts because the buffers must be created before the kernels
+	// Continue to prepare the layers
+	for (int layer = 1; layer < network->nb_layers; layer++) {
 
 		// Create the program and the kernel
 		char *feed_forward_function_copy = getActivationFunctionText(network->layers[layer].activation_function_name);
@@ -364,8 +371,8 @@ int FeedForwardGPU(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, 
 	}
 
 	// Wait for the preparation events to finish and release them
-	error = clWaitForEvents(events_count, events);
-	ERROR_HANDLE_INT_RETURN_INT(error, "FeedForwardGPU(): Error while waiting for the preparation events to finish with code %d / %s\n", error, getOpenCLErrorString(error));
+	error = clFinish(oc.command_queue);
+	ERROR_HANDLE_INT_RETURN_INT(error, "FeedForwardGPU(): Error while finishing the command queue with code %d / %s\n", error, getOpenCLErrorString(error));
 	for (int i = 0; i < events_count; i++) {
 		error = clReleaseEvent(events[i]);
 		ERROR_HANDLE_INT_RETURN_INT(error, "FeedForwardGPU(): Error while releasing the preparation event %d with code %d / %s\n", i, error, getOpenCLErrorString(error));
@@ -521,7 +528,11 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 		ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while writing the weights buffer for layer %d with code %d / %s\n", layer, error, getOpenCLErrorString(error));
 		error = clEnqueueWriteBuffer(oc.command_queue, layers[layer].biases, CL_FALSE, 0, network->layers[layer].nb_neurons * sizeof(nn_type), network->layers[layer].biases, 0, NULL, &events[events_count++]);
 		ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while writing the biases buffer for layer %d with code %d / %s\n", layer, error, getOpenCLErrorString(error));
+	}
 
+	// Details: the loop is cut in 2 parts because the weights and biases buffers needs to be written before the kernel arguments are set
+	// Continue the structure creation for each layer of the neural network
+	for (int layer = 1; layer < network->nb_layers; layer++) {
 		// Create the feed forward program and the kernel
 		char *feed_forward_function_copy = getActivationFunctionText(network->layers[layer].activation_function_name);
 		layers[layer].program = clCreateProgramWithSource(oc.context, 1, (const char**)&feed_forward_function_copy, NULL, &error);
@@ -599,7 +610,7 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 
 		// Create the hidden layer gradient program and the kernel
 		if (layer < network->nb_layers - 1) {
-			char *gc_hidden_layer_gradient = mallocBlocking(2048, "TrainAdamGPU(gc_hidden_layer_gradient)");
+			char *gc_hidden_layer_gradient = mallocBlocking(20480, "TrainAdamGPU(gc_hidden_layer_gradient)");
 			strcpy(gc_hidden_layer_gradient, GC_HIDDEN_LAYER_GRADIENT);
 			layers[layer].hidden_layer_gradient_program = clCreateProgramWithSource(oc.context, 1, (const char**)&gc_hidden_layer_gradient, NULL, &error);
 			free(gc_hidden_layer_gradient);
@@ -896,6 +907,12 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 				ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while launching the loss function derivative kernel for sample %d with code %d / %s\n", sample, error, getOpenCLErrorString(error));
 			}
 
+			// Set possible missing argument of the kernel
+			if (network->nb_layers > 2) {
+					error = clSetKernelArg(layers[1].hidden_layer_gradient_kernel, 3, sizeof(cl_mem), &inputs_buffers[first_sample]);
+					ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 3 for layer 1 with code %d / %s\n", error, getOpenCLErrorString(error));
+				}
+
 			// For each layer of the neural network (except the input layer) (in reverse order),
 			for (int i = network->nb_layers - 2; i > 0; i--) {
 
@@ -914,8 +931,6 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 			// Update the weights and the biases
 			int backpropagation_last_event = events_count - 1;
 			for (int layer = 1; layer < network->nb_layers; layer++) {
-
-				// Set the missing arguments of the kernel
 
 				// Launch the kernel
 				size_t global_dimensions[] = { network->layers[layer].nb_neurons, 0, 0 };

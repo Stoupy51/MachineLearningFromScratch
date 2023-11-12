@@ -2,7 +2,6 @@
 #include "../src/universal_utils.h"
 #include "../src/neural_network/neural_utils.h"
 #include "../src/neural_network/training_cpu.h"
-#include "../src/neural_network/training_gpu.h"
 #include "../src/neural_network/training_utils.h"
 #include "../src/st_benchmark.h"
 
@@ -74,7 +73,7 @@ int main() {
 	};
 	struct timeval start, end;
 	st_gettimeofday(start, NULL);
-	code = TrainGPU(&network_plus, training_data, training_parameters, NULL, 1);
+	code = TrainCPU(&network_plus, training_data, training_parameters, NULL, 1);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while training the neural network\n");
 	st_gettimeofday(end, NULL);
 	INFO_PRINT("main(): Total training time: "STR_YELLOW_R("%.3f")"s\n", (double)(end.tv_sec - start.tv_sec) + (double)(end.tv_usec - start.tv_usec) / 1000000.0);
@@ -84,7 +83,7 @@ int main() {
 	nn_type **test_expected = &expected[NB_TOTAL_DATA - NB_TOTAL_DATA];
 	nn_type **test_outputs;
 	nn_type *test_outputs_flat_matrix = try2DFlatMatrixAllocation((void***)&test_outputs, NB_TOTAL_DATA, network_plus.output_layer->nb_neurons, sizeof(nn_type), "main()");
-	FeedForwardGPU(&network_plus, test_inputs, test_outputs, NB_TOTAL_DATA);
+	FeedForwardCPU(&network_plus, test_inputs, test_outputs, NB_TOTAL_DATA);
 	int nb_errors = 0;
 	for (int i = 0; i < NB_TOTAL_DATA; i++) {
 		int a = doubleToInt(test_inputs[i][0]);
