@@ -652,8 +652,10 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 	ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while creating the kernel for the loss function with code %d / %s\n", error, getOpenCLErrorString(error));
 	error = clSetKernelArg(loss_kernel, 2, sizeof(cl_mem), &layers[network->nb_layers - 1].activation_values);
 	ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 2 for the loss function with code %d / %s\n", error, getOpenCLErrorString(error));
-	error = clSetKernelArg(loss_kernel, 3, sizeof(cl_mem), &layers[network->nb_layers - 2].activation_values);
-	ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 3 for the loss function with code %d / %s\n", error, getOpenCLErrorString(error));
+	if (network->nb_layers > 2) {
+		error = clSetKernelArg(loss_kernel, 3, sizeof(cl_mem), &layers[network->nb_layers - 2].activation_values);
+		ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 3 for the loss function with code %d / %s\n", error, getOpenCLErrorString(error));
+	}
 	error = clSetKernelArg(loss_kernel, 4, sizeof(cl_mem), &layers[network->nb_layers - 1].biases_gradients);
 	ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 4 for the loss function with code %d / %s\n", error, getOpenCLErrorString(error));
 	error = clSetKernelArg(loss_kernel, 5, sizeof(cl_mem), &layers[network->nb_layers - 1].weights_gradients_flat);
@@ -778,6 +780,7 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 	error = clSetKernelArg(error_kernel, 3, sizeof(int), &network->output_layer->nb_neurons);
 	ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 3 for the error calculation with code %d / %s\n", error, getOpenCLErrorString(error));
 	nn_type *errors_to_sum = mallocBlocking(sizeof(nn_type) * nb_test_inputs, "TrainAdamGPU(errors_to_sum)");
+	memset(errors_to_sum, 0, sizeof(nn_type) * nb_test_inputs);
 
 	// Wait for everything to be finished and release the events
 	clFinish(oc.command_queue);
@@ -868,13 +871,19 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 			ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while launching the activation derivative kernel for the output layer with code %d / %s\n", error, getOpenCLErrorString(error));
 
 			// Calculate the gradient of the loss function for the output layer
-			for (int sample = first_sample; sample <= last_sample; sample++) {
+			for (int sample = 0; sample < nb_samples; sample++) {
 
 				// Set the arguments of the kernel (prediction and target output buffers)
-				error = clSetKernelArg(loss_kernel, 0, sizeof(cl_mem), &outputs_buffers[sample]);
+				error = clSetKernelArg(loss_kernel, 0, sizeof(cl_mem), &outputs_buffers[first_sample + sample]);
 				ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 0 for sample %d with code %d / %s\n", sample, error, getOpenCLErrorString(error));
-				error = clSetKernelArg(loss_kernel, 1, sizeof(cl_mem), &target_outputs_buffers[sample]);
+				error = clSetKernelArg(loss_kernel, 1, sizeof(cl_mem), &target_outputs_buffers[first_sample + sample]);
 				ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 1 for sample %d with code %d / %s\n", sample, error, getOpenCLErrorString(error));
+
+				// Set possible missing argument of the kernel
+				if (network->nb_layers == 2) {
+					error = clSetKernelArg(loss_kernel, 3, sizeof(cl_mem), &inputs_buffers[first_sample + sample]);
+					ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while setting the kernel argument 3 for sample %d with code %d / %s\n", sample, error, getOpenCLErrorString(error));
+				}
 
 				// Launch the kernel
 				error = clEnqueueNDRangeKernel(oc.command_queue, loss_kernel, 1, NULL, deri_dimensions, NULL, 1, &events[events_count - 1], &events[events_count]);
@@ -954,7 +963,6 @@ int TrainAdamGPU(NeuralNetwork *network, TrainingData training_data, TrainingPar
 		events_count = 0;
 
 		// Copy the errors from the device to the host to sum them up
-		// TODO Fix
 		error = clEnqueueReadBuffer(oc.command_queue, errors_buffer, CL_TRUE, 0, sizeof(nn_type) * nb_test_inputs, errors_to_sum, 0, NULL, NULL);
 		ERROR_HANDLE_INT_RETURN_INT(error, "TrainAdamGPU(): Error while reading the errors buffer with code %d / %s\n", error, getOpenCLErrorString(error));
 		for (int i = 0; i < nb_test_inputs; i++)
