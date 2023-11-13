@@ -67,9 +67,9 @@ int main() {
 	INFO_PRINT("main(): %d chunks of %d characters: [[%d, %d, ...], [%d, %d, ...], ...]\n", nb_chunks, chunk_size, chunks[0][0], chunks[0][1], chunks[1][0], chunks[1][1]);
 
 	// Create the neural network
-	int nb_neurons_per_layer[] = {chunk_size, 1024, 1024, vocabulary_size};
+	int nb_neurons_per_layer[] = {chunk_size, vocabulary_size};
 	int nb_layers = sizeof(nb_neurons_per_layer) / sizeof(int);
-	char *activation_functions[] = {NULL, "sigmoid", "sigmoid", "softmax"};
+	char *activation_functions[] = {NULL, "softmax"};
 	NeuralNetwork network;
 	int code = initNeuralNetwork(&network, nb_layers, nb_neurons_per_layer, activation_functions);
 	ERROR_HANDLE_INT_RETURN_INT(code, "main(): Error while initializing the neural network\n");

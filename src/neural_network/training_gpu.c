@@ -346,6 +346,7 @@ int FeedForwardGPU(NeuralNetwork *network, nn_type **inputs, nn_type **outputs, 
 
 		// If the activation function is softmax, create the program and the kernel for softmax
 		if (strcmp(network->layers[layer].activation_function_name, "softmax") == 0) {
+			DEBUG_PRINT("FeedForwardGPU(): Layer %d is softmax\n", layer);
 			char *feed_forward_softmax = mallocBlocking(2048, "FeedForwardGPU(feed_forward_softmax)");
 			strcpy(feed_forward_softmax, GC_FEED_FORWARD_SOFTMAX);
 			layers[layer].optionnal_2nd_program = clCreateProgramWithSource(oc.context, 1, (const char**)&feed_forward_softmax, NULL, &error);
