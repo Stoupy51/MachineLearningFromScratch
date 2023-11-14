@@ -108,7 +108,7 @@ void* mallocBlocking(size_t size, const char* prefix) {
 void* reallocBlocking(void* ptr, size_t size, const char* prefix) {
 	
 	// Reallocate the memory
-	void* new_ptr = realloc(ptr, size);
+	void* new_ptr = malloc(size);
 
 	// If the memory is not allocated, wait 1000ms and try again
 	while (new_ptr == NULL) {
@@ -118,8 +118,12 @@ void* reallocBlocking(void* ptr, size_t size, const char* prefix) {
 
 		// Wait 1000ms and try again
 		sleep(1);
-		new_ptr = realloc(ptr, size);
+		new_ptr = malloc(size);
 	}
+
+	// Copy the old memory to the new one and free the old memory
+	memcpy(new_ptr, ptr, size);
+	free(ptr);
 
 	// Return the pointer
 	return new_ptr;
